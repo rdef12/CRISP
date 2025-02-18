@@ -1,0 +1,27 @@
+[
+    {
+      "username": "raspi5",
+      "IPAddress": "test_ip1",
+      "password": "raspi5", 
+      "cameraModel": "HQ"
+    },
+    {
+      "username": "c09796mb",
+      "IPAddress": "192.168.10.6",
+      "password": "c09796mb",
+      "cameraModel": "Arducam"
+    },
+    {
+      "username": "raspi5n2",
+      "IPAddress": "test_ip3",
+      "password": "raspi5n2",
+      "cameraModel": "HQ"
+    },
+    {
+      "username": "raspi4b3",
+      "IPAddress": "192.168.10.5",
+      "password": "raspi4b3",
+      "cameraModel": "Arducam"
+    }
+]
+  

@@ -1,0 +1,42 @@
+services: # services listed are connected using the compose file
+  backend: # container called backend
+    build:
+      context: ./backend # backend container sources info from this directory
+    container_name: CRISP_backend
+    ports:
+      - "127.0.0.1:8000:8000"
+      - "0.0.0.0:1234:1234/udp"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      - HOST_IP=host.docker.internal
+      - PYTHONUNBUFFERED=1
+      - DEBUG=True
+      # - POSTGRES_URL=postgresql://postgres:password@database:5432/something #added from docker docs ai
+    develop:
+      watch:
+        - action: sync+restart
+          path: ./backend
+          target: /code
+    # healthcheck:
+    # test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+    # interval: 30s
+    # retries: 5
+
+  frontend:
+    build:
+      context: ./frontend
+    container_name: CRISP_frontend
+    ports:
+      - "127.0.0.1:3000:3000"
+    environment:
+      - NODE_ENV=development # again, I don't think is used yet
+    env_file: 
+    - "./frontend/.env"
+    develop:
+      watch:
+        - action: sync+restart
+          path: ./frontend
+          target: /app
+    depends_on:
+      - backend

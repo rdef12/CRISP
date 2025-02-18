@@ -1,0 +1,24 @@
+[tool.poetry]
+name = "backend"
+version = "0.1.0"
+description = ""
+authors = ["LewisDean22 <lewisdean22@outlook.com>"]
+readme = "README.md"
+packages = [{include = "backend", from = "src"}]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+uvicorn = "^0.34.0"
+paramiko = "^3.5.0"
+sqlmodel = "^0.0.22"
+numpy = "^2.2.2"
+psycopg = {extras = ["binary"], version = "^3.2.4"}
+fastapi = "^0.115.8"
+pydantic = "^2.10.6"
+opencv-python = "^4.11.0.86"
+
+[tool.poetry.dev-dependencies]
+watchfiles = "^1.0.4"
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
