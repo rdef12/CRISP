@@ -32,8 +32,8 @@ class Camera():
     self.cameraModel = cameraModel
     self.ssh_client = ssh_client # Hopefully, this is a reference to the Pi SSH Client?
     self.sftp_client = None # Needs to be opened with the Camera method
-    self.local_image_directory = "/code/src/images" # Inside Backend container
-    self.remote_image_directory = f"/home/{self.username}/created_directory_2025"
+    self.local_image_directory = "/code/src/images" # Inside Backend container # Change to go directly to database in future?
+    self.remote_image_directory = f"/home/{self.username}/created_directory_2025" 
     
     self.video_capture = None # Will be the cv2 video capture (such that cap can be released from any function, without global cap).
     self.stream_source = 'udp://{}:1234'.format(os.getenv("LOCAL_IP_ADDRESS"))

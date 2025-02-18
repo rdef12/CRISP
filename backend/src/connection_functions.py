@@ -19,8 +19,8 @@ class PiConfig(BaseModel):
     password: str
     cameraModel: str
     
-def configure_pi(pi_config):
-    with open(PI_CONFIG_FILEPATH, "r") as file:
+def configure_pi(pi_config): # Change to interact with database
+    with open(PI_CONFIG_FILEPATH, "r") as file: 
             data = json.load(file)
 
     data.append(pi_config.dict())
@@ -28,7 +28,7 @@ def configure_pi(pi_config):
         json.dump(data, file, indent=4)
     return None
 
-def remove_configured_pi(username: str):
+def remove_configured_pi(username: str): # Change to interact with database
     with open(PI_CONFIG_FILEPATH, "r") as file:
             data = json.load(file)
             
@@ -46,7 +46,7 @@ def remove_configured_pi(username: str):
 
 def get_raspberry_pi_statuses():
 
-    configured_pis = Pi.parse_config_json(PI_CONFIG_FILEPATH)
+    configured_pis = Pi.parse_config_json(PI_CONFIG_FILEPATH) # This function will change
     pi_status_array = []
     for pi_dict in configured_pis:
         

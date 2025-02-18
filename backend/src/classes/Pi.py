@@ -78,7 +78,7 @@ class Pi:
   def parse_config_json(cls, filename: str):
     with open(filename, 'r') as json_file:
       raspberry_pi_setup_file = json.load(json_file)
-    return raspberry_pi_setup_file
+    return raspberry_pi_setup_file # Array of jsons
   
   @classmethod
   def instantiate_configured_pi_by_username(cls, username, filename: str):
