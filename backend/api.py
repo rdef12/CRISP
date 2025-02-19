@@ -10,12 +10,17 @@ from src.camera_functions import *
 from src.connection_functions import *
 from src.classes.Camera import ImageSettings
 
+from src.database.database import create_db_and_tables
+
 import os
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     get_host_IP_address()
     print(os.getenv("LOCAL_IP_ADDRESS"))
+    print("about to create db and tables")
+    create_db_and_tables()
+    print("should have created db and tables")
     yield 
     print("API closed")
 
@@ -28,7 +33,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-    
+
 @app.post("/add_pi")
 async def add_pi(pi_config: PiConfig):
     configure_pi(pi_config)
