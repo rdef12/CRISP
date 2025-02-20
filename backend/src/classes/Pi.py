@@ -2,6 +2,7 @@ from fastapi import FastAPI
 import paramiko
 import json
 from src.classes.Camera import Camera
+from src.database.CRUD.camera_CRUD import get_all_cameras
 
 class Pi:
   
@@ -77,10 +78,16 @@ class Pi:
   
   @classmethod
   def parse_config_json(cls, filename: str):
-    with open(filename, 'r') as json_file:
-      raspberry_pi_setup_file = json.load(json_file)
-    return raspberry_pi_setup_file
-  
+    # with open(filename, 'r') as json_file:
+    #   raspberry_pi_setup_file = json.load(json_file)
+    # print(raspberry_pi_setup_file)
+    all_cameras = get_all_cameras()
+
+
+    # return raspberry_pi_setup_file # Array of jsons
+    return all_cameras
+
+
   @classmethod
   def instantiate_configured_pi_by_username(cls, username, filename: str):
     

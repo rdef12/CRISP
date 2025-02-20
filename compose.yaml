@@ -1,4 +1,24 @@
 services: # services listed are connected using the compose file
+  database:
+    # username=postgres password=password
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      DB_NAME: crisp_database #this is used in the database url in database.py # Apparently it doesn't like capitals which is why it isn't CRISP_database
+    image: postgres:17.2
+    container_name: CRISP_database
+    volumes: # Check and probably streamline these volumes to our needs only
+      - ./backend/database/dev/scripts/docker-init.sql.sh:/docker-entrypoint-initdb.d/init.sql.sh:ro
+      - ./backend/database/sql:/sql:ro
+      - ./backend/database/dev/sql:/dev-sql:ro
+    ports:
+      - "127.0.0.1:5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 1s
+      timeout: 1s
+      retries: 30
+
   backend: # container called backend
     build:
       context: ./backend # backend container sources info from this directory
@@ -12,12 +32,15 @@ services: # services listed are connected using the compose file
       - HOST_IP=host.docker.internal
       - PYTHONUNBUFFERED=1
       - DEBUG=True
-      # - POSTGRES_URL=postgresql://postgres:password@database:5432/something #added from docker docs ai
+      - POSTGRES_URL=postgresql://postgres:password@database:5432/crisp_database #added from docker docs ai
     develop:
       watch:
         - action: sync+restart
           path: ./backend
           target: /code
+    depends_on:
+      database:
+        condition: service_healthy
     # healthcheck:
     # test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
     # interval: 30s
