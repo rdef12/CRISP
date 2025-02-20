@@ -43,11 +43,12 @@ class Pi:
         # Can try with an ssh connection key (see if this changes over time or constant for the device)
         self.ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy()) # makes computer trust the ssh connection
 
-        print("TEST")
+        # the reason I am setting a timeout is that the GUI will show connecting... for 1 min o/w
+        # Having a timeout makes the GUI more responsive - quicker info on when something is going wrong.
         self.ssh_client.connect(hostname=self.ip_address,
                                 port=22, username=self.username, 
-                                password=self.password
-                              )
+                                password=self.password, timeout=15
+                              ) 
         self.ssh_status = True
         
       except Exception as e:

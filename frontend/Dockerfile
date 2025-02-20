@@ -5,6 +5,9 @@ WORKDIR /app
 
 COPY package.json /app/
 
+# ONLY TEMP WHILE BUILING IS FAILING?
+RUN npm cache clean --force
+
 RUN npm install
 
 COPY . .
@@ -14,4 +17,4 @@ RUN npm run build
 # Just metadata in this case because compose.yaml defines the ports again.
 EXPOSE 3000 
 
-CMD ["npm", "run", "dev"]
+CMD ["npm", "run", "start"]

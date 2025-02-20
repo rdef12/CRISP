@@ -73,7 +73,7 @@ export default function ImageTesting() {
 
       console.log(`Selected Pi's username is ${selectedPiUsername}`)
       try {
-        const response = await fetch(`${BACKEND_URL}/take_single_picture_${selectedPiUsername}`, {
+        const response = await fetch(`${BACKEND_URL}/take_single_picture/${selectedPiUsername}`, {
           method: "POST",
           body: JSON.stringify(formData),
           headers: { "Content-Type": "application/json" }

@@ -1,15 +1,16 @@
 from src.classes.Pi import Pi
 from src.classes.Camera import ImageSettings
-import cv2 # Need to add as a poetry dependency
+import cv2
+from concurrent.futures import ThreadPoolExecutor, as_completed
 import os
+from typing import List
 
-def take_single_picture(username: str, imageSettings: ImageSettings):
+def take_single_image(username: str, imageSettings: ImageSettings):
     
     try:
         if (pi := Pi.get_pi_with_username(username)) is None:
             raise Exception(f"No pi instantiated with the username {username}")
         
-        # NOTE - Do I need to use async/await to make sure the image taking has finished before transferring?
         pi.camera.capture_image(imageSettings)
         pi.camera.transfer_image(imageSettings)
         return (f"{pi.camera.local_image_directory}/{imageSettings.filename}.{imageSettings.format}") # return filepath for convenience - acts like a bool
@@ -17,19 +18,32 @@ def take_single_picture(username: str, imageSettings: ImageSettings):
     except Exception as e:
         print(f"Error trying to take a picture: {e}")
         return 0
+
+
+def take_multiple_images(usernames_list: List[str], imageSettings_list: List[ImageSettings]):
+
+    try:
+        # Should have already validated the fact that Pis with these usernames are connected via SSH.
+        pis_to_image_with = [Pi.get_pi_with_username(username) for username in usernames_list] 
+        
+        with ThreadPoolExecutor() as executor:
+            futures = [executor.submit(pi.camera.capture_image, imageSettings) for pi, imageSettings in zip(pis_to_image_with , imageSettings_list)] 
+            for future in as_completed(futures):
+                result = future.result()
+                
+                if not result["success"]:
+                    raise Exception(f"Error with {result['pi']}: {result['error']}")
+                
+    except Exception as e:
+        print(f"Error taking multiple images at once: {e}")
     
     
 def stream_video_feed(username: str):
     try:
-        print("Before A")
         if (pi := Pi.get_pi_with_username(username)) is None:
             raise Exception(f"No Pi instantiated with the username {username}")
         
-        # Check if UDP streaming is established
-        print("before A 2")
-        
         success = pi.camera.stream_to_local_device()
-        print(success)
         if success:
             print("D")
             cap = pi.camera.start_stream_capture()

@@ -18,8 +18,9 @@ const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND
 
 export default function StreamTesting() {
 
+    const username = "c09796mb"
     return (<div>
-            <img src={`${BACKEND_URL}/stream_c09796mb`} alt="Video Stream" id="video-element"/>
+            <img src={`${BACKEND_URL}/stream/${username}`} alt="Video Stream" id="video-element"/>
           </div>
   );
 }

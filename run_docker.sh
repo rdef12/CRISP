@@ -9,7 +9,7 @@ RESET="\e[0m"
 echo -e "${GREEN_BG}${WHITE_TEXT}       CRISP GUI       ${RESET}"
 
 # Start Docker Compose
-docker compose -f /home/lewisdean22/proton_beam_monitor_testing/docker_testing/compose.yaml up -d
+docker compose -f /home/lewisdean22/CRISP/compose.yaml up -d
 
 # Wait for services to start
 sleep 1

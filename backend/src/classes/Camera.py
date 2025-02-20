@@ -155,7 +155,8 @@ class Camera():
         # # Placing an & at the end of the command runs it as a background process
         stdin, stdout, stderr = self.ssh_client.exec_command(
         f"libcamera-vid -t 0 --bitrate {self.stream_bitrate} --inline --width 1920 --height 1080 --rotation 180 " +
-        f"--framerate {self.stream_framerate} --codec {self.stream_codec} --libav-format mpegts -n -o {self.stream_source}") # if not streaming after 30 secs, it will timeout
+        f"--framerate {self.stream_framerate} --codec {self.stream_codec} --libav-format mpegts -n -o {self.stream_source}",
+        timeout=30) # if not streaming after 30 secs, it will timeout
         
         print("C")
         if standard_error := stderr.read().decode():

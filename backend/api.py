@@ -4,6 +4,7 @@ from fastapi.responses import StreamingResponse, FileResponse
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
+import time
 
 from src.network_functions import *
 from src.camera_functions import *
@@ -48,21 +49,25 @@ def get_raspberry_pi_statuses_api():
     pi_status_array = get_raspberry_pi_statuses()
     return pi_status_array
 
-@app.post("/connect_over_ssh_{username}")
+@app.post("/connect_over_ssh/{username}")
 def connect_over_ssh_api(username: str):
+    time.sleep(5)
     return {"sshStatus": connect_over_ssh(username)}
 
-@app.post("/disconnect_from_ssh_{username}")
+@app.post("/disconnect_from_ssh/{username}")
 def disconnect_from_ssh_api(username: str):
     return {"sshStatus": disconnect_from_ssh(username)}
 
-@app.post("/take_single_picture_{username}")
+@app.post("/take_single_picture/{username}")
 def take_single_picture_api(username: str, imageSettings: ImageSettings):
-    if (filepath := take_single_picture(username, imageSettings)):  
+    if (filepath := take_single_image(username, imageSettings)):  
         return FileResponse(filepath)
     
-@app.get("/stream_{username}")
+@app.get("/stream/{username}")
 def stream_api(username: str):
     # Might want to add a fastapi background task which waits until stream cleanup is needed
     return StreamingResponse(stream_video_feed(username),
                              media_type="multipart/x-mixed-replace; boundary=frame")
+
+### Note for Plotly to work, think I need to encode the image before sending it to the frontend.
+# I.e. I can't just use FileResponse

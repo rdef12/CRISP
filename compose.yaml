@@ -29,8 +29,6 @@ services: # services listed are connected using the compose file
     container_name: CRISP_frontend
     ports:
       - "127.0.0.1:3000:3000"
-    environment:
-      - NODE_ENV=development # again, I don't think is used yet
     env_file: 
     - "./frontend/.env"
     develop:

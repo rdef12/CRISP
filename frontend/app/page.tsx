@@ -27,12 +27,44 @@ export default function Home() {
   const [IPAddress, setIPAddress] = useState("");
   const [password, setPassword] = useState("");
   const [cameraModel, setCameraModel] = useState("");
+  // const [isConnecting, setIsConnecting] = useState<boolean[]>([]);
+  const [isConnecting, setIsConnecting] = useState<Record<string, boolean>>({}); // Hashmap
 
   const fetchPiStatuses = async () => {
     console.log("STATUS REFRESH");
-    const piArray = await getPiStatuses();
+    const piArray = await getPiStatuses(); // HTTP request to backend
     setPiStatuses(piArray);
-    setSwitchStates(piArray.map(pi => pi.connectionStatus));
+    // stops switch untoggle if turned on and waiting for an SSH response from backend
+    setSwitchStates((prevStates) =>
+      piArray.map((pi, i) =>
+        isConnecting[pi.username] ? prevStates[i] : pi.connectionStatus
+      ));
+
+    // New configured pis get pushed to the end of the array
+    // Doesn't work in general because the pis can be removed from the any position in the list of Pis
+    // Could use hashmap or linked list??
+
+    // setIsConnecting((prevStates) => {
+    //   const newStates = [...prevStates];
+    //   // Ensure new Pis get a default "false" value without affecting existing states
+    //   while (newStates.length < piArray.length) {
+    //     newStates.push(false);
+    //   }
+    //   return newStates;
+    // });
+
+    setIsConnecting((prevStates) => {
+      const newStates: Record<string, boolean> = { ...prevStates }; // Preserve existing states
+  
+      // Add new Pis with a default "false" state if they don't exist in the previous map
+      piArray.forEach((pi) => {
+        if (!(pi.username in newStates)) {
+          newStates[pi.username] = false;
+        }
+      });
+      // Remove Pis that no longer exist in the updated list
+      return newStates;
+    });
   };
 
   useEffect(() => {
@@ -66,7 +98,7 @@ export default function Home() {
           }}
         />
         <p className="min-w-[100px] text-center">
-          {pi.connectionStatus ? "Connected" : "Disconnected"}
+          {isConnecting[pi.username] ? "Connecting..." : pi.connectionStatus ? "Connected" : "Disconnected"}
         </p>
 
         {/* Delete button */}
@@ -81,6 +113,7 @@ export default function Home() {
   ));
 
   const update_ssh = async (checked: boolean, index: number, pi: ClientSidePiStatus) => {
+
     setSwitchStates((prevStates) => {
         const newStates = [...prevStates];
         newStates[index] = checked;
@@ -90,13 +123,22 @@ export default function Home() {
     try {
         let response;
         if (checked) {
-            response = await fetch(`${BACKEND_URL}/connect_over_ssh_${pi.username}`, {
+            setIsConnecting((prevStates) => ({
+              ...prevStates,
+              [pi.username]: true,
+            }));
+            response = await fetch(`${BACKEND_URL}/connect_over_ssh/${pi.username}`, {
                 method: "POST",
                 body: JSON.stringify({ enabled: true }),
                 headers: { "Content-Type": "application/json" }
             });
+            setIsConnecting((prevStates) => ({
+              ...prevStates,
+              [pi.username]: false,
+            }));
+
         } else {
-            response = await fetch(`${BACKEND_URL}/disconnect_from_ssh_${pi.username}`, {
+            response = await fetch(`${BACKEND_URL}/disconnect_from_ssh/${pi.username}`, {
                 method: "POST",
                 body: JSON.stringify({ enabled: false }),
                 headers: { "Content-Type": "application/json" }
@@ -113,12 +155,14 @@ export default function Home() {
             newStates[index] = sshStatus; 
             return newStates;
         });
-
-        // Refresh Pi statuses
-        fetchPiStatuses();
     } catch (error) {
         console.error("Error updating SSH connection:", error);
-    }
+    } finally {
+        setIsConnecting((prevStates) => ({
+          ...prevStates,
+          [pi.username]: false,
+        }));
+    };
 };
 
 // Handle deletion of a Pi
@@ -171,7 +215,7 @@ const handleSubmit = async (e: React.FormEvent) => {
     // response.ok just checks that it gets a response
     if (response.ok) {
       console.log("Pi configured successfully");
-      // Reset the form or handle further UI updates
+      // Reset the form
       setUsername("");
       setIPAddress("");
       setPassword("");
