@@ -6,7 +6,7 @@ WORKDIR /app
 COPY package.json /app/
 
 # ONLY TEMP WHILE BUILING IS FAILING?
-RUN npm cache clean --force
+# RUN npm cache clean --force
 
 RUN npm install
 
