@@ -2,7 +2,7 @@ from fastapi import FastAPI
 import paramiko
 import json
 from src.classes.Camera import Camera
-from src.database.CRUD.camera_CRUD import get_all_cameras
+from src.database.CRUD.camera_CRUD import get_all_cameras, get_camera_entry_with_username
 
 class Pi:
   
@@ -89,33 +89,12 @@ class Pi:
 
 
   @classmethod
-  def instantiate_configured_pi_by_username(cls, username, filename: str):
-    
-    raspberry_pis = cls.parse_config_json(filename)
-    valid_pi_list = [pi_dict for pi_dict in raspberry_pis if pi_dict.get("username") == username]
-    
-    if len(valid_pi_list) == 1:
-      pi = valid_pi_list[0]
-      return Pi(inputted_username=pi.get("username", "no username provided"),
-                inputted_ip_address=pi.get("IPAddress", "no IP address provided"),
-                inputted_password=pi.get("password", "no password provided"),
-                inputted_camera_model=pi.get("cameraModel", "no camera model provided"))
-    else:
-      print("ERROR IN CONFIG") # clean later
-    
-  @classmethod
-  def instantiate_all_pis_from_config_json(cls, filename: str):
-    
-    raspberry_pis = cls.parse_config_json(filename)
-    for pi in raspberry_pis["pi_index"]:
-      if not any(current_pi.username == pi.get("username") for current_pi in cls.all):
-
-        Pi(
-          inputted_username=pi.get("username", "no username provided"),
-          inputted_ip_address=pi.get("IPAddress", "no IP address provided"),
-          inputted_password=pi.get("password", "no password provided"),
-          inputted_camera_model=pi.get("cameraModel", "no camera model provided")
-        )
+  def instantiate_configured_pi_by_username(cls, username):
+    raspberry_pi = get_camera_entry_with_username(username)
+    return Pi(inputted_username=raspberry_pi.username,
+                inputted_ip_address=raspberry_pi.ip_address,
+                inputted_password=raspberry_pi.password,
+                inputted_camera_model=raspberry_pi.model)
         
   @classmethod
   def delete_pi(cls, identifier): # type hint for identifier removed for now (str or Pi object)

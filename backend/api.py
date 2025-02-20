@@ -56,14 +56,13 @@ def get_raspberry_pi_statuses_api():
 
 @app.post("/connect_over_ssh/{username}")
 def connect_over_ssh_api(username: str):
-    time.sleep(5)
     return {"sshStatus": connect_over_ssh(username)}
 
 @app.post("/disconnect_from_ssh/{username}")
 def disconnect_from_ssh_api(username: str):
     return {"sshStatus": disconnect_from_ssh(username)}
 
-@app.post("/take_single_picture/{username}")
+@app.post("/take_single_picture/{username}") #TODO Add saving to database
 def take_single_picture_api(username: str, imageSettings: ImageSettings):
     if (filepath := take_single_image(username, imageSettings)):  
         return FileResponse(filepath)

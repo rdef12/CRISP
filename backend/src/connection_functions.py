@@ -79,7 +79,7 @@ def get_raspberry_pi_statuses():
     
 def connect_over_ssh(username: str):
 
-    pi = Pi.instantiate_configured_pi_by_username(username, PI_CONFIG_FILEPATH)
+    pi = Pi.instantiate_configured_pi_by_username(username)
     try:
         pi.connect_via_ssh()
         if pi.ssh_status:
