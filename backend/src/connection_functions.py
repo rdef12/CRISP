@@ -1,4 +1,5 @@
 from src.classes.Pi import Pi
+from src.database.CRUD.camera_CRUD import add_camera, delete_camera_with_username
 from pydantic import BaseModel
 import os
 import json
@@ -19,28 +20,35 @@ class PiConfig(BaseModel):
     password: str
     cameraModel: str
     
-def configure_pi(pi_config): # Change to interact with database
-    with open(PI_CONFIG_FILEPATH, "r") as file: 
-            data = json.load(file)
+def configure_pi(pi_config: PiConfig): # Change to interact with database
+    # with open(PI_CONFIG_FILEPATH, "r") as file: 
+    #         data = json.load(file)
 
-    data.append(pi_config.dict())
-    with open(PI_CONFIG_FILEPATH, "w") as file:
-        json.dump(data, file, indent=4)
-    return None
+    # data.append(pi_config.dict())
+    # with open(PI_CONFIG_FILEPATH, "w") as file:
+    #     json.dump(data, file, indent=4)
+    username = pi_config.username
+    ip_address = pi_config.IPAddress
+    password = pi_config.password
+    model = pi_config.cameraModel
+    camera_id = add_camera(username=username, ip_address=ip_address, password=password, model=model)
+    return camera_id
 
 def remove_configured_pi(username: str): # Change to interact with database
-    with open(PI_CONFIG_FILEPATH, "r") as file:
-            data = json.load(file)
+    # with open(PI_CONFIG_FILEPATH, "r") as file:
+    #         data = json.load(file)
             
-    # Remove the dictionary with the matching username
-    new_list = [item for item in data if item.get("username") != username]
+    # # Remove the dictionary with the matching username
+    # new_list = [item for item in data if item.get("username") != username]
 
-    with open(PI_CONFIG_FILEPATH, "w") as file:
-        json.dump(new_list, file, indent=4)
+    # with open(PI_CONFIG_FILEPATH, "w") as file:
+    #     json.dump(new_list, file, indent=4)
     
-    # Pi object associated with this config entry is deleted if it exists
-    if (pi := Pi.get_pi_with_username(username)):
-        Pi.delete_pi(pi)
+    # # Pi object associated with this config entry is deleted if it exists
+    # if (pi := Pi.get_pi_with_username(username)):
+    #     Pi.delete_pi(pi)
+    delete_camera_with_username(username)
+    
     return None
 
 
@@ -50,16 +58,21 @@ def get_raspberry_pi_statuses():
     pi_status_array = []
     for pi_dict in configured_pis:
         
-        username = pi_dict.get("username")
+        # username = pi_dict.get("username")
+        username = pi_dict.username
         # Looks to see if a Pi object exists with a given username in the config_file
         if connected_pi := Pi.get_pi_with_username(username): 
             connection_status = connected_pi.ssh_status
         else:
             connection_status = False
             
+        # pi_status_array.append(ClientSidePiStatus(username=username,
+        #                                           IPAddress=pi_dict.get("IPAddress"),
+        #                                           cameraModel=pi_dict.get("cameraModel"),
+        #                                           connectionStatus=connection_status))
         pi_status_array.append(ClientSidePiStatus(username=username,
-                                                  IPAddress=pi_dict.get("IPAddress"),
-                                                  cameraModel=pi_dict.get("cameraModel"),
+                                                  IPAddress=pi_dict.ip_address,
+                                                  cameraModel=pi_dict.model,
                                                   connectionStatus=connection_status))
     return pi_status_array
     

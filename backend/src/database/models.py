@@ -208,9 +208,8 @@ class Experiment(SQLModel, table=True):
 
 class Camera(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
-    name: str
     username: str
-    hostname: str
+    ip_address: str
     password: str
     model: str #e.g. AR, HQ, etc
 

@@ -18,9 +18,7 @@ import os
 async def lifespan(app: FastAPI):
     get_host_IP_address()
     print(os.getenv("LOCAL_IP_ADDRESS"))
-    print("about to create db and tables")
     create_db_and_tables()
-    print("should have created db and tables")
     yield 
     print("API closed")
 
@@ -36,8 +34,10 @@ app.add_middleware(
 
 @app.post("/add_pi")
 async def add_pi(pi_config: PiConfig):
-    configure_pi(pi_config)
-    return {"message": "Pi configured successfully", "data": pi_config}
+    camera_id = configure_pi(pi_config)
+    return {"message": "Pi configured successfully",
+            "data": pi_config,
+            "camera_id": camera_id}
 
 @app.post("/remove_pi_{username}")
 async def remove_pi(username: str):
