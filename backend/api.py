@@ -65,8 +65,6 @@ def disconnect_from_ssh_api(username: str):
 
 @app.post("/take_single_picture/{username}") #TODO Add saving to database
 def take_single_picture_api(username: str, imageSettings: ImageSettings):
-    # if (filepath := take_single_image(username, imageSettings)):  
-        # return FileResponse(filepath)
     photo_bytes = take_single_image(username, imageSettings)
     if photo_bytes:
         return Response(content=photo_bytes, media_type="image/png")

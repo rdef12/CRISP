@@ -11,7 +11,7 @@ import paramiko
 import cv2
 import os
 
-from src.database.CRUD.photo_CRUD import add_photo_for_testing
+from src.database.CRUD.photo_CRUD import add_photo_for_testing, add_photo
 from src.database.CRUD.settings_CRUD import add_settings
 from src.database.CRUD.camera_CRUD import get_camera_id_from_username
 from src.database.CRUD.camera_settings_link_CRUD import add_camera_settings_link
@@ -28,6 +28,7 @@ class ImageSettings(BaseModel):
     gain: int = Field(1, ge=0, example=1)
     timeDelay: int = Field(1000, ge=0, example=1000) # Given in milliseconds
     format: str = Field("raw", example="png") # Could use Literal to validate inputted formats (or just make a drop-down)
+    meta_data_format: str = "dng" #TODO Can be made variable if need be
     
     
 class Camera():
@@ -109,25 +110,36 @@ class Camera():
     Returns the image bytes and metadata instead of copying the file locally.
     Provides detailed error handling.
     """
-    remotepath = f"{self.remote_image_directory}/{imageSettings.filename}.{imageSettings.format}"
+    remote_path = f"{self.remote_image_directory}/{imageSettings.filename}"
+    remote_image_path = f"{remote_path}.{imageSettings.format}"
+    remote_photo_meta_data_path = f"{remote_path}.{imageSettings.meta_data_format}"
     try:
         self.open_sftp()
 
         try:
-            with self.sftp_client.file(remotepath, "rb") as remote_file:
-                image_bytes = remote_file.read()
-                added_photo = add_photo_for_testing(1, image_bytes)
+            # with self.sftp_client.file(remotepath, "rb") as remote_file:
+            #     image_bytes = remote_file.read()
+            #     added_photo = add_photo_for_testing(1, image_bytes)
+            #     added_photo_id = added_photo["id"]
+            # return added_photo_id
+
+            with self.sftp_client.file(remote_image_path, "rb") as remote_file1, \
+                 self.sftp_client.file(remote_photo_meta_data_path, "rb") as remote_file2:
+                photo_bytes = remote_file1.read()
+                photo_meta_data_bytes = remote_file2.read()
+                added_photo = add_photo(camera_settings_link_id=camera_settings_link_id, photo=photo_bytes, photo_metadata=photo_meta_data_bytes)
                 added_photo_id = added_photo["id"]
             return added_photo_id
+       
 
-        except FileNotFoundError:
-            print(f"Error: The file {remotepath} was not found on the remote server.")
-        except PermissionError:
-            print(f"Error: Permission denied while accessing {remotepath}.")
+        except FileNotFoundError as e:
+            print(f"Error: One or more files not found on the remote server at path: {e}")
+        except PermissionError as e:
+            print(f"Error: Permission denied while accessing one or more files: {e}")
         except paramiko.SSHException as e:
             print(f"SSH error while transferring the image: {e}")
         except IOError as e:
-            print(f"IO error occurred while reading the file {remotepath}: {e}")
+            print(f"IO error occurred while reading one or more of the files: {e}")
         except Exception as e:
             print(f"Unexpected error while reading the image: {e}")
 
@@ -146,7 +158,7 @@ class Camera():
         except Exception as e:
             print(f"Error while closing SFTP connection: {e}")
 
-    return None, None
+    return None
   
   
   def stream_clean_up(self):
