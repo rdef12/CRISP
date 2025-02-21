@@ -252,7 +252,7 @@ class Photo(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     camera_settings_link_id: int = Field(default=None, foreign_key="camerasettingslink.id")
     photo: bytes = Field(default=None, sa_column=Column(LargeBinary))
-    photo_metadata: bytes = Field(default=None, sa_column=Column(LargeBinary))
+    photo_metadata: Optional[bytes] = Field(default=None, sa_column=Column(LargeBinary)) #TODO Temporarily optional for testing
 
     camera_settings_link: CameraSettingsLink = Relationship(back_populates="photos")
 

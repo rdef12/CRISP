@@ -56,7 +56,8 @@ def get_raspberry_pi_statuses_api():
 
 @app.post("/connect_over_ssh/{username}")
 def connect_over_ssh_api(username: str):
-    return {"sshStatus": connect_over_ssh(username)}
+    connection_status = connect_over_ssh(username)
+    return {"sshStatus": connection_status}
 
 @app.post("/disconnect_from_ssh/{username}")
 def disconnect_from_ssh_api(username: str):

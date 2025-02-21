@@ -11,10 +11,10 @@ def take_single_image(username: str, imageSettings: ImageSettings):
         if (pi := Pi.get_pi_with_username(username)) is None:
             raise Exception(f"No pi instantiated with the username {username}")
         
-        pi.camera.capture_image(imageSettings)
-        pi.camera.transfer_image(imageSettings)
-        return (f"{pi.camera.local_image_directory}/{imageSettings.filename}.{imageSettings.format}") # return filepath for convenience - acts like a bool
-            
+        camera_settings_link_id = pi.camera.capture_image(imageSettings)
+        pi.camera.transfer_image(imageSettings, camera_settings_link_id)
+        # return (f"{pi.camera.local_image_directory}/{imageSettings.filename}.{imageSettings.format}") # return filepath for convenience - acts like a bool
+        return True
     except Exception as e:
         print(f"Error trying to take a picture: {e}")
         return 0

@@ -7,8 +7,14 @@ RETURN METADATA AND IMAGE TO DATABASE - for now, save to folder in frontend/publ
 """
 from pydantic import BaseModel, Field
 import socket
+import paramiko
 import cv2
 import os
+
+from src.database.CRUD.photo_CRUD import add_photo_for_testing
+from src.database.CRUD.settings_CRUD import add_settings
+from src.database.CRUD.camera_CRUD import get_camera_id_from_username
+from src.database.CRUD.camera_settings_link_CRUD import add_camera_settings_link
 
 class ImageSettings(BaseModel):
     """
@@ -69,44 +75,77 @@ class Camera():
         return 0
     
   def capture_image(self, imageSettings: ImageSettings):
-        
-        self.check_image_directory_exists()
-        # Should there be timestamping code in here?
         try:
-            command = "libcamera-still -o {0}/{1}.{2} -t {3} --gain {4} {5}".format(self.remote_image_directory,
-                                                                                imageSettings.filename, 
-                                                                                imageSettings.format,
-                                                                                imageSettings.timeDelay,
-                                                                                imageSettings.gain,
-                                                                                "--raw" if imageSettings.format=="raw" else "")
-            stdin, stdout, stderr = self.ssh_client.exec_command(command)
-            
-            if standard_error := stderr.read().decode():
-                raise Exception(standard_error)
-            
+            added_settings = add_settings(frame_rate=5, lens_position=0.5, gain=imageSettings.gain) #TODO obviously these will take variable values once model is fleshed out
+            settings_id = added_settings["id"]
+            camera_id = get_camera_id_from_username(self.username)
+            added_camera_settings_link = add_camera_settings_link(camera_id=camera_id, settings_id=settings_id)
+            camera_settings_link_id = added_camera_settings_link["id"]
+            return camera_settings_link_id
         except Exception as e:
-            print(f"Error capturing image: {e}")
-            return 0
-  
-  
-  def transfer_image(self, imageSettings: ImageSettings):
-    """
-    METADATA SHOULD BE RETURNED TOO!
-    """
-    try: 
-      # NOTE: needed to edit write privileges of local transferred_images directory with chmod # Can do this before production
-      self.check_image_directory_exists()
-      remotepath = "{0}/{1}.{2}".format(self.remote_image_directory, imageSettings.filename, imageSettings.format)
-      localpath = "{0}/{1}.{2}".format(self.local_image_directory, imageSettings.filename, imageSettings.format)
-      
-      self.open_sftp()
-      self.sftp_client.get(remotepath, localpath)
-      self.close_sftp()
-      return 1
+            print(f"Error: {e} ") # TODO finish proper error handling here
+            raise e
+        # self.check_image_directory_exists()
+        # Should there be timestamping code in here?
+        # try: # TODO hashed out to test image transfer
+        #     command = "libcamera-still -o {0}/{1}.{2} -t {3} --gain {4} {5}".format(self.remote_image_directory,
+        #                                                                         imageSettings.filename, 
+        #                                                                         imageSettings.format,
+        #                                                                         imageSettings.timeDelay,
+        #                                                                         imageSettings.gain,
+        #                                                                         "--raw" if imageSettings.format=="raw" else "")
+        #     stdin, stdout, stderr = self.ssh_client.exec_command(command)
+            
+        #     if standard_error := stderr.read().decode():
+        #         raise Exception(standard_error)
+            
+        # except Exception as e:
+        #     print(f"Error capturing image: {e}")
+        #     return 0
 
+
+  def transfer_image(self, imageSettings: ImageSettings, camera_settings_link_id: int):
+    """
+    Returns the image bytes and metadata instead of copying the file locally.
+    Provides detailed error handling.
+    """
+    remotepath = f"{self.remote_image_directory}/{imageSettings.filename}.{imageSettings.format}"
+    try:
+        self.open_sftp()
+
+        try:
+            with self.sftp_client.file(remotepath, "rb") as remote_file:
+                image_bytes = remote_file.read()
+                add_photo_for_testing(1, image_bytes)
+            return True
+
+        except FileNotFoundError:
+            print(f"Error: The file {remotepath} was not found on the remote server.")
+        except PermissionError:
+            print(f"Error: Permission denied while accessing {remotepath}.")
+        except paramiko.SSHException as e:
+            print(f"SSH error while transferring the image: {e}")
+        except IOError as e:
+            print(f"IO error occurred while reading the file {remotepath}: {e}")
+        except Exception as e:
+            print(f"Unexpected error while reading the image: {e}")
+
+    except paramiko.SSHException as e:
+        print(f"SSH error while opening SFTP connection: {e}")
+    except paramiko.AuthenticationException:
+        print("Authentication failed, please verify your credentials.")
+    except paramiko.SFTPError as e:
+        print(f"SFTP error: {e}")
     except Exception as e:
-      print(f"Error transferring image to local device: {e}")
-      return 0
+        print(f"Unexpected error while establishing SFTP connection: {e}")
+    
+    finally:
+        try:
+            self.close_sftp()
+        except Exception as e:
+            print(f"Error while closing SFTP connection: {e}")
+
+    return None, None
   
   
   def stream_clean_up(self):
