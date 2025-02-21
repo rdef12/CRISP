@@ -4,6 +4,7 @@ import cv2
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import os
 from typing import List
+from src.database.CRUD.photo_CRUD import get_photo_from_id
 
 def take_single_image(username: str, imageSettings: ImageSettings):
     
@@ -12,12 +13,13 @@ def take_single_image(username: str, imageSettings: ImageSettings):
             raise Exception(f"No pi instantiated with the username {username}")
         
         camera_settings_link_id = pi.camera.capture_image(imageSettings)
-        pi.camera.transfer_image(imageSettings, camera_settings_link_id)
+        added_photo_id = pi.camera.transfer_image(imageSettings, camera_settings_link_id)
         # return (f"{pi.camera.local_image_directory}/{imageSettings.filename}.{imageSettings.format}") # return filepath for convenience - acts like a bool
-        return True
+        photo_bytes = get_photo_from_id(photo_id=added_photo_id)
+        return photo_bytes
     except Exception as e:
         print(f"Error trying to take a picture: {e}")
-        return 0
+        return 0 
 
 
 def take_multiple_images(usernames_list: List[str], imageSettings_list: List[ImageSettings]):

@@ -116,8 +116,9 @@ class Camera():
         try:
             with self.sftp_client.file(remotepath, "rb") as remote_file:
                 image_bytes = remote_file.read()
-                add_photo_for_testing(1, image_bytes)
-            return True
+                added_photo = add_photo_for_testing(1, image_bytes)
+                added_photo_id = added_photo["id"]
+            return added_photo_id
 
         except FileNotFoundError:
             print(f"Error: The file {remotepath} was not found on the remote server.")
