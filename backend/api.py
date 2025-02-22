@@ -9,7 +9,7 @@ import time
 from src.network_functions import *
 from src.camera_functions import *
 from src.connection_functions import *
-from src.classes.Camera import ImageSettings
+from src.classes.Camera import ImageSettings, PhotoContext
 
 from src.database.database import create_db_and_tables
 
@@ -65,7 +65,8 @@ def disconnect_from_ssh_api(username: str):
 
 @app.post("/take_single_picture/{username}") #TODO Add saving to database
 def take_single_picture_api(username: str, imageSettings: ImageSettings):
-    photo_bytes = take_single_image(username, imageSettings)
+    context = PhotoContext.GENERAL
+    photo_bytes = take_single_image(username, imageSettings, context)
     if photo_bytes:
         return Response(content=photo_bytes, media_type="image/png")
 

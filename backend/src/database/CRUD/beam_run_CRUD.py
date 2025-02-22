@@ -3,7 +3,7 @@ from src.database.database import engine
 from sqlmodel import Session, select
 from sqlalchemy.orm.exc import NoResultFound
 
-from src.database.models import BeamRun
+from src.database.models import BeamRun, CameraSettingsLink
 
 # Create
 
@@ -40,6 +40,15 @@ def get_beam_run_id_from_experiment_id_and_beam_run_number(experiment_id: int, b
             return result.id
         else:
             raise ValueError(f"Beam run with experiment_id: {experiment_id} and beam_run {beam_run_number} cannot be a found.")
+        
+def get_beam_run_id_from_camera_settings_link_id(camera_settings_link_id: int) -> int:
+    with Session(engine) as session:
+        statement = select(BeamRun).where(CameraSettingsLink.id == camera_settings_link_id)
+        result = session.exec(statement).one()
+        if result:
+            return result.id
+        else:
+            raise ValueError(f"Beam run with camera_setup_link_id: {camera_settings_link_id} cannot be found.")
 
 # Update
 

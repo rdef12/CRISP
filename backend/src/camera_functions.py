@@ -1,19 +1,19 @@
 from src.classes.Pi import Pi
-from src.classes.Camera import ImageSettings
+from src.classes.Camera import ImageSettings, PhotoContext
 import cv2
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import os
 from typing import List
 from src.database.CRUD import CRISP_database_interaction as cdi
 
-def take_single_image(username: str, imageSettings: ImageSettings):
+def take_single_image(username: str, imageSettings: ImageSettings, context: PhotoContext):
     
     try:
         if (pi := Pi.get_pi_with_username(username)) is None:
             raise Exception(f"No pi instantiated with the username {username}")
         
-        camera_settings_link_id = pi.camera.capture_image(imageSettings)
-        added_photo_id = pi.camera.transfer_image(imageSettings, camera_settings_link_id)
+        camera_settings_link_id, full_file_path = pi.camera.capture_image(imageSettings, context)
+        added_photo_id = pi.camera.transfer_image(imageSettings, camera_settings_link_id, full_file_path)
         # return (f"{pi.camera.local_image_directory}/{imageSettings.filename}.{imageSettings.format}") # return filepath for convenience - acts like a bool
         photo_bytes = cdi.get_photo_from_id(photo_id=added_photo_id)
         return photo_bytes
