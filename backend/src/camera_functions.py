@@ -4,7 +4,7 @@ import cv2
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import os
 from typing import List
-from src.database.CRUD.photo_CRUD import get_photo_from_id
+from src.database.CRUD import CRISP_database_interaction as cdi
 
 def take_single_image(username: str, imageSettings: ImageSettings):
     
@@ -15,7 +15,7 @@ def take_single_image(username: str, imageSettings: ImageSettings):
         camera_settings_link_id = pi.camera.capture_image(imageSettings)
         added_photo_id = pi.camera.transfer_image(imageSettings, camera_settings_link_id)
         # return (f"{pi.camera.local_image_directory}/{imageSettings.filename}.{imageSettings.format}") # return filepath for convenience - acts like a bool
-        photo_bytes = get_photo_from_id(photo_id=added_photo_id)
+        photo_bytes = cdi.get_photo_from_id(photo_id=added_photo_id)
         return photo_bytes
     except Exception as e:
         print(f"Error trying to take a picture: {e}")

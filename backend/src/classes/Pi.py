@@ -2,7 +2,7 @@ from fastapi import FastAPI
 import paramiko
 import json
 from src.classes.Camera import Camera
-from src.database.CRUD.camera_CRUD import get_all_cameras, get_camera_entry_with_username
+from src.database.CRUD import CRISP_database_interaction as cdi
 
 class Pi:
   
@@ -81,7 +81,7 @@ class Pi:
     # with open(filename, 'r') as json_file:
     #   raspberry_pi_setup_file = json.load(json_file)
     # print(raspberry_pi_setup_file)
-    all_cameras = get_all_cameras()
+    all_cameras = cdi.get_all_cameras()
 
 
     # return raspberry_pi_setup_file # Array of jsons
@@ -90,7 +90,7 @@ class Pi:
 
   @classmethod
   def instantiate_configured_pi_by_username(cls, username):
-    raspberry_pi = get_camera_entry_with_username(username)
+    raspberry_pi = cdi.get_camera_entry_with_username(username)
     return Pi(inputted_username=raspberry_pi.username,
                 inputted_ip_address=raspberry_pi.ip_address,
                 inputted_password=raspberry_pi.password,

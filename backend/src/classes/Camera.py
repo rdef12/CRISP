@@ -11,10 +11,9 @@ import paramiko
 import cv2
 import os
 
-from src.database.CRUD.photo_CRUD import add_photo_for_testing, add_photo
-from src.database.CRUD.settings_CRUD import add_settings
-from src.database.CRUD.camera_CRUD import get_camera_id_from_username
-from src.database.CRUD.camera_settings_link_CRUD import add_camera_settings_link
+from src.database.CRUD import CRISP_database_interaction as cdi
+
+
 
 class ImageSettings(BaseModel):
     """
@@ -77,10 +76,10 @@ class Camera():
     
   def capture_image(self, imageSettings: ImageSettings):
         try:
-            added_settings = add_settings(frame_rate=5, lens_position=0.5, gain=imageSettings.gain) #TODO obviously these will take variable values once model is fleshed out
+            added_settings = cdi.add_settings(frame_rate=5, lens_position=0.5, gain=imageSettings.gain) #TODO obviously these will take variable values once model is fleshed out
             settings_id = added_settings["id"]
-            camera_id = get_camera_id_from_username(self.username)
-            added_camera_settings_link = add_camera_settings_link(camera_id=camera_id, settings_id=settings_id)
+            camera_id = cdi.get_camera_id_from_username(self.username)
+            added_camera_settings_link = cdi.add_camera_settings_link(camera_id=camera_id, settings_id=settings_id)
             camera_settings_link_id = added_camera_settings_link["id"]
             return camera_settings_link_id
         except Exception as e:
@@ -115,50 +114,40 @@ class Camera():
     remote_photo_meta_data_path = f"{remote_path}.{imageSettings.meta_data_format}"
     try:
         self.open_sftp()
-
         try:
-            # with self.sftp_client.file(remotepath, "rb") as remote_file:
-            #     image_bytes = remote_file.read()
-            #     added_photo = add_photo_for_testing(1, image_bytes)
-            #     added_photo_id = added_photo["id"]
-            # return added_photo_id
-
             with self.sftp_client.file(remote_image_path, "rb") as remote_file1, \
                  self.sftp_client.file(remote_photo_meta_data_path, "rb") as remote_file2:
                 photo_bytes = remote_file1.read()
                 photo_meta_data_bytes = remote_file2.read()
-                added_photo = add_photo(camera_settings_link_id=camera_settings_link_id, photo=photo_bytes, photo_metadata=photo_meta_data_bytes)
+                added_photo = cdi.add_photo(camera_settings_link_id=camera_settings_link_id, photo=photo_bytes, photo_metadata=photo_meta_data_bytes)
                 added_photo_id = added_photo["id"]
             return added_photo_id
-       
 
         except FileNotFoundError as e:
-            print(f"Error: One or more files not found on the remote server at path: {e}")
+            raise(f"Error: One or more files not found on the remote server at path: {e}")
         except PermissionError as e:
-            print(f"Error: Permission denied while accessing one or more files: {e}")
+            raise(f"Error: Permission denied while accessing one or more files: {e}")
         except paramiko.SSHException as e:
-            print(f"SSH error while transferring the image: {e}")
+            raise(f"SSH error while transferring the image: {e}")
         except IOError as e:
-            print(f"IO error occurred while reading one or more of the files: {e}")
+            raise(f"IO error occurred while reading one or more of the files: {e}")
         except Exception as e:
-            print(f"Unexpected error while reading the image: {e}")
+            raise(f"Unexpected error while reading the image: {e}")
 
     except paramiko.SSHException as e:
-        print(f"SSH error while opening SFTP connection: {e}")
+        raise(f"SSH error while opening SFTP connection: {e}")
     except paramiko.AuthenticationException:
-        print("Authentication failed, please verify your credentials.")
+        raise("Authentication failed, please verify your credentials.")
     except paramiko.SFTPError as e:
-        print(f"SFTP error: {e}")
+        raise(f"SFTP error: {e}")
     except Exception as e:
-        print(f"Unexpected error while establishing SFTP connection: {e}")
+        raise(f"Unexpected error while establishing SFTP connection: {e}")
     
     finally:
         try:
             self.close_sftp()
         except Exception as e:
-            print(f"Error while closing SFTP connection: {e}")
-
-    return None
+            raise(f"Error while closing SFTP connection: {e}")
   
   
   def stream_clean_up(self):
