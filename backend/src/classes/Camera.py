@@ -12,6 +12,7 @@ import cv2
 import os
 
 from src.database.CRUD import CRISP_database_interaction as cdi
+from src.classes import SSHClientWrapper
 from enum import Enum
 
 class PhotoContext(Enum): #TODO either set by the api calling it or is a path variable (idk)
@@ -134,10 +135,8 @@ class Camera():
             print("\n\n\n\n\n I will try to check the directory")
             file_path = self.check_image_directory_exists(context)
             print("\n\n\n\n\n Directory checked")
-
         except Exception as e:
             raise e    
-        # self.check_image_directory_exists()
         # Should there be timestamping code in here?
         print("\n\n\n\n\n I will try to generate the file name")
 
@@ -153,16 +152,17 @@ class Camera():
             if imageSettings.format == "raw":
                 raw = "--raw"
             command = f"libcamera-still -o {full_file_path}.{imageSettings.format} -t {imageSettings.timeDelay} --gain {imageSettings.gain} -n {raw}"#TODO changed for testing without camera
-
-
-            # command = f"touch {full_file_path}.{imageSettings.format}"
-            stdin, stdout, stderr = self.ssh_client.exec_command(command)
-            # print(f"\n\n\n\n\n\n\n\n")
-            # print(f"Command: {command} \n\n\n\n\n\n\n\n")
-            errors = stderr.read().decode() #TODO this must be called for it to work but it returns a non error and stops the program with the current setup
-            # print(f"\n\n\n\n\n\n MY ERRORS: {errors}")
-            # if errors:
-            #     raise Exception(errors)
+            timeout=30 #TODO temporary
+            stdin, stdout, stderr = self.ssh_client.exec_command(command, timeout=timeout)
+            
+            output = stdout.read().decode().strip()
+            error = stderr.read().decode().strip() # TODO maybe the warnings here can be logged
+            stdin.close()
+            
+            exit_status = stdout.channel.recv_exit_status()
+            if exit_status != 0:  # Only raise an error if the command failed
+                raise Exception(f"Command '{command}' failed with exit status {exit_status}:\n{error}")
+            
             print("\n\n\n\n\n I created the file")
             print(camera_settings_link_id)
             print(full_file_path)
