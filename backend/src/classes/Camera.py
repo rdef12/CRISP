@@ -159,7 +159,7 @@ class Camera():
             stdin, stdout, stderr = self.ssh_client.exec_command(command)
             # print(f"\n\n\n\n\n\n\n\n")
             # print(f"Command: {command} \n\n\n\n\n\n\n\n")
-            errors = stderr.read().decode()
+            errors = stderr.read().decode() #TODO this must be called for it to work but it returns a non error and stops the program with the current setup
             # print(f"\n\n\n\n\n\n MY ERRORS: {errors}")
             # if errors:
             #     raise Exception(errors)
