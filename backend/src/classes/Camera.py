@@ -20,6 +20,16 @@ class PhotoContext(Enum): #TODO either set by the api calling it or is a path va
     REAL_RUN = 3
 
 
+def write_bytes_to_file(image_bytes: bytes, output_path: str):
+    try:
+        with open(output_path, "wb") as file:
+            file.write(image_bytes)
+        print(f"Image successfully written to {output_path}")
+    except Exception as e:
+        raise RuntimeError(f"An error occurred while writing the file: {e}") from e
+
+
+
 class ImageSettings(BaseModel):
     """
     Possible extra settings:
@@ -46,9 +56,9 @@ class Camera():
     self.local_image_directory = "/code/src/images" # Inside Backend container # Change to go directly to database in future?
     # self.remote_image_directory = f"/home/{self.username}/created_directory_2025" 
     self.remote_root_directory = f"/home/{self.username}" 
-    self.general_image_directory = f"/{self.remote_root_directory}/general"
-    self.test_run_image_directory = f"/{self.remote_root_directory}/experiment/test_beam_run_id_"
-    self.real_run_image_directory = f"/{self.remote_root_directory}/experiment/real_beam_run_id_"
+    self.general_image_directory = f"{self.remote_root_directory}/general"
+    self.test_run_image_directory = f"{self.remote_root_directory}/experiment/test_beam_run_id_"
+    self.real_run_image_directory = f"{self.remote_root_directory}/experiment/real_beam_run_id_"
     
     self.video_capture = None # Will be the cv2 video capture (such that cap can be released from any function, without global cap).
     self.stream_source = 'udp://{}:1234'.format(os.getenv("LOCAL_IP_ADDRESS"))
@@ -142,12 +152,17 @@ class Camera():
             raw = ""
             if imageSettings.format == "raw":
                 raw = "--raw"
-            # command = f"libcamera-still -o {full_file_path}.{imageSettings.format} -t {imageSettings.timeDelay} --gain {imageSettings.gain} {raw}"#TODO changed for testing without camera
-            command = f"touch {full_file_path}.{imageSettings.format}"
+            command = f"libcamera-still -o {full_file_path}.{imageSettings.format} -t {imageSettings.timeDelay} --gain {imageSettings.gain} -n {raw}"#TODO changed for testing without camera
+
+
+            # command = f"touch {full_file_path}.{imageSettings.format}"
             stdin, stdout, stderr = self.ssh_client.exec_command(command)
-            
-            if standard_error := stderr.read().decode():
-                raise Exception(standard_error)
+            # print(f"\n\n\n\n\n\n\n\n")
+            # print(f"Command: {command} \n\n\n\n\n\n\n\n")
+            errors = stderr.read().decode()
+            # print(f"\n\n\n\n\n\n MY ERRORS: {errors}")
+            # if errors:
+            #     raise Exception(errors)
             print("\n\n\n\n\n I created the file")
             print(camera_settings_link_id)
             print(full_file_path)
@@ -163,6 +178,7 @@ class Camera():
     """
     print("\n\n\n\n\n The transfer has begun")
     remote_image_path = f"{full_file_path}.{imageSettings.format}"
+    print(f"Remote image path: {remote_image_path}")
     # remote_photo_meta_data_path = f"{full_file_path}.{imageSettings.meta_data_format}"
     try:
         self.open_sftp()
@@ -183,6 +199,7 @@ class Camera():
     try:
         with self.sftp_client.file(remote_image_path, "rb") as remote_file1:#, self.sftp_client.file(remote_photo_meta_data_path, "rb") as remote_file2:
             photo_bytes = remote_file1.read()
+            # write_bytes_to_file(photo_bytes, "~/Downloads/")
             # photo_meta_data_bytes = remote_file2.read()
             # added_photo = cdi.add_photo(camera_settings_link_id=camera_settings_link_id, photo=photo_bytes, photo_metadata=photo_meta_data_bytes)
             added_photo = cdi.add_photo_for_testing(camera_settings_link_id=camera_settings_link_id, photo=photo_bytes)
