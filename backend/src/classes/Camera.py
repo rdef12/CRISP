@@ -12,7 +12,6 @@ import cv2
 import os
 
 from src.database.CRUD import CRISP_database_interaction as cdi
-from src.classes import SSHClientWrapper
 from enum import Enum
 
 class PhotoContext(Enum): #TODO either set by the api calling it or is a path variable (idk)
@@ -148,7 +147,7 @@ class Camera():
         try:
             print("\n\n\n\n\n I will try to create the file")
             
-            raw = ""
+            raw = "--raw" #raw = "" #changed for testing
             if imageSettings.format == "raw":
                 raw = "--raw"
             command = f"libcamera-still -o {full_file_path}.{imageSettings.format} -t {imageSettings.timeDelay} --gain {imageSettings.gain} -n {raw}"#TODO changed for testing without camera
@@ -179,7 +178,7 @@ class Camera():
     print("\n\n\n\n\n The transfer has begun")
     remote_image_path = f"{full_file_path}.{imageSettings.format}"
     print(f"Remote image path: {remote_image_path}")
-    # remote_photo_meta_data_path = f"{full_file_path}.{imageSettings.meta_data_format}"
+    remote_photo_meta_data_path = f"{full_file_path}.{imageSettings.meta_data_format}"
     try:
         self.open_sftp()
 
@@ -197,12 +196,12 @@ class Camera():
         raise Exception(f"Unexpected error while establishing SFTP connection: {e}")
     
     try:
-        with self.sftp_client.file(remote_image_path, "rb") as remote_file1:#, self.sftp_client.file(remote_photo_meta_data_path, "rb") as remote_file2:
+        with self.sftp_client.file(remote_image_path, "rb") as remote_file1, \
+             self.sftp_client.file(remote_photo_meta_data_path, "rb") as remote_file2:
             photo_bytes = remote_file1.read()
-            # write_bytes_to_file(photo_bytes, "~/Downloads/")
-            # photo_meta_data_bytes = remote_file2.read()
-            # added_photo = cdi.add_photo(camera_settings_link_id=camera_settings_link_id, photo=photo_bytes, photo_metadata=photo_meta_data_bytes)
-            added_photo = cdi.add_photo_for_testing(camera_settings_link_id=camera_settings_link_id, photo=photo_bytes)
+            photo_meta_data_bytes = remote_file2.read()
+            added_photo = cdi.add_photo(camera_settings_link_id=camera_settings_link_id, photo=photo_bytes, photo_metadata=photo_meta_data_bytes)
+            # added_photo = cdi.add_photo_for_testing(camera_settings_link_id=camera_settings_link_id, photo=photo_bytes)
             added_photo_id = added_photo["id"]
             print("\n\n\n\n\n I have finished this try alright")
         return added_photo_id

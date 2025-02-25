@@ -77,14 +77,8 @@ class Pi:
     return None
   
   @classmethod
-  def parse_config_json(cls, filename: str):
-    # with open(filename, 'r') as json_file:
-    #   raspberry_pi_setup_file = json.load(json_file)
-    # print(raspberry_pi_setup_file)
+  def parse_config_json(cls):
     all_cameras = cdi.get_all_cameras()
-
-
-    # return raspberry_pi_setup_file # Array of jsons
     return all_cameras
 
 

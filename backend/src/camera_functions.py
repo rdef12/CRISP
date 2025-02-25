@@ -14,7 +14,6 @@ def take_single_image(username: str, imageSettings: ImageSettings, context: Phot
         
         camera_settings_link_id, full_file_path = pi.camera.capture_image(imageSettings, context)
         added_photo_id = pi.camera.transfer_image(imageSettings, camera_settings_link_id, full_file_path)
-        # return (f"{pi.camera.local_image_directory}/{imageSettings.filename}.{imageSettings.format}") # return filepath for convenience - acts like a bool
         photo_bytes = cdi.get_photo_from_id(photo_id=added_photo_id)
         return photo_bytes
     except Exception as e:
