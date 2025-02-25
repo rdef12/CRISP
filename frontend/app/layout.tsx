@@ -70,9 +70,9 @@ export default function RootLayout({
                     </Link>
                   </NavigationMenuItem>
                   <NavigationMenuItem>
-                    <Link href="/calibration" legacyBehavior passHref>
+                    <Link href="/calibration/setup_hub" legacyBehavior passHref>
                       <NavigationMenuLink className={`${navigationMenuTriggerStyle()} text-2xl`}>
-                        Calibration
+                        Setup
                       </NavigationMenuLink>
                     </Link>
                   </NavigationMenuItem>
