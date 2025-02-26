@@ -139,3 +139,8 @@ def generate_pixel_pairs(pixel_min: int, pixel_max: int):
 
 ############# Manual ROI functions - for scintillator edge input ###########################################
 
+def save_roi(inputted_roi: ROI):
+    
+    ### DATABASE LOGIC
+    
+    return

@@ -10,7 +10,7 @@ from src.network_functions import *
 from src.camera_functions import *
 from src.connection_functions import *
 from src.classes.Camera import ImageSettings, PhotoContext
-from src.calibration_functions import ROI
+from src.calibration_functions import ROI, save_roi
 
 from src.database.database import create_db_and_tables
 
@@ -87,10 +87,8 @@ def mock_roi_pic_api(username: str, imageSettings: ImageSettings):
 @app.post("/save_scintillator_edges/{username}")
 def save_scintillator_edges_api(username, submittedROI: ROI):
     
-    # Round slider values to nearest int - pixel indices must be ints
-    # Save ROI vals to database
-    
-    rounded_roi = []
+    # Round slider values to nearest int - pixel indices must be ints - do this on frontend!
+    save_roi(submittedROI) # Save ROI vals to database
     
     return {"message": "ROI boundaries saved", "ROI": rounded_roi}
     
