@@ -3,6 +3,14 @@ import numpy as np
 import cv2
 import math
 from src.viewing_functions import *
+from pydantic import BaseModel
+
+# Decided I can implement the rounding in the frontend!
+class ROI(BaseModel):
+    hStart: int
+    hEnd: int
+    vStart: int
+    vEnd: int
 
 def convert_iterable_to_opencv_format(iterable: tuple[float, float]):
     
@@ -130,3 +138,4 @@ def generate_pixel_pairs(pixel_min: int, pixel_max: int):
 ####################################################################################################################
 
 ############# Manual ROI functions - for scintillator edge input ###########################################
+

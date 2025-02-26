@@ -15,7 +15,7 @@ from src.database.CRUD import CRISP_database_interaction as cdi
 from enum import Enum
 
 class PhotoContext(Enum): #TODO either set by the api calling it or is a path variable (idk)
-    GENERAL = 1
+    GENERAL = 1 # Also used for calibration images too.
     TEST_RUN = 2
     REAL_RUN = 3
 

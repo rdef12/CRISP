@@ -12,6 +12,8 @@ RUN npm install
 
 COPY . .
 
+RUN chmod +x node_modules/.bin/next
+
 RUN npm run build
 
 # Just metadata in this case because compose.yaml defines the ports again.

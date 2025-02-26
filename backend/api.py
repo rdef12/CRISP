@@ -10,6 +10,7 @@ from src.network_functions import *
 from src.camera_functions import *
 from src.connection_functions import *
 from src.classes.Camera import ImageSettings, PhotoContext
+from src.calibration_functions import ROI
 
 from src.database.database import create_db_and_tables
 
@@ -76,6 +77,17 @@ def stream_api(username: str):
     # Might want to add a fastapi background task which waits until stream cleanup is needed
     return StreamingResponse(stream_video_feed(username),
                              media_type="multipart/x-mixed-replace; boundary=frame")
+    
 
-### Note for Plotly to work, think I need to encode the image before sending it to the frontend.
-# I.e. I can't just use FileResponse
+@app.post("/save_scintillator_edges/{username}")
+def save_scintillator_edges_api(username, submittedROI: ROI):
+    
+    # Round slider values to nearest int - pixel indices must be ints
+    # Save ROI vals to database
+    
+    rounded_roi = []
+    
+    return {"message": "ROI boundaries saved", "ROI": rounded_roi}
+    
+    
+    
