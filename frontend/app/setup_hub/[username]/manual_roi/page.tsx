@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
-import { useSearchParams } from 'next/navigation';
+import { useParams } from 'next/navigation';
 
 export interface ROI {
     hStart: number;
@@ -18,11 +18,11 @@ export interface ImageSettings {
     format: string;
   }
 
+
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND
 
 export default function ManualROI() {
-    const searchParams = useSearchParams();
-    const username = searchParams.get('username');
+    const { username } = useParams();
 
     const [imageVisible, setImageVisible] = useState(false);
     const [imageUrl, setImageUrl] = useState<string | undefined>(undefined);
@@ -43,27 +43,26 @@ export default function ManualROI() {
 
     const handleSubmit = async (e: React.FormEvent) => {
 
-        setImageVisible(true);
-        // e.preventDefault();
-        //     try {
-        //     const response = await fetch(`${BACKEND_URL}/take_single_picture/${username}`, {
-        //         method: "POST",
-        //         body: JSON.stringify(formData),
-        //         headers: { "Content-Type": "application/json" }
-        //     });
-        //     if (response.ok) {
-        //         const blob = await response.blob();
-        //         // Convert the Blob to a URL
-        //         const imageUrl = URL.createObjectURL(blob);
-        //         setImageUrl(imageUrl);
-        //         setImageVisible(true); // Remove when API call working
-        //     } else {
-        //         console.log("IMAGE NOT TAKEN")
-        //     }
-        //     }
-        //     catch (error) {
-        //     console.error("Error submitting form:", error); 
-        //     }
+        e.preventDefault();
+            try {
+            const response = await fetch(`${BACKEND_URL}/mock_roi_pic/${username}`, {
+                method: "POST",
+                body: JSON.stringify(formData),
+                headers: { "Content-Type": "application/json" }
+            });
+            if (response.ok) {
+                const blob = await response.blob();
+                // Convert the Blob to a URL
+                const imageUrl = URL.createObjectURL(blob);
+                setImageUrl(imageUrl);
+                setImageVisible(true); // Remove when API call working
+            } else {
+                console.log("IMAGE NOT TAKEN")
+            }
+            }
+            catch (error) {
+            console.error("Error submitting form:", error); 
+            }
         };
 
     return (<>
@@ -105,15 +104,17 @@ export default function ManualROI() {
                 className="w-full bg-green-500 text-white py-2 px-4 rounded-md hover:bg-green-600 transition duration-200"
             >
                 Capture image
-            </button>
+            </button>s
             </form>
         </div>
       )}
 
       {imageVisible && (
         <div>
-            IMAGE TAKEN
-            <img>src={imageUrl}</img>
+            <img
+                src={imageUrl}
+                alt="Image of Scintillator"
+            />
         </div>
       )}
       </>

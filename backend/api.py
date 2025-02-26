@@ -79,6 +79,11 @@ def stream_api(username: str):
                              media_type="multipart/x-mixed-replace; boundary=frame")
     
 
+@app.post("/mock_roi_pic/{username}")
+def mock_roi_pic_api(username: str, imageSettings: ImageSettings):
+        return FileResponse("/code/temp_images/scintillator_top_image.jpeg", media_type="image/jpeg")
+    
+
 @app.post("/save_scintillator_edges/{username}")
 def save_scintillator_edges_api(username, submittedROI: ROI):
     
