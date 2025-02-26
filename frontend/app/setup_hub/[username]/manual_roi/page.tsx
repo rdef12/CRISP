@@ -3,13 +3,7 @@
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { useParams } from 'next/navigation';
-
-export interface ROI {
-    hStart: number;
-    hEnd: number;
-    vStart: number;
-    vEnd: number;
-  }
+import ROISelectionTool from './ROISelectionTool';
 
 export interface ImageSettings {
     filename: string;
@@ -18,14 +12,15 @@ export interface ImageSettings {
     format: string;
   }
 
-
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND
 
 export default function ManualROI() {
-    const { username } = useParams();
+    const { username = "undefined" } = useParams();
 
     const [imageVisible, setImageVisible] = useState(false);
-    const [imageUrl, setImageUrl] = useState<string | undefined>(undefined);
+    const [imageWidth, setImageWidth] = useState<number>(0);
+    const [imageHeight, setImageHeight] = useState<number>(0);
+    const [imageUrl, setImageUrl] = useState<string>("");
     const [formData, setFormData] = useState<ImageSettings>({
         filename: "",
         gain: "",
@@ -51,10 +46,17 @@ export default function ManualROI() {
                 headers: { "Content-Type": "application/json" }
             });
             if (response.ok) {
-                const blob = await response.blob();
-                // Convert the Blob to a URL
-                const imageUrl = URL.createObjectURL(blob);
-                setImageUrl(imageUrl);
+
+                const data = await response.json();
+                setImageUrl(data.image_bytes)
+                setImageHeight(data.height)
+                setImageWidth(data.width)
+
+                // const blob = await response.blob();
+                // // Convert the Blob to a URL
+                // const imageUrl = URL.createObjectURL(blob);
+                // setImageUrl(imageUrl);
+
                 setImageVisible(true); // Remove when API call working
             } else {
                 console.log("IMAGE NOT TAKEN")
@@ -108,15 +110,22 @@ export default function ManualROI() {
             </form>
         </div>
       )}
+      
+      {imageVisible && imageHeight && imageWidth ? (
+        <ROISelectionTool image={imageUrl} width={imageWidth} height={imageHeight} username={username} />
+      ) : (
+        <p>Loading image...</p>
+      )}
 
-      {imageVisible && (
+      {/* {imageVisible && (
         <div>
             <img
-                src={imageUrl}
+                src={`data:image/jpeg;base64,${imageUrl}`} // needed because base64 encoding
                 alt="Image of Scintillator"
             />
         </div>
-      )}
+      )} */}
+
       </>
     )
   }

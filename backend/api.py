@@ -5,12 +5,13 @@ from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 import time
+import base64
 
 from src.network_functions import *
 from src.camera_functions import *
 from src.connection_functions import *
 from src.classes.Camera import ImageSettings, PhotoContext
-from src.calibration_functions import ROI, save_roi
+from src.calibration_functions import ROI, save_roi, determine_frame_size
 
 from src.database.database import create_db_and_tables
 
@@ -78,11 +79,26 @@ def stream_api(username: str):
     return StreamingResponse(stream_video_feed(username),
                              media_type="multipart/x-mixed-replace; boundary=frame")
     
-
+    
+class ImageResponse(BaseModel):
+    image_bytes: str
+    width: int
+    height: int
+    
 @app.post("/mock_roi_pic/{username}")
 def mock_roi_pic_api(username: str, imageSettings: ImageSettings):
-        return FileResponse("/code/temp_images/scintillator_top_image.jpeg", media_type="image/jpeg")
-    
+
+        # only temp encoding while using mock image
+        with open("/code/temp_images/scintillator_top_image.jpeg", "rb") as img_file:
+            encoded_image = base64.b64encode(img_file.read()).decode("utf-8")
+            
+        height, width = determine_frame_size(image_path="/code/temp_images/scintillator_top_image.jpeg")
+        return ImageResponse(
+        image_bytes=encoded_image,
+        width=width,
+        height=height
+    )
+        
 
 @app.post("/save_scintillator_edges/{username}")
 def save_scintillator_edges_api(username, submittedROI: ROI):
