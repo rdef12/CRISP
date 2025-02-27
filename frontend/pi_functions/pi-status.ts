@@ -5,8 +5,8 @@ export interface ClientSidePiStatus {
     cameraModel: string;
     connectionStatus: boolean;
   }
-  
-  const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND;
+
+  const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND
   
   export const getPiStatuses = async (): Promise<ClientSidePiStatus[]> => {
     try {

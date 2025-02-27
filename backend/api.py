@@ -7,11 +7,14 @@ from contextlib import asynccontextmanager
 import time
 from datetime import datetime
 import pytz
+import base64
+
 
 from src.network_functions import *
 from src.camera_functions import *
 from src.connection_functions import *
 from src.classes.Camera import ImageSettings, PhotoContext
+from src.calibration_functions import ROI, save_roi, determine_frame_size
 
 from src.classes.JSON_request_bodies import request_bodies as rb
 
@@ -81,6 +84,28 @@ def stream_api(username: str):
     # Might want to add a fastapi background task which waits until stream cleanup is needed
     return StreamingResponse(stream_video_feed(username),
                              media_type="multipart/x-mixed-replace; boundary=frame")
+    
+    
+class ImageResponse(BaseModel):
+    image_bytes: str
+    width: int
+    height: int
+    
+@app.post("/mock_roi_pic/{username}")
+def mock_roi_pic_api(username: str, imageSettings: ImageSettings):
+    # only temp encoding while using mock image
+    with open("/code/temp_images/scintillator_top_image.jpeg", "rb") as img_file:
+        encoded_image = base64.b64encode(img_file.read()).decode("utf-8")
+
+    height, width = determine_frame_size(image_path="/code/temp_images/scintillator_top_image.jpeg")
+
+    print(height, width)
+
+    return ImageResponse(
+    image_bytes=encoded_image,
+    width=width,
+    height=height
+)
 
 ### Note for Plotly to work, think I need to encode the image before sending it to the frontend.
 # I.e. I can't just use FileResponse
@@ -100,3 +125,14 @@ def add_setup_api(setup_name: rb.SetupCreateRequest):
             "setup_id": setup_id}
 
 
+       
+
+@app.post("/save_scintillator_edges/{username}")
+def save_scintillator_edges_api(username, submittedROI: ROI):
+    
+    # Round slider values to nearest int - pixel indices must be ints - done on frontend!
+    save_roi(submittedROI) # Save ROI vals to database
+    print(submittedROI)
+    
+    return {"message": "ROI boundaries saved"}
+    
