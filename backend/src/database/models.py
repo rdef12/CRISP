@@ -1,7 +1,6 @@
 from typing import Optional, List
 from datetime import datetime
 import numpy as np
-import numpy.typing as npt
 
 from sqlmodel import Field, SQLModel, PickleType, JSON, Column, ARRAY, Integer, LargeBinary, Relationship
 # from sqlalchemy.dialects import postgresql #ARRAY contains requires dialect specific type
@@ -12,15 +11,15 @@ class Setup(SQLModel, table=True):
     date_created: datetime
     date_last_edited: datetime
 # Block parameters
-    block_x_dimension: float
-    # block_x_dimension_unc: float
-    # block_y_dimension: float
-    # block_y_dimension_unc: float
-    # block_z_dimension: float
-    # block_z_dimension_unc: float
-    # block_refractive_index: float
-    # block_refractive_index_unc: float
-    # e_log_entry: #How is this going to be stored, surely theres a better way than just a string?
+    block_x_dimension: Optional[float]
+    block_x_dimension_unc: Optional[float]
+    block_y_dimension: Optional[float]
+    block_y_dimension_unc: Optional[float]
+    block_z_dimension: Optional[float]
+    block_z_dimension_unc: Optional[float]
+    block_refractive_index: Optional[float]
+    block_refractive_index_unc: Optional[float]
+    e_log_entry: Optional[bytes] #How is this going to be stored, surely theres a better way than just a string?
 
     experiments: list["Experiment"] = Relationship(back_populates="setup")
     camera_links: list["CameraSetupLink"] = Relationship(back_populates="setup")

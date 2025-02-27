@@ -1,6 +1,7 @@
-// import { Setup, setup_columns } from "./columns"
-// import { DataTable } from "./data-table"
-// import { AddNewSetup } from "./add_new_setup"
+import { Setup, setup_columns } from "./columns"
+import { DataTable } from "./data-table"
+import AddNewSetup from "./add_new_setup"
+
 
 // const getSetups = async (): Promise<Setup[]> => {
 //     try {
@@ -14,6 +15,7 @@
 //     }
 //   }
  
+
 // export default async function SetupHubPage() {
 //   const setups = await getSetups()
 //   return (
@@ -28,9 +30,3 @@
 //   )
 // }
 
-export default async function SetupHubPage() {
-  return (<>
-    test
-    </>
-  )
-}
