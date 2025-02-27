@@ -1,4 +1,4 @@
-// "use client"
+"use client"
 
 import {
   Dialog,
@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { useState } from "react"
-import { useRouter } from "next/router"
+import { useRouter } from "next/navigation"
 
 
 
