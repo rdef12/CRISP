@@ -106,22 +106,20 @@ export default function ManualROI() {
                 className="w-full bg-green-500 text-white py-2 px-4 rounded-md hover:bg-green-600 transition duration-200"
             >
                 Capture image
-            </button>s
+            </button>
             </form>
         </div>
       )}
       
-      {imageVisible && imageHeight && imageWidth ? (
-        <ROISelectionTool image={imageUrl} width={imageWidth} height={imageHeight} username={username} />
-      ) : (
-        <p>Loading image...</p>
+      {imageVisible && imageHeight && imageWidth && (
+        <ROISelectionTool image={`data:image/jpeg;base64,${imageUrl}`} width={imageWidth} height={imageHeight} username={username} />
       )}
 
       {/* {imageVisible && (
         <div>
-            <img
-                src={`data:image/jpeg;base64,${imageUrl}`} // needed because base64 encoding
-                alt="Image of Scintillator"
+            <image
+                href={`data:image/jpeg;base64,${imageUrl}`} // needed because base64 encoding
+                aria-label="Image of Scintillator"
             />
         </div>
       )} */}

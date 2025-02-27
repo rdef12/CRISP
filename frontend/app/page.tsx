@@ -14,7 +14,6 @@ import { ClientSidePiStatus, getPiStatuses } from "@/pi_functions/pi-status";
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND
 
-
 export default function Home() {
 
   // Defined here so it updates after a page reset? We probably want these states to be remembered even after a page refresh.

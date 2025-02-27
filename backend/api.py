@@ -93,6 +93,9 @@ def mock_roi_pic_api(username: str, imageSettings: ImageSettings):
             encoded_image = base64.b64encode(img_file.read()).decode("utf-8")
             
         height, width = determine_frame_size(image_path="/code/temp_images/scintillator_top_image.jpeg")
+        
+        print(height, width)
+        
         return ImageResponse(
         image_bytes=encoded_image,
         width=width,
@@ -103,10 +106,11 @@ def mock_roi_pic_api(username: str, imageSettings: ImageSettings):
 @app.post("/save_scintillator_edges/{username}")
 def save_scintillator_edges_api(username, submittedROI: ROI):
     
-    # Round slider values to nearest int - pixel indices must be ints - do this on frontend!
+    # Round slider values to nearest int - pixel indices must be ints - done on frontend!
     save_roi(submittedROI) # Save ROI vals to database
+    print(submittedROI)
     
-    return {"message": "ROI boundaries saved", "ROI": rounded_roi}
+    return {"message": "ROI boundaries saved"}
     
     
     
