@@ -14,7 +14,7 @@ from src.network_functions import *
 from src.camera_functions import *
 from src.connection_functions import *
 from src.classes.Camera import ImageSettings, PhotoContext
-from src.calibration_functions import ROI, save_roi, determine_frame_size
+from src.calibration_functions import ROI, determine_frame_size
 
 from src.classes.JSON_request_bodies import request_bodies as rb
 
@@ -107,9 +107,6 @@ def mock_roi_pic_api(username: str, imageSettings: ImageSettings):
     height=height
 )
 
-### Note for Plotly to work, think I need to encode the image before sending it to the frontend.
-# I.e. I can't just use FileResponse
-
 @app.get("/get_setups")
 def get_setups_api():
     setups = cdi.get_all_cameras
@@ -132,6 +129,8 @@ def save_scintillator_edges_api(username, submittedROI: ROI):
     
     # Round slider values to nearest int - pixel indices must be ints - done on frontend!
     save_roi(submittedROI) # Save ROI vals to database
+    
+    
     print(submittedROI)
     
     return {"message": "ROI boundaries saved"}
