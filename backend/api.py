@@ -5,12 +5,17 @@ from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 import time
+from datetime import datetime
+import pytz
 
 from src.network_functions import *
 from src.camera_functions import *
 from src.connection_functions import *
 from src.classes.Camera import ImageSettings, PhotoContext
 
+from src.classes.JSON_request_bodies import request_bodies as rb
+
+from src.database.CRUD import CRISP_database_interaction as cdi
 from src.database.database import create_db_and_tables
 
 import os
@@ -79,3 +84,19 @@ def stream_api(username: str):
 
 ### Note for Plotly to work, think I need to encode the image before sending it to the frontend.
 # I.e. I can't just use FileResponse
+
+@app.get("/get_setups")
+def get_setups_api():
+    setups = cdi.get_all_cameras
+    return setups
+
+@app.post("/add_setup")
+def add_setup_api(setup_name: rb.SetupCreateRequest):
+    datetime_of_creation = datetime.now(pytz.utc)
+    setup_id = cdi.add_setup(setup_name=setup_name.setup_name,
+                             date_created=datetime_of_creation,
+                             date_last_edited=datetime_of_creation)
+    return {"message": f"Setup with name {setup_name} successfully added.",
+            "setup_id": setup_id}
+
+

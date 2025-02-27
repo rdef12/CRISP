@@ -1,6 +1,6 @@
 import { Setup, setup_columns } from "./columns"
 import { DataTable } from "./data-table"
-import { AddNewSetup } from "./add_new_setup"
+import AddNewSetup from "./add_new_setup"
 
 const getSetups = async (): Promise<Setup[]> => {
     try {

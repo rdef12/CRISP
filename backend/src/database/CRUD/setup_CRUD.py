@@ -7,9 +7,9 @@ from src.database.models import Setup
 
 # Create
 
-def add_setup(name: str, date_created: datetime, date_last_edited: datetime, block_x_dimension: float):
+def add_setup(setup_name: str, date_created: datetime, date_last_edited: datetime):
     try:
-        setup = Setup(name=name, date_created=date_created, date_last_edited=date_last_edited, block_x_dimension=block_x_dimension)
+        setup = Setup(name=setup_name, date_created=date_created, date_last_edited=date_last_edited)
     except TypeError as e:
         raise TypeError(f"TypeError: {e}") from e
     except ValueError as e:
@@ -17,7 +17,8 @@ def add_setup(name: str, date_created: datetime, date_last_edited: datetime, blo
     with Session(engine) as session:
         session.add(setup)
         session.commit()
-        return {"message": f"Setup added successfully with: name {name}, date_created {date_created} and date_last_edited {date_last_edited}."}
+        return {"message": f"Setup added successfully with: name {setup_name}, date_created {date_created} and date_last_edited {date_last_edited}.",
+                "id" : setup.id}
 
 
 # Read
@@ -30,6 +31,12 @@ def get_setup_id_from_name(name: str) -> int:
             return result.id
         else:
             raise ValueError(f"Setup with name: {name} not found")
+        
+def get_all_setups():
+    with Session(engine) as session:
+        statement = select(Setup)
+        results = session.exec(statement).all()
+        return results
 
 # Update
 
