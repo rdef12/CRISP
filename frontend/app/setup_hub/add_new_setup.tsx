@@ -13,15 +13,21 @@ import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { useState } from "react"
-// import { useRouter } from "next/router"
+import { useRouter } from "next/router"
 
 
 
 
 export default function AddNewSetup() {
   const [name, setName] = useState("");
+  const router = useRouter();
 
   const handleSubmit = async () => {
+    if (!name.trim()) {
+      console.log("Please provide a setup name");
+      return;
+    }
+
     try {
       const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND}/add_setup`, {
         method: "POST",
@@ -32,12 +38,15 @@ export default function AddNewSetup() {
       });
 
       if (!response.ok) {
-        throw new Error("Failed to submit");
+        throw new Error("Failed to submit"); //Add alert here and close
       }
 
       console.log("Setup added successfully");
+      const data = await response.json(); // Parse JSON response
+      const setupId = data.setup_id; // Extract setup_id
+      router.push(`/setup/${setupId}`)
     } catch (error) {
-      console.error("Error:", error);
+      console.error("Error:", error); //Add alert here and close
     }
   };
   return (

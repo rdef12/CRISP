@@ -14,6 +14,19 @@ const getSetups = async (): Promise<Setup[]> => {
     }
   }
  
+
+// export async function getServerSideProps() {
+//   try {
+//     const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND}/get_setups`);
+//     const setups = await response.json();
+//     return { props: { setups } };
+//   } catch (error) {
+//     console.error("Error fetching setups:", error);
+//     return { props: { setups: [] } };
+//   }
+// }
+
+
 export default async function SetupHubPage() {
   const setups = await getSetups()
   return (
