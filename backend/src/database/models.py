@@ -40,8 +40,10 @@ class CameraSetupLink(SQLModel, table=True):
     # far_face_calibration_spacing: List[float] = Field(default=None, sa_column=Column(ARRAY(Integer)))
     # far_face_calibration_spacing_unc: List[float] = Field(default=None, sa_column=Column(ARRAY(Integer)))
     # far_face_calibratoin_photo_settings_id: Optional[int] = Field(default=None, foreign_key="settings.id") # Add back filling bit to settings
-    far_face_calibration_photo_camera_settings_link: Optional[int] = Field(default=None, foreign_key="camerasettingslink.id")
-    far_face_calibration_photo: Optional[bytes] = Field(default=None, sa_column=Column(LargeBinary))
+    # far_face_calibration_photo_camera_settings_link: Optional[int] = Field(default=None, foreign_key="camerasettingslink.id")
+    # far_face_calibration_photo: Optional[bytes] = Field(default=None, sa_column=Column(LargeBinary))
+    far_face_calibration_photo_id: Optional[int] = Field(default=None, foreign_key="photo.id")
+
     far_face_homography_matrix: Optional[bytes] = Field(default=None, sa_column=PickleType)
     far_face_homography_covariance_matrix: Optional[bytes] = Field(default=None, sa_column=PickleType)
     far_x_offset: Optional[float] = Field(default=None)
@@ -55,8 +57,9 @@ class CameraSetupLink(SQLModel, table=True):
     # near_face_calibration_spacing: List[float] = Field(default=None, sa_column=Column(ARRAY(Integer)))
     # near_face_calibration_spacing_unc: List[float] = Field(default=None, sa_column=Column(ARRAY(Integer)))
     # near_face_calibratoin_photo_settings_id: Optional[int] = Field(default=None, foreign_key="settings.id") # Add back filling bit to setting
-    near_face_calibration_photo_camera_settings_link: Optional[int] = Field(default=None, foreign_key="camerasettingslink.id")
-    near_face_calibration_photo: Optional[bytes] = Field(default=None, sa_column=Column(LargeBinary))
+    # near_face_calibration_photo_camera_settings_link: Optional[int] = Field(default=None, foreign_key="camerasettingslink.id")
+    # near_face_calibration_photo: Optional[bytes] = Field(default=None, sa_column=Column(LargeBinary))
+    near_face_calibration_photo_id: Optional[int] = Field(default=None, foreign_key="photo.id")
     near_face_homography_matrix: Optional[bytes] = Field(default=None, sa_column=PickleType) # How do you show 2d shape? (3x3 array)
     # near_face_homography_covariance_matrix: Optional[bytes] = Field(default=None, sa_column=PickleType) # How do you show 2d shape? (9x9 array)
     near_x_offset: Optional[float] = Field(default=None)
@@ -66,10 +69,11 @@ class CameraSetupLink(SQLModel, table=True):
     # near_z_offset: Optional[float] = Field(default=None)
     # near_z_offset_unc: Optional[float] = Field(default=None)
 # Others
-    initial_region_of_interest_photo_camera_settings_link: Optional[int] = Field(default=None, foreign_key="camerasettingslink.id")
-    initial_region_of_interest_photo: Optional[bytes] = Field(default=None, sa_column=Column(LargeBinary))
-    initial_horizontal_region_of_interest: Optional[List[float]] = Field(default=None, sa_column=Column(ARRAY(Integer))) # How do you show 2d shape? (4x1 of 2x2 array)
-    initial_vertical_region_of_interest: Optional[List[float]] = Field(default=None, sa_column=Column(ARRAY(Integer))) # How do you show 2d shape? (4x1 of 2x2 array)
+    # initial_region_of_interest_photo_camera_settings_link: Optional[int] = Field(default=None, foreign_key="camerasettingslink.id")
+    # initial_region_of_interest_photo: Optional[bytes] = Field(default=None, sa_column=Column(LargeBinary))
+    scintillator_edges_photo_id: Optional[int] = Field(default=None, foreign_key="photo.id")
+    horizontal_scintillator_limits: Optional[List[float]] = Field(default=None, sa_column=Column(ARRAY(Integer))) # How do you show 2d shape? (4x1 of 2x2 array)
+    vertical_scintillator_limits: Optional[List[float]] = Field(default=None, sa_column=Column(ARRAY(Integer))) # How do you show 2d shape? (4x1 of 2x2 array)
     # e_log_entry: #How is this going to be stored, surely theres a better way than just a string?
 
 
