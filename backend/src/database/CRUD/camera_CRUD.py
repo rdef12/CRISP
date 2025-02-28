@@ -49,8 +49,6 @@ def get_all_cameras():
 
 # Update
 
-
-
 # Delete
 
 def delete_camera_with_username(username: str):

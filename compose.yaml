@@ -9,8 +9,9 @@ services: # services listed are connected using the compose file
     container_name: CRISP_database
     volumes: # Check and probably streamline these volumes to our needs only
       - ./backend/database/dev/scripts/docker-init.sql.sh:/docker-entrypoint-initdb.d/init.sql.sh:ro
-      - ./backend/database/sql:/sql:ro
-      - ./backend/database/dev/sql:/dev-sql:ro
+      - ./backend/database/sql:/sql:ro 
+      - ./backend/database/dev/sql:/dev-sql:ro 
+      - sql_data:/var/lib/postgresql/data  # Use a named volume for data - specified at the bottom of compose.yaml
     ports:
       - "127.0.0.1:5432:5432"
     healthcheck:
@@ -61,3 +62,6 @@ services: # services listed are connected using the compose file
           target: /app
     depends_on:
       - backend
+
+volumes:
+  sql_data:

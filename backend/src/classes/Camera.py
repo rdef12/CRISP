@@ -28,8 +28,6 @@ def write_bytes_to_file(image_bytes: bytes, output_path: str):
     except Exception as e:
         raise RuntimeError(f"An error occurred while writing the file: {e}") from e
 
-
-
 class ImageSettings(BaseModel):
     """
     Possible extra settings:

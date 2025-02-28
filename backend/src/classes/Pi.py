@@ -41,7 +41,6 @@ class Pi:
 
   def connect_via_ssh(self):
       try:
-        # Can try with an ssh connection key (see if this changes over time or constant for the device)
         self.ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy()) # makes computer trust the ssh connection
 
         # the reason I am setting a timeout is that the GUI will show connecting... for 1 min o/w
@@ -77,7 +76,7 @@ class Pi:
     return None
   
   @classmethod
-  def parse_config_json(cls):
+  def parse_database(cls):
     all_cameras = cdi.get_all_cameras()
     return all_cameras
 
@@ -89,6 +88,10 @@ class Pi:
                 inputted_ip_address=raspberry_pi.ip_address,
                 inputted_password=raspberry_pi.password,
                 inputted_camera_model=raspberry_pi.model)
+  
+  # @classmethod
+  # def load_pis_on_startup(cls):
+  #   pass
         
   @classmethod
   def delete_pi(cls, identifier): # type hint for identifier removed for now (str or Pi object)

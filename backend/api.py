@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 import time
 from datetime import datetime
-import pytz
+import pytz # affected by daylight saving?
 import base64
 
 
@@ -28,6 +28,9 @@ async def lifespan(app: FastAPI):
     get_host_IP_address()
     print(os.getenv("LOCAL_IP_ADDRESS"))
     create_db_and_tables()
+    
+    # CREATE CONFIGURED PIS
+    
     yield 
     print("API closed")
 
@@ -122,16 +125,23 @@ def add_setup_api(setup_name: rb.SetupCreateRequest):
             "setup_id": setup_id}
 
 
-       
-
+    
 @app.post("/save_scintillator_edges/{username}")
 def save_scintillator_edges_api(username, submittedROI: ROI):
+    """
+    Also need to update photo ID in databse associated with scintillator image.
+    cdi.update_scintillator_edges_photo_id(camera_id:int, setup_id:int, photo_id:int)
     
-    # Round slider values to nearest int - pixel indices must be ints - done on frontend!
-    save_roi(submittedROI) # Save ROI vals to database
+    This seemingly doesn't add the photo to the photo table. But, ifI use the take single_image 
+    function, the photo is written to the general photo table there - I can get the photo id from that
+    function.
+    """
+    # Setup ID passed in from the frontend URL 
+    # CAMID can be got from the username of the pi - should be stored as a Pi.camera object attribute.
+    # NEED SETUPID and CAMID!
     
-    
-    print(submittedROI)
+    cdi.update_horizontal_scintillator_scintillator_limits(1, 1, (submittedROI.hStart, submittedROI.hEnd))
+    cdi.update_vertical_scintillator_limits(1, 1, (submittedROI.vStart, submittedROI.vEnd))
     
     return {"message": "ROI boundaries saved"}
     

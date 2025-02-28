@@ -35,11 +35,11 @@ def remove_configured_pi(username: str): # Change to interact with database
 
 def get_raspberry_pi_statuses():
 
-    configured_pis = Pi.parse_config_json() # This function will change
+    pis_in_database = Pi.parse_database()
+    
     pi_status_array = []
-    for pi_dict in configured_pis:
+    for pi_dict in pis_in_database:
         
-        # username = pi_dict.get("username")
         username = pi_dict.username
         # Looks to see if a Pi object exists with a given username in the config_file
         if connected_pi := Pi.get_pi_with_username(username): 
