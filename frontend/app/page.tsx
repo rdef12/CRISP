@@ -76,39 +76,42 @@ export default function Home() {
   
 
   // Will get periodically rendered by React when getPiStatuses updated piStatuses
-  const piDivs = piStatuses.map((pi, index) => (
-    <div key={index} className="flex items-center justify-between">
-      <HoverCard>
-        <HoverCardTrigger><p className="text-lg text-green-500 hover:underline">{pi.username}</p></HoverCardTrigger>
-        <HoverCardContent>
-          IP Address - {pi.IPAddress}
-          <br />
-          Camera Model - {pi.cameraModel}
-        </HoverCardContent>
-      </HoverCard>
-      
-      {/* Wrapper for Switch and Status with consistent width */}
-      <div className="flex items-center space-x-4 min-w-[200px]">
-        <Switch
-          checked={switchStates[index]}
-          onCheckedChange={(checked) => {
-            update_ssh(checked, index, pi);
-          }}
-        />
-        <p className="min-w-[100px] text-center">
-          {isConnecting[pi.username] ? "Connecting..." : pi.connectionStatus ? "Connected" : "Disconnected"}
-        </p>
+  const piDivs = piStatuses.length === 0 ? (
+    <div className="text-center">Please configure a raspberry pi below</div>
+  ) : (
+      piStatuses.map((pi, index) => (
+      <div key={index} className="flex items-center justify-between">
+        <HoverCard>
+          <HoverCardTrigger><p className="text-lg text-green-500 hover:underline">{pi.username}</p></HoverCardTrigger>
+          <HoverCardContent>
+            IP Address - {pi.IPAddress}
+            <br />
+            Camera Model - {pi.cameraModel}
+          </HoverCardContent>
+        </HoverCard>
+        
+        {/* Wrapper for Switch and Status with consistent width */}
+        <div className="flex items-center space-x-4 min-w-[200px]">
+          <Switch
+            checked={switchStates[index]}
+            onCheckedChange={(checked) => {
+              update_ssh(checked, index, pi);
+            }}
+          />
+          <p className="min-w-[100px] text-center">
+            {isConnecting[pi.username] ? "Connecting..." : pi.connectionStatus ? "Connected" : "Disconnected"}
+          </p>
 
-        {/* Delete button */}
-        <button
-          onClick={() => handleDelete(pi.username, index)}
-          className="text-red-500 hover:text-red-700"
-        >
-          X
-        </button>
-      </div>
+          {/* Delete button */}
+          <button
+            onClick={() => handleDelete(pi.username, index)}
+            className="text-red-500 hover:text-red-700"
+          >
+            X
+          </button>
+        </div>
     </div>
-  ));
+  )));
 
   const update_ssh = async (checked: boolean, index: number, pi: ClientSidePiStatus) => {
 

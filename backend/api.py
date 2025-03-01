@@ -26,11 +26,7 @@ import os
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     get_host_IP_address()
-    print(os.getenv("LOCAL_IP_ADDRESS"))
-    create_db_and_tables()
-    
-    # CREATE CONFIGURED PIS
-    
+    create_db_and_tables() 
     yield 
     print("API closed")
 
