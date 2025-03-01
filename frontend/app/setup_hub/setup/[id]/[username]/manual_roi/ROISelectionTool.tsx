@@ -1,3 +1,4 @@
+import { Input } from "@/components/ui/input";
 import React, { useEffect, useState } from 'react';
 import Plot from 'react-plotly.js'; // need to use npm i --save-dev @types/react-plotly.js because typescript file
 
@@ -47,8 +48,7 @@ const ROISelectionTool:  React.FC<ROISelectionToolProps> = ({ image, width, heig
     const initializeLayout = () => {
         // loadImageDimensions(image).then(({ on_page_width, on_page_height }: ImageDimensions) => {
             const layout = {
-                // autosize: true, 
-                // margin: { t: 0, b: 0, l: 0, r: 0 },
+                autosize: true, 
                 images: [
                     {
                         source: image,
@@ -62,10 +62,8 @@ const ROISelectionTool:  React.FC<ROISelectionToolProps> = ({ image, width, heig
                         zorder: 1,
                     },
                 ],
-                // xaxis: { showgrid: false, dtick: 200, axiscolor: 'red', zorder: 2 },
-                // yaxis: {  showgrid: false, dtick: 200, axiscolor: 'blue', zorder: 2 }, // Reversed y-axis
-                xaxis: { range: [0, width], showgrid: false, dtick: 200, axiscolor: 'red', zorder: 2 },
-                yaxis: { range: [height, 0], showgrid: false, dtick: 200, axiscolor: 'blue', zorder: 2 }, // Reversed y-axis
+                xaxis: { range: [0, width], showgrid: false, dtick: 200, axiscolor: 'red', zorder: 2, scaleanchor: 'y', scaleratio: 1  },
+                yaxis: { range: [height, 0], showgrid: false, dtick: 200, axiscolor: 'blue', zorder: 2, scaleanchor: 'x', scaleratio: 1  }, // Reversed y-axis
                 // xaxis: { range: [0, on_page_width], showgrid: false, dtick: 200, axiscolor: 'red', zorder: 2 },
                 // yaxis: { range: [on_page_height, 0], showgrid: false, dtick: 200, axiscolor: 'blue', zorder: 2 }, // Reversed y-axis
             };
@@ -86,8 +84,8 @@ const ROISelectionTool:  React.FC<ROISelectionToolProps> = ({ image, width, heig
             shapes: [
                 { type: 'line', x0: hStart, x1: hStart, y0: height, y1: 0, line: { color: 'red', width: 2, dash: 'dash' } },
                 { type: 'line', x0: hEnd, x1: hEnd, y0: height, y1: 0, line: { color: 'red', width: 2, dash: 'dash' } },
-                { type: 'line', x0: 0, x1: width, y0: height - vStart, y1: height - vStart, line: { color: 'blue', width: 2, dash: 'dash' } },
-                { type: 'line', x0: 0, x1: width, y0: height - vEnd, y1: height - vEnd, line: { color: 'blue', width: 2, dash: 'dash' } },
+                { type: 'line', x0: 0, x1: width, y0: vStart, y1: vStart, line: { color: 'blue', width: 2, dash: 'dash' } },
+                { type: 'line', x0: 0, x1: width, y0: vEnd, y1: vEnd, line: { color: 'blue', width: 2, dash: 'dash' } },
             ],
         };
         setCurrentLayout(updatedLayout);
@@ -137,77 +135,132 @@ const ROISelectionTool:  React.FC<ROISelectionToolProps> = ({ image, width, heig
     };
 
     return (
-        <div>
-            <h2>ROI Selection Tool</h2>
-
+        <div className="flex justify-center items-center min-h-screen">
             {/* Only render the Plotly chart once image, width, and height are available 
             This bit actually uses the Plot component from react-plotly.js*/}
             {image && width && height && (
                 <Plot
                     data={[]}
                     layout={currentLayout}
-                    style={{ width: '100%', height: 'auto' }}
+                    style={{ width: '50%', height: `${(height / width) * 50}vw` }}
+                    useResizeHandler={true}
                 />
             )}
-
-            <div>
-                <label>Horizontal ROI Start</label>
-                <input
-                    type="range"
-                    name="hStart"
-                    min="0"
-                    max={width}
-                    value={roi.hStart}
-                    step="0.1"
-                    onChange={handleROIChange}
-                    onInput={updateROI}
-                />
-            </div>
-
-            <div>
-                <label>Horizontal ROI End</label>
-                <input
-                    type="range"
-                    name="hEnd"
-                    min="0"
-                    max={width}
-                    value={roi.hEnd}
-                    step="0.1"
-                    onChange={handleROIChange}
-                    onInput={updateROI}
-                />
-            </div>
-
-            <div>
-                <label>Vertical ROI Start</label>
-                <input
-                    type="range"
-                    name="vStart"
-                    min="0"
-                    max={height}
-                    value={roi.vStart}
-                    step="0.1"
-                    onChange={handleROIChange}
-                    onInput={updateROI}
-                />
-            </div>
-
-            <div>
-                <label>Vertical ROI End</label>
-                <input
-                    type="range"
-                    name="vEnd"
-                    min="0"
-                    max={height}
-                    value={roi.vEnd}
-                    step="0.1"
-                    onChange={handleROIChange}
-                    onInput={updateROI}
-                />
-            </div>
-
-            <div>
-                <button onClick={saveROI}>Save ROI</button>
+    
+            <div className="grid grid-cols-2 gap-4 mb-4">
+                <div className="flex flex-col">
+                    <label className="text-sm font-medium mb-1">Horizontal ROI Start</label>
+                    <div className="grid grid-cols-2 gap-2">
+                        <Input
+                            type="range"
+                            name="hStart"
+                            min="0"
+                            max={width}
+                            value={roi.hStart}
+                            step="1"
+                            onChange={handleROIChange}
+                            onInput={updateROI}
+                            className="w-full"
+                        />
+                        <Input
+                            type="number"
+                            name="hStart"
+                            placeholder="0"
+                            value={roi.hStart}
+                            onChange={handleROIChange}
+                            onInput={updateROI}
+                            className="w-full border rounded-md px-2 py-1"
+                        />
+                    </div>
+                </div>
+    
+                <div className="flex flex-col">
+                    <label className="text-sm font-medium mb-1">Horizontal ROI End</label>
+                    <div className="grid grid-cols-2 gap-2">
+                        <Input
+                            type="range"
+                            name="hEnd"
+                            min="0"
+                            max={width}
+                            value={roi.hEnd}
+                            step="1"
+                            onChange={handleROIChange}
+                            onInput={updateROI}
+                            className="w-full"
+                        />
+                        <Input
+                            type="number"
+                            name="hEnd"
+                            placeholder="0"
+                            value={roi.hEnd}
+                            onChange={handleROIChange}
+                            onInput={updateROI}
+                            className="w-full border rounded-md px-2 py-1"
+                        />
+                    </div>
+                </div>
+    
+                <div className="flex flex-col">
+                    <label className="text-sm font-medium mb-1">Vertical ROI Start</label>
+                    <div className="grid grid-cols-2 gap-2">
+                        <Input
+                            type="range"
+                            name="vStart"
+                            min="0"
+                            max={height}
+                            value={roi.vStart}
+                            step="1"
+                            onChange={handleROIChange}
+                            onInput={updateROI}
+                            className="w-full"
+                        />
+                        <Input
+                            type="number"
+                            name="vStart"
+                            placeholder="0"
+                            value={roi.vStart}
+                            onChange={handleROIChange}
+                            onInput={updateROI}
+                            className="w-full border rounded-md px-2 py-1"
+                        />
+                    </div>
+                </div>
+    
+                <div className="flex flex-col">
+                    <label className="text-sm font-medium mb-1">Vertical ROI End</label>
+                    <div className="grid grid-cols-2 gap-2">
+                        <Input
+                            type="range"
+                            name="vEnd"
+                            min="0"
+                            max={height}
+                            value={roi.vEnd}
+                            step="1"
+                            onChange={handleROIChange}
+                            onInput={updateROI}
+                            className="w-full"
+                        />
+                        <Input
+                            type="number"
+                            name="vEnd"
+                            placeholder="0"
+                            value={roi.vEnd}
+                            onChange={handleROIChange}
+                            onInput={updateROI}
+                            className="w-full border rounded-md px-2 py-1"
+                        />
+                    </div>
+                </div>
+    
+                {/* Add the Save ROI button inside the grid */}
+                <div className="flex flex-col col-span-2"> {/* col-span-2 to make it span across both columns */}
+                    <button
+                        className="w-full bg-green-500 text-white py-2 px-4 rounded-md hover:bg-green-600 transition duration-200"
+                        onClick={saveROI}
+                    >
+                        Save ROI
+                    </button>
+                </div>
             </div>
         </div>
     );
