@@ -102,8 +102,8 @@ def take_roi_picture_api(setup_id: str, username: str, imageSettings: ImageSetti
     with open("/code/temp_images/scintillator_top_image.jpeg", "rb") as img_file:
         encoded_image = base64.b64encode(img_file.read()).decode("utf-8")
 
-    height, width = determine_frame_size(image_path="/code/temp_images/scintillator_top_image.jpeg")
-
+    height, width = get_image_bytestring_frame_size(encoded_image)
+    
     return ImageResponse(
     image_bytes=encoded_image,
     width=width,
@@ -121,8 +121,8 @@ def load_roi_image_api(setup_id: str, username: str):
     with open("/code/temp_images/scintillator_top_image.jpeg", "rb") as img_file:
         encoded_image = base64.b64encode(img_file.read()).decode("utf-8")
 
-    # How to get this for already saved image? Load into openCV to get dimensions?
-    height, width = determine_frame_size(image_path="/code/temp_images/scintillator_top_image.jpeg")
+    height, width = get_image_bytestring_frame_size(encoded_image)
+    
     return ImageResponse(
     image_bytes=encoded_image,
     width=width,

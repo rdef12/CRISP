@@ -3,8 +3,17 @@ from src.classes.Camera import ImageSettings, PhotoContext
 import cv2
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import os
+import base64
+import numpy as np
 from typing import List
 from src.database.CRUD import CRISP_database_interaction as cdi
+from src.calibration_functions import determine_frame_size
+
+def get_image_bytestring_frame_size(image_byte_string: str):
+    image_data = base64.b64decode(image_byte_string)
+    nparr = np.frombuffer(image_data, np.uint8)
+    image = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+    return determine_frame_size(image=image)
 
 def take_single_image(username: str, imageSettings: ImageSettings, context: PhotoContext):
     
