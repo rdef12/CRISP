@@ -91,7 +91,7 @@ class ImageResponse(BaseModel):
     height: int
 
 @app.post("/take_roi_picture/{setup_id}/{username}")
-def mock_roi_pic_api(setup_id: str, username: str, imageSettings: ImageSettings):
+def take_roi_picture_api(setup_id: str, username: str, imageSettings: ImageSettings):
 
     # context = PhotoContext.GENERAL
     # camera_id = cdi.get_camera_entry_with_username(username).id
@@ -109,6 +109,26 @@ def mock_roi_pic_api(setup_id: str, username: str, imageSettings: ImageSettings)
     width=width,
     height=height
 )
+    
+@app.get("/load_roi_image/{setup_id}/{username}")
+def load_roi_image_api(setup_id: str, username: str):
+    
+    # camera_id = cdi.get_camera_entry_with_username(username).id
+    # setup_id = int(setup_id)
+    # photo_id = scintillator_edges_photo_id(camera_id, setup_id)
+    # image_bytes = cdi.get_photo_from_id(photo_id)
+    
+    with open("/code/temp_images/scintillator_top_image.jpeg", "rb") as img_file:
+        encoded_image = base64.b64encode(img_file.read()).decode("utf-8")
+
+    # How to get this for already saved image? Load into openCV to get dimensions?
+    height, width = determine_frame_size(image_path="/code/temp_images/scintillator_top_image.jpeg")
+    return ImageResponse(
+    image_bytes=encoded_image,
+    width=width,
+    height=height
+    )
+    
 
 @app.get("/get_setups")
 def get_setups_api():
@@ -132,7 +152,6 @@ def add_setup_api(setup_name: rb.SetupCreateRequest):
 def save_scintillator_edges_api(setup_id, username, submittedROI: ROI):
     
     camera_id = cdi.get_camera_entry_with_username(username).id
-    print(camera_id)
     setup_id = int(setup_id)
     
     cdi.update_horizontal_scintillator_scintillator_limits(camera_id, setup_id, (submittedROI.hStart, submittedROI.hEnd))

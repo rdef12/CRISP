@@ -38,14 +38,10 @@ export default function ManualROI() {
     }, [imageVisible, username]);
 
 
-    // in the future - this will execute the load_image handler!
-    // this would be a getter, not a poster.
     useEffect(() => {
       if (imageVisible) {
-        fetch(`${BACKEND_URL}/take_roi_picture/${id}/${username}`, {
-          method: 'POST', // Use POST for sending data
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(formData), // Attach the FormData as the body
+        fetch(`${BACKEND_URL}/load_roi_image/${id}/${username}`, {
+          method: 'GET', // Use POST for sending data
         })
           .then((response) => response.json())
           .then((data) => {
