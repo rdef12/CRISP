@@ -10,6 +10,7 @@ interface ROISelectionToolProps {
     width: number;
     height: number;
     username: string | string[]; // Needed because of how useParams() is typehinted by default.
+    setupID: string | string[] | null
   }
 
 interface ROI {
@@ -21,7 +22,7 @@ interface ROI {
 
 
 // these will be inputted when the component is called on page.tsx
-const ROISelectionTool:  React.FC<ROISelectionToolProps> = ({ image, width, height, username })  => {
+const ROISelectionTool:  React.FC<ROISelectionToolProps> = ({ image, width, height, username, setupID })  => {
     const [currentLayout, setCurrentLayout] = useState({});
     const [roi, setRoi] = useState<ROI>({
         hStart: 0,
@@ -106,7 +107,8 @@ const ROISelectionTool:  React.FC<ROISelectionToolProps> = ({ image, width, heig
         const submittedRoi: ROI = {hStart: hStart, hEnd: hEnd, vStart: vStartConverted, vEnd: vEndConverted};
 
         try {
-            const response = await fetch(`${BACKEND_URL}/save_scintillator_edges/${username}`, {
+            console.log(`setup id: ${setupID}`)
+            const response = await fetch(`${BACKEND_URL}/save_scintillator_edges/${setupID}/${username}`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

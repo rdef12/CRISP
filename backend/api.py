@@ -73,7 +73,7 @@ def disconnect_from_ssh_api(username: str):
 @app.post("/take_single_picture/{username}") #TODO Add saving to database
 def take_single_picture_api(username: str, imageSettings: ImageSettings):
     context = PhotoContext.GENERAL
-    photo_bytes = take_single_image(username, imageSettings, context)
+    photo_bytes, _ = take_single_image(username, imageSettings, context)
     if photo_bytes:
         return Response(content=photo_bytes, media_type="image/png")
 
@@ -89,16 +89,20 @@ class ImageResponse(BaseModel):
     image_bytes: str
     width: int
     height: int
+
+@app.post("/take_roi_picture/{setup_id}/{username}")
+def mock_roi_pic_api(setup_id: str, username: str, imageSettings: ImageSettings):
+
+    # context = PhotoContext.GENERAL
+    # camera_id = cdi.get_camera_entry_with_username(username).id
+    # photo_bytes, photo_id = take_single_image(username, imageSettings, context)
+    # cdi.update_scintillator_edges_photo_id(camera_id, setup_id, photo_id)
     
-@app.post("/mock_roi_pic/{username}")
-def mock_roi_pic_api(username: str, imageSettings: ImageSettings):
     # only temp encoding while using mock image
     with open("/code/temp_images/scintillator_top_image.jpeg", "rb") as img_file:
         encoded_image = base64.b64encode(img_file.read()).decode("utf-8")
 
     height, width = determine_frame_size(image_path="/code/temp_images/scintillator_top_image.jpeg")
-
-    print(height, width)
 
     return ImageResponse(
     image_bytes=encoded_image,
@@ -114,9 +118,11 @@ def get_setups_api():
 @app.post("/add_setup")
 def add_setup_api(setup_name: rb.SetupCreateRequest):
     datetime_of_creation = datetime.now(pytz.utc)
+    # Needed to add key on the end because json returned by CRUD
     setup_id = cdi.add_setup(setup_name=setup_name.setup_name,
                              date_created=datetime_of_creation,
-                             date_last_edited=datetime_of_creation)
+                             date_last_edited=datetime_of_creation).get("id")
+    
     return {"message": f"Setup with name {setup_name} successfully added.",
             "setup_id": setup_id}
 
@@ -124,20 +130,12 @@ def add_setup_api(setup_name: rb.SetupCreateRequest):
     
 @app.post("/save_scintillator_edges/{setup_id}/{username}")
 def save_scintillator_edges_api(setup_id, username, submittedROI: ROI):
-    """
-    Also need to update photo ID in databse associated with scintillator image.
-    cdi.update_scintillator_edges_photo_id(camera_id:int, setup_id:int, photo_id:int)
     
-    This seemingly doesn't add the photo to the photo table. But, ifI use the take single_image 
-    function, the photo is written to the general photo table there - I can get the photo id from that
-    function.
-    """
-    # Setup ID passed in from the frontend URL 
-    # CAMID can be got from the username of the pi - should be stored as a Pi.camera object attribute.
+    camera_id = cdi.get_camera_entry_with_username(username).id
+    print(camera_id)
+    setup_id = int(setup_id)
     
-    CAM_ID = 1
-    cdi.update_horizontal_scintillator_scintillator_limits(CAM_ID, setup_id, (submittedROI.hStart, submittedROI.hEnd))
-    cdi.update_vertical_scintillator_limits(CAM_ID, setup_id, (submittedROI.vStart, submittedROI.vEnd))
-    
+    cdi.update_horizontal_scintillator_scintillator_limits(camera_id, setup_id, (submittedROI.hStart, submittedROI.hEnd))
+    cdi.update_vertical_scintillator_limits(camera_id, setup_id, (submittedROI.vStart, submittedROI.vEnd))
     return {"message": "ROI boundaries saved"}
     

@@ -18,6 +18,7 @@ const getSetups = async (): Promise<Setup[]> => {
 
 export default async function SetupHubPage() {
   const setups = await getSetups()
+  console.log(setups)
   return (
     <div>
       <div>

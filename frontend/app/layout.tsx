@@ -72,7 +72,7 @@ export default function RootLayout({
                   <NavigationMenuItem>
                     <Link href="/setup_hub" legacyBehavior passHref>
                       <NavigationMenuLink className={`${navigationMenuTriggerStyle()} text-2xl`}>
-                        Setup
+                        Setups
                       </NavigationMenuLink>
                     </Link>
                   </NavigationMenuItem>

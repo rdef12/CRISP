@@ -41,6 +41,7 @@ export default function AddNewSetup() {
       console.log("Setup added successfully");
       const data = await response.json(); // Parse JSON response
       const setupId = data.setup_id; // Extract setup_id
+      console.log(`setup id: ${setupId}`)
       router.push(`/setup/${setupId}`)
     } catch (error) {
       console.error("Error:", error); //Add alert here and close

@@ -7,15 +7,15 @@ import ROISelectionTool from './ROISelectionTool';
 
 export interface ImageSettings {
     filename: string;
-    gain: string | number;
-    timeDelay: string | number;
+    gain: number;
+    timeDelay: number;
     format: string;
   }
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND
 
 export default function ManualROI() {
-    const { setupId, username = "undefined" } = useParams();
+    const { id = null, username = "undefined" } = useParams();
 
     // key made username dependent to ensure storage only relevant to a given username.
     const [imageVisible, setImageVisible] = useState<boolean>(() => {
@@ -37,8 +37,8 @@ export default function ManualROI() {
 
     const [formData, setFormData] = useState<ImageSettings>({
         filename: "",
-        gain: "",
-        timeDelay: "",
+        gain: 1,
+        timeDelay: 1,
         format: "",
       });
 
@@ -62,7 +62,7 @@ export default function ManualROI() {
 
         e.preventDefault();
             try {
-            const response = await fetch(`${BACKEND_URL}/mock_roi_pic/${setupId}/${username}`, {
+            const response = await fetch(`${BACKEND_URL}/take_roi_picture/${id}/${username}`, {
                 method: "POST",
                 body: JSON.stringify(formData),
                 headers: { "Content-Type": "application/json" }
@@ -170,6 +170,7 @@ export default function ManualROI() {
                         width={imageWidth}
                         height={imageHeight}
                         username={username}
+                        setupID={id}
                       />
                     ) : (
                       <p className="text-center text-lg md:text-xl text-gray-600 mb-4">Please take an image of the scintillator in position</p>

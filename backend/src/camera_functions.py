@@ -15,7 +15,7 @@ def take_single_image(username: str, imageSettings: ImageSettings, context: Phot
         camera_settings_link_id, full_file_path = pi.camera.capture_image(imageSettings, context)
         added_photo_id = pi.camera.transfer_image(imageSettings, camera_settings_link_id, full_file_path)
         photo_bytes = cdi.get_photo_from_id(photo_id=added_photo_id)
-        return photo_bytes
+        return photo_bytes, added_photo_id
     except Exception as e:
         print(f"Error trying to take a picture: {e}")
         return 0 
