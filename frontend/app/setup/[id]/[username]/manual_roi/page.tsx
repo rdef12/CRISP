@@ -21,19 +21,9 @@ export default function ManualROI() {
     const [imageVisible, setImageVisible] = useState<boolean>(() => {
       return localStorage.getItem(`imageVisible_${username}`) === "true";
   });
-  const [imageWidth, setImageWidth] = useState<number>(() => {
-    return parseInt(localStorage.getItem(`imageWidth_${username}`) || "0");
-  });
-  const [imageHeight, setImageHeight] = useState<number>(() => {
-      return parseInt(localStorage.getItem(`imageHeight_${username}`) || "0");
-  });
-  const [imageUrl, setImageUrl] = useState<string>(() => {
-      return localStorage.getItem(`imageUrl_${username}`) || "";
-  });
-
-    // const [imageWidth, setImageWidth] = useState<number>(0);
-    // const [imageHeight, setImageHeight] = useState<number>(0);
-    // const [imageUrl, setImageUrl] = useState<string>("");
+    const [imageWidth, setImageWidth] = useState<number>(0);
+    const [imageHeight, setImageHeight] = useState<number>(0);
+    const [imageUrl, setImageUrl] = useState<string>("");
 
     const [formData, setFormData] = useState<ImageSettings>({
         filename: "",
@@ -45,10 +35,27 @@ export default function ManualROI() {
       // Updates imageVisible state in local storage when it changes.
       useEffect(() => {
         localStorage.setItem(`imageVisible_${username}`, String(imageVisible));
-        localStorage.setItem(`imageWidth_${username}`, String(imageWidth));
-        localStorage.setItem(`imageHeight_${username}`, String(imageHeight));
-        localStorage.setItem(`imageUrl_${username}`, imageUrl);
-    }, [imageVisible, imageWidth, imageHeight, imageUrl, username]);
+    }, [imageVisible, username]);
+
+
+    // in the future - this will execute the load_image handler!
+    // this would be a getter, not a poster.
+    useEffect(() => {
+      if (imageVisible) {
+        fetch(`${BACKEND_URL}/take_roi_picture/${id}/${username}`, {
+          method: 'POST', // Use POST for sending data
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(formData), // Attach the FormData as the body
+        })
+          .then((response) => response.json())
+          .then((data) => {
+            setImageUrl(data.image_bytes);
+            setImageHeight(data.height);
+            setImageWidth(data.width);
+          })
+          .catch((error) => console.error('Error loading image:', error));
+      }
+    }, []); // Empty dependency array ensures it runs only once on page load or refresh
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
@@ -91,9 +98,6 @@ export default function ManualROI() {
 
         const handleRetake = () => {
           setImageVisible(false);
-          localStorage.removeItem(`imageUrl_${username}`);
-          localStorage.removeItem(`imageWidth_${username}`);
-          localStorage.removeItem(`imageHeight_${username}`);
       };
 
           return (
