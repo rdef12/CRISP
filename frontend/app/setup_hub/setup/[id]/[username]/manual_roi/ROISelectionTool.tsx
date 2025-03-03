@@ -19,21 +19,6 @@ interface ROI {
     vEnd: number;
   }
 
-//   interface ImageDimensions {
-//     on_page_width: number;
-//     on_page_height: number;
-//   }
-
-//   const loadImageDimensions = (imageBytes: string): Promise<ImageDimensions> => {
-//     const img = new Image();
-//     img.src = imageBytes
-
-//     return new Promise((resolve) => {
-//         img.onload = () => {
-//             resolve({ on_page_width: img.width, on_page_height: img.height });
-//         };
-//     });
-// };
 
 // these will be inputted when the component is called on page.tsx
 const ROISelectionTool:  React.FC<ROISelectionToolProps> = ({ image, width, height, username })  => {
@@ -48,7 +33,13 @@ const ROISelectionTool:  React.FC<ROISelectionToolProps> = ({ image, width, heig
     const initializeLayout = () => {
         // loadImageDimensions(image).then(({ on_page_width, on_page_height }: ImageDimensions) => {
             const layout = {
-                autosize: true, 
+                // autosize: true, 
+                margin: {
+                    t: 20, // top margin, reducing the padding (default is usually 80)
+                    b: 40, // bottom margin
+                    l: 40, // left margin
+                    r: 40, // right margin
+                  },
                 images: [
                     {
                         source: image,
@@ -64,8 +55,6 @@ const ROISelectionTool:  React.FC<ROISelectionToolProps> = ({ image, width, heig
                 ],
                 xaxis: { range: [0, width], showgrid: false, dtick: 200, axiscolor: 'red', zorder: 2, scaleanchor: 'y', scaleratio: 1  },
                 yaxis: { range: [height, 0], showgrid: false, dtick: 200, axiscolor: 'blue', zorder: 2, scaleanchor: 'x', scaleratio: 1  }, // Reversed y-axis
-                // xaxis: { range: [0, on_page_width], showgrid: false, dtick: 200, axiscolor: 'red', zorder: 2 },
-                // yaxis: { range: [on_page_height, 0], showgrid: false, dtick: 200, axiscolor: 'blue', zorder: 2 }, // Reversed y-axis
             };
             setCurrentLayout(layout);
         // });
@@ -135,18 +124,26 @@ const ROISelectionTool:  React.FC<ROISelectionToolProps> = ({ image, width, heig
     };
 
     return (
-        <div className="flex justify-center items-center min-h-screen">
-            {/* Only render the Plotly chart once image, width, and height are available 
-            This bit actually uses the Plot component from react-plotly.js*/}
-            {image && width && height && (
-                <Plot
-                    data={[]}
-                    layout={currentLayout}
-                    style={{ width: '50%', height: `${(height / width) * 50}vw` }}
-                    useResizeHandler={true}
-                />
-            )}
+        <div className="flex flex-col items-center min-h-screen py-2">
+            {/* Plotly chart container */}
+            <div className="flex justify-center mb-8">
+                {image && width && height && (
+                    <Plot
+                        data={[]}
+                        layout={{
+                            ...currentLayout,
+                            autosize: false, // Disable autosize to use fixed dimensions
+                            width: 600,      // Set a fixed width for the plot
+                            height: (600 * height) / width,  // Maintain the aspect ratio based on the image dimensions
+                        }}
+                        // layout={currentLayout}
+                        // style={{ width: '50%', height: `${(height / width) * 50}vw` }}
+                        useResizeHandler={true}
+                    />
+                )}
+            </div>
     
+            {/* Form inputs container */}
             <div className="grid grid-cols-2 gap-4 mb-4">
                 <div className="flex flex-col">
                     <label className="text-sm font-medium mb-1">Horizontal ROI Start</label>
@@ -251,19 +248,19 @@ const ROISelectionTool:  React.FC<ROISelectionToolProps> = ({ image, width, heig
                         />
                     </div>
                 </div>
+            </div>
     
-                {/* Add the Save ROI button inside the grid */}
-                <div className="flex flex-col col-span-2"> {/* col-span-2 to make it span across both columns */}
-                    <button
-                        className="w-full bg-green-500 text-white py-2 px-4 rounded-md hover:bg-green-600 transition duration-200"
-                        onClick={saveROI}
-                    >
-                        Save ROI
-                    </button>
-                </div>
+            {/* Save ROI button outside the form grid for vertical spacing */}
+            <div className="flex justify-center mt-4">
+                <button
+                    className="bg-green-500 text-white py-2 px-4 rounded-md hover:bg-green-600 transition duration-200"
+                    onClick={saveROI}
+                >
+                    Save ROI
+                </button>
             </div>
         </div>
-    );
+    );    
 };
 
 export default ROISelectionTool;

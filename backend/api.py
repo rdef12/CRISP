@@ -122,8 +122,8 @@ def add_setup_api(setup_name: rb.SetupCreateRequest):
 
 
     
-@app.post("/save_scintillator_edges/{username}")
-def save_scintillator_edges_api(username, submittedROI: ROI):
+@app.post("/save_scintillator_edges/{setup_id}/{username}")
+def save_scintillator_edges_api(setup_id, username, submittedROI: ROI):
     """
     Also need to update photo ID in databse associated with scintillator image.
     cdi.update_scintillator_edges_photo_id(camera_id:int, setup_id:int, photo_id:int)
@@ -134,10 +134,10 @@ def save_scintillator_edges_api(username, submittedROI: ROI):
     """
     # Setup ID passed in from the frontend URL 
     # CAMID can be got from the username of the pi - should be stored as a Pi.camera object attribute.
-    # NEED SETUPID and CAMID!
     
-    cdi.update_horizontal_scintillator_scintillator_limits(1, 1, (submittedROI.hStart, submittedROI.hEnd))
-    cdi.update_vertical_scintillator_limits(1, 1, (submittedROI.vStart, submittedROI.vEnd))
+    CAM_ID = 1
+    cdi.update_horizontal_scintillator_scintillator_limits(CAM_ID, setup_id, (submittedROI.hStart, submittedROI.hEnd))
+    cdi.update_vertical_scintillator_limits(CAM_ID, setup_id, (submittedROI.vStart, submittedROI.vEnd))
     
     return {"message": "ROI boundaries saved"}
     

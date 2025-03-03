@@ -15,9 +15,6 @@ import { Input } from "@/components/ui/input"
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 
-
-
-
 export default function AddNewSetup() {
   const [name, setName] = useState("");
   const router = useRouter();
