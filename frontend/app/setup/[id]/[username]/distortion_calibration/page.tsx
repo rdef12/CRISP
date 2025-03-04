@@ -56,13 +56,19 @@ export default function DistortionPage() {
   };
 
   const saveCalibration = () => {
+    // Add validation which sends alert if no images are taken - cannot calibrate without minimum calibration size
     console.log("Calibration saved!");
   };
 
+  const resetCalibration = () => {
+    console.log("Calibration reset!");
+    setImageCount(0)
+  };
+
   return (
-    <div className="grid grid-cols-[1fr_1fr] grid-rows-[1fr_4fr] gap-2">
+    <div className="grid grid-cols-[1fr_1fr] grid-rows-[15%_85%] gap-2">
       <div id="title" className="p-4 col-start-1 row-start-1 flex items-center justify-center text-center">
-        <h1 className="text-2xl md:text-3xl font-medium tracking-normal text-gray-800 text-center mt-6 mb-4 underline">
+        <h1 className="text-2xl md:text-3xl font-medium tracking-normal text-gray-800 text-center mt-1 mb-1 underline">
             Distortion Calibration
         </h1>
       </div>
@@ -82,8 +88,7 @@ export default function DistortionPage() {
         )}
       </div>
 
-      <div id="settings" className="p-4 col-start-2 row-start-2 flex items-center justify-center">
-        <div className="grid grid-cols-2 gap-4">
+      <div id="settings" className="p-4 col-start-2 row-start-2 grid grid-cols-2 grid-rows-[4fr_1fr] gap-4">
           {/* Top Left Cell - Settings Card */}
           <Card className="w-full">
             <CardHeader>
@@ -127,9 +132,9 @@ export default function DistortionPage() {
             </CardContent>
             <CardFooter>
               <div className="flex flex-row items-center justify-center space-x-4">
-                <Button variant="default" className="px-4 py-2" onClick={takeImage}>Take Image</Button>
+                <Button variant="default" className="px-3 py-1" onClick={takeImage}>Take Image</Button>
                 {showSaveButton && (
-                  <Button variant="destructive" className="px-4 py-2" onClick={saveImage}>
+                  <Button variant="destructive" className="px-3 py-1" onClick={saveImage}>
                     Save Image
                   </Button>
                 )}
@@ -150,14 +155,20 @@ export default function DistortionPage() {
             </CardContent>
           </Card>
 
-          {/* Bottom Cell Spanning Two Columns - Save Calibration Button */}
-          <div className="col-span-2 flex justify-center mt-2">
-            <Button variant="default" className="px-8 py-4" onClick={saveCalibration}>
+          {/* Bottom Left Cell - Reset Calibration Button */}
+          <div className="flex justify-center items-center py-2">
+            <Button variant="default" className="px-5 py-3 flex-shrink-0" onClick={resetCalibration}>
+              Reset Calibration
+            </Button>
+          </div>
+
+          {/* Bottom Right Cell - Save Calibration Button */}
+          <div className="flex justify-center items-center py-2">
+            <Button variant="default" className="px-5 py-3 flex-shrink-0" onClick={saveCalibration}>
               Save Calibration
             </Button>
           </div>
         </div>
       </div>
-    </div>
   );
 }
