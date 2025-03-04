@@ -43,6 +43,7 @@ class Pi:
       try:
         self.ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy()) # makes computer trust the ssh connection
 
+        print(self.ip_address, self.username, self.password)
         # the reason I am setting a timeout is that the GUI will show connecting... for 1 min o/w
         # Having a timeout makes the GUI more responsive - quicker info on when something is going wrong.
         self.ssh_client.connect(hostname=self.ip_address,
@@ -53,7 +54,7 @@ class Pi:
         
       except Exception as e:
           self.ssh_status = False
-          print(f"Error connecting over SSH to f{self.username}: f{e}")
+          print(f"Error connecting over SSH to {self.username}: {e}")
         
       finally:
         print("{0} connection status: {1}".format(self.username, self.ssh_status))
