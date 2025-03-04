@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 import paramiko
+import socket
 import json
 from src.classes.Camera import Camera
 from src.database.CRUD import CRISP_database_interaction as cdi
@@ -58,6 +59,19 @@ class Pi:
         
       finally:
         print("{0} connection status: {1}".format(self.username, self.ssh_status))
+        
+  def check_ssh_connection(self):
+        if self.ssh_status:
+            try:
+                # Try executing a simple command to check status
+                stdin, stdout, stderr = self.ssh_client.exec_command('echo "Hello"', timeout=10)
+                stdout.channel.recv_exit_status()  # Will raise an exception if the connection is broken
+                return True
+            except (paramiko.SSHException, paramiko.AuthenticationException, socket.error):
+                print(f"\n\n\n Connection to {self.username} is lost. \n\n\n")
+                self.ssh_status = False
+                return False
+        return False
     
   def close_ssh_connection(self):
     if self.ssh_status:

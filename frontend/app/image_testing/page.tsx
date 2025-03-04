@@ -12,13 +12,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { ClientSidePiStatus, getPiStatuses } from "@/pi_functions/pi-status";
-
-export interface ImageSettings {
-  filename: string;
-  gain: string | number;
-  timeDelay: string | number;
-  format: string;
-}
+import { ImageSettings } from "@/pi_functions/interfaces";
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND
 

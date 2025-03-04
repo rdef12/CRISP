@@ -12,6 +12,7 @@ export interface ClientSidePiStatus {
     try {
       const response = await fetch(`${BACKEND_URL}/get_raspberry_pi_statuses`, {
         method: "GET",
+        cache: "no-cache", // Bypass the cache
       });
       return await response.json();
     } catch (error) {

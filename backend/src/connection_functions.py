@@ -36,14 +36,13 @@ def remove_configured_pi(username: str): # Change to interact with database
 def get_raspberry_pi_statuses():
 
     pis_in_database = Pi.parse_database()
-    
     pi_status_array = []
     for pi_dict in pis_in_database:
         
         username = pi_dict.username
         # Looks to see if a Pi object exists with a given username in the config_file
         if connected_pi := Pi.get_pi_with_username(username): 
-            connection_status = connected_pi.ssh_status
+            connection_status = connected_pi.check_ssh_connection()
         else:
             connection_status = False
         pi_status_array.append(ClientSidePiStatus(username=username,

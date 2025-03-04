@@ -15,11 +15,7 @@ const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND
 
 export default function Home() {
 
-  // Defined here so it updates after a page reset? We probably want these states to be remembered even after a page refresh.
-  // Also, they are specific to this component
-
-  const [switchStates, setSwitchStates] = useState<boolean[]>([]); // Empty array
-  // const [isConnecting, setIsConnecting] = useState(false);
+  const [switchStates, setSwitchStates] = useState<boolean[]>([]);
   const [piStatuses, setPiStatuses] = useState<ClientSidePiStatus[]>([]);
   const [username, setUsername] = useState("");
   const [IPAddress, setIPAddress] = useState("");
@@ -29,14 +25,33 @@ export default function Home() {
   const [isConnecting, setIsConnecting] = useState<Record<string, boolean>>({}); // Hashmap
 
   const fetchPiStatuses = async () => {
-    console.log("STATUS REFRESH");
-    const piArray = await getPiStatuses(); // HTTP request to backend
-    setPiStatuses(piArray);
-    // stops switch untoggle if turned on and waiting for an SSH response from backend
-    setSwitchStates((prevStates) =>
-      piArray.map((pi, i) =>
-        isConnecting[pi.username] ? prevStates[i] : pi.connectionStatus
-      ));
+    try {
+      console.log("Fetching Pi Statuses...")
+      const piArray = await getPiStatuses();
+      setPiStatuses(piArray);
+      setSwitchStates((prevStates) =>
+        piArray.map((pi, i) =>
+          isConnecting[pi.username] ? prevStates[i] : pi.connectionStatus
+        )
+      );
+
+      setIsConnecting((prevStates) => {
+        const newStates: Record<string, boolean> = { ...prevStates }; // Preserve existing states
+    
+        // Add new Pis with a default "false" state if they don't exist in the previous map
+        piArray.forEach((pi) => {
+          if (!(pi.username in newStates)) {
+            newStates[pi.username] = false;
+          }
+        });
+        // Remove Pis that no longer exist in the updated list
+        return newStates;
+      });
+    } catch (error) {
+      console.error("Failed to fetch Pi statuses", error);
+    }
+  };
+
 
     // New configured pis get pushed to the end of the array
     // Doesn't work in general because the pis can be removed from the any position in the list of Pis
@@ -50,20 +65,6 @@ export default function Home() {
     //   }
     //   return newStates;
     // });
-
-    setIsConnecting((prevStates) => {
-      const newStates: Record<string, boolean> = { ...prevStates }; // Preserve existing states
-  
-      // Add new Pis with a default "false" state if they don't exist in the previous map
-      piArray.forEach((pi) => {
-        if (!(pi.username in newStates)) {
-          newStates[pi.username] = false;
-        }
-      });
-      // Remove Pis that no longer exist in the updated list
-      return newStates;
-    });
-  };
 
   useEffect(() => {
     fetchPiStatuses(); // Initial fetch

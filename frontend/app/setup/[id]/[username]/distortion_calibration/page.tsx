@@ -13,6 +13,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { useRouter, useParams } from "next/navigation"
+import { ImageSettings } from "@/pi_functions/interfaces";
 
 // In the future, I would like to import a script to allow
 // latex to be rendered within the browser.
@@ -23,8 +25,14 @@ interface CalibrationImageProps {
   yGridDimension: number | "";
 }
 
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND
+
 export default function DistortionPage() {
-  const imageUrl = null;
+  const router = useRouter();
+  const { username = "undefined" } = useParams();
+  const [imageUrl, setImageUrl] = useState<string | undefined>(undefined);
+  const [isLoading, setIsLoading] = useState(false);
+  const [showImage, setShowImage] = useState<boolean>(false);
   const [showSaveButton, setShowSaveButton] = useState<boolean>(false)
   const [imageCount, setImageCount] = useState(0);
   const [formData, setFormData] = useState<CalibrationImageProps>({
@@ -43,8 +51,38 @@ export default function DistortionPage() {
     }));
   };
 
-  const takeImage = () => {
-    setShowSaveButton(true);
+  const takeImage = async () => {
+    try {
+
+      setShowImage(false);
+      setIsLoading(true);
+      const requestBody: ImageSettings = {filename: "temp_distortion_image", 
+                                          gain: formData.gain,
+                                          timeDelay: 500,
+                                          format: "jpeg",
+
+      }
+      const response = await fetch(`${BACKEND_URL}/take_single_picture/${username}`, {
+        method: "POST",
+        body: JSON.stringify(requestBody),
+        headers: { "Content-Type": "application/json" }
+      });
+      if (response.ok) {
+        const blob = await response.blob();
+        const imageUrl = URL.createObjectURL(blob);
+        setImageUrl(imageUrl);
+        setShowImage(true);
+        setShowSaveButton(true);
+
+      } else {
+        throw new Error("Response is not ok: " + response)
+      }
+    }
+    catch (error) {
+      console.error("Error submitting form:", error); 
+    } finally {
+      setIsLoading(false);  // Set loading to false after the image is fetched
+    }
   };
 
   const saveImage = () => {
@@ -53,15 +91,18 @@ export default function DistortionPage() {
     // At the very least, it needs adding to some backend buffer before the full distortion calibration is performed.
     setShowSaveButton(false);
     incrementImageCount();
-  };
+    };
 
   const saveCalibration = () => {
     // Add validation which sends alert if no images are taken - cannot calibrate without minimum calibration size
     console.log("Calibration saved!");
+    router.push(`/`) // in the future, return to this pi's calibration hub
   };
 
   const resetCalibration = () => {
     console.log("Calibration reset!");
+    setShowImage(false);
+    setIsLoading(false);
     setImageCount(0)
   };
 
@@ -72,20 +113,26 @@ export default function DistortionPage() {
             Distortion Calibration
         </h1>
       </div>
-      <div id="image" className="p-4 flex items-center justify-center col-start-1 row-start-2 border-4 border-gray-400">
-        {imageUrl ? (
-          <Image
-            src={imageUrl}
-            alt="Content"
-            width={500}
-            height={500}
-            className="object-contain"
-          />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center text-gray-600">
-            Take an image to begin the calibration
-          </div>
-        )}
+      <div id="image" className="p-4 flex items-center justify-center col-start-1 row-start-2">
+        <div className="border-4 border-gray-400">
+          {isLoading ? (
+            <div className="w-full h-full flex items-center justify-center text-gray-600">
+              Loading...
+            </div>
+          ) : showImage && imageUrl ? (
+            <Image
+              src={imageUrl}
+              alt="Content"
+              width={500}
+              height={500}
+              className="object-contain"
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center text-gray-600">
+              Take an image to begin the calibration
+            </div>
+          )}
+        </div>
       </div>
 
       <div id="settings" className="p-4 col-start-2 row-start-2 grid grid-cols-2 grid-rows-[4fr_1fr] gap-4">

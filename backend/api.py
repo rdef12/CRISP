@@ -1,6 +1,6 @@
 import uvicorn
 from fastapi import FastAPI, Response
-from fastapi.responses import StreamingResponse, FileResponse
+from fastapi.responses import StreamingResponse, FileResponse, JSONResponse
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
@@ -59,7 +59,13 @@ def heath_check():
 @app.get("/get_raspberry_pi_statuses")
 def get_raspberry_pi_statuses_api():
     pi_status_array = get_raspberry_pi_statuses()
-    return pi_status_array
+    # Create a JSONResponse with no caching headers
+    response = JSONResponse(content=[status.dict() for status in pi_status_array])
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+    
+    return response
 
 @app.post("/connect_over_ssh/{username}")
 def connect_over_ssh_api(username: str):
