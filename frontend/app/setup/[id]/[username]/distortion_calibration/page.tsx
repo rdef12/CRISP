@@ -29,6 +29,7 @@ const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND
 
 export default function DistortionPage() {
   const router = useRouter();
+
   const { username = "undefined" } = useParams();
   const [imageUrl, setImageUrl] = useState<string | undefined>(undefined);
   const [isLoading, setIsLoading] = useState(false);
@@ -95,6 +96,10 @@ export default function DistortionPage() {
 
   const saveCalibration = () => {
     // Add validation which sends alert if no images are taken - cannot calibrate without minimum calibration size
+    if (imageCount < 5) {
+      alert("Calibration not saved:\nPlease take at least 5 valid calibration images");
+      return;
+    }
     console.log("Calibration saved!");
     router.push(`/`) // in the future, return to this pi's calibration hub
   };

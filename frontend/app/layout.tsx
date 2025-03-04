@@ -2,6 +2,7 @@ import { Metadata } from "next";
 // import { Geist, Geist_Mono } from "next/font/google";
 // import localFont from "next/font/local";
 import "./globals.css";
+ 
 
 import { NavigationMenu, NavigationMenuList, NavigationMenuItem,
          NavigationMenuLink, navigationMenuTriggerStyle } from "@/components/ui/navigation-menu";

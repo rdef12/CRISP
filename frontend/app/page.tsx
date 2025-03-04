@@ -21,7 +21,6 @@ export default function Home() {
   const [IPAddress, setIPAddress] = useState("");
   const [password, setPassword] = useState("");
   const [cameraModel, setCameraModel] = useState("");
-  // const [isConnecting, setIsConnecting] = useState<boolean[]>([]);
   const [isConnecting, setIsConnecting] = useState<Record<string, boolean>>({}); // Hashmap
 
   const fetchPiStatuses = async () => {
@@ -29,9 +28,9 @@ export default function Home() {
       console.log("Fetching Pi Statuses...")
       const piArray = await getPiStatuses();
       setPiStatuses(piArray);
-      setSwitchStates((prevStates) =>
-        piArray.map((pi, i) =>
-          isConnecting[pi.username] ? prevStates[i] : pi.connectionStatus
+      setSwitchStates(() =>
+        piArray.map((pi) =>
+          isConnecting[pi.username] ? true : pi.connectionStatus
         )
       );
 
@@ -51,20 +50,6 @@ export default function Home() {
       console.error("Failed to fetch Pi statuses", error);
     }
   };
-
-
-    // New configured pis get pushed to the end of the array
-    // Doesn't work in general because the pis can be removed from the any position in the list of Pis
-    // Could use hashmap or linked list??
-
-    // setIsConnecting((prevStates) => {
-    //   const newStates = [...prevStates];
-    //   // Ensure new Pis get a default "false" value without affecting existing states
-    //   while (newStates.length < piArray.length) {
-    //     newStates.push(false);
-    //   }
-    //   return newStates;
-    // });
 
   useEffect(() => {
     fetchPiStatuses(); // Initial fetch
@@ -159,11 +144,6 @@ export default function Home() {
         });
     } catch (error) {
         console.error("Error updating SSH connection:", error);
-    } finally {
-        setIsConnecting((prevStates) => ({
-          ...prevStates,
-          [pi.username]: false,
-        }));
     };
 };
 
