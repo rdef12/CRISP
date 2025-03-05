@@ -15,38 +15,26 @@ const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND
 
 export default function Home() {
 
-  const [switchStates, setSwitchStates] = useState<boolean[]>([]);
+  const [switchStates, setSwitchStates] = useState<Record<string, boolean>>({});
   const [piStatuses, setPiStatuses] = useState<ClientSidePiStatus[]>([]);
   const [username, setUsername] = useState("");
   const [isAlreadyFetching, setAlreadyFetching] = useState<boolean>(false);
   const [IPAddress, setIPAddress] = useState("");
   const [password, setPassword] = useState("");
   const [cameraModel, setCameraModel] = useState("");
-  const [isConnecting, setIsConnecting] = useState<Record<string, boolean>>({}); // Hashmap
 
   const fetchPiStatuses = async (isAlreadyFetching: boolean) => {
     try {
       console.log("Fetching Pi Statuses...")
       const piArray = await getPiStatuses(isAlreadyFetching);
       setPiStatuses(piArray);
-      setSwitchStates(() =>
-        piArray.map((pi) =>
-          isConnecting[pi.username] ? true : pi.connectionStatus
-        )
-      );
 
-      setIsConnecting((prevStates) => {
-        const newStates: Record<string, boolean> = { ...prevStates }; // Preserve existing states
-    
-        // Add new Pis with a default "false" state if they don't exist in the previous map
-        piArray.forEach((pi) => {
-          if (!(pi.username in newStates)) {
-            newStates[pi.username] = false;
-          }
-        });
-        // Remove Pis that no longer exist in the updated list
-        return newStates;
+      const initialSwitchStates: Record<string, boolean> = {};
+      piArray.forEach((pi) => {
+        initialSwitchStates[pi.username] = pi.connectionStatus; // Set initial value based on connection status
       });
+      setSwitchStates(initialSwitchStates);
+
     } catch (error) {
       console.error("Failed to fetch Pi statuses", error);
     }
@@ -82,13 +70,13 @@ export default function Home() {
         {/* Wrapper for Switch and Status with consistent width */}
         <div className="flex items-center space-x-4 min-w-[200px]">
           <Switch
-            checked={switchStates[index]}
+            checked={switchStates[pi.username]}
             onCheckedChange={(checked) => {
-              update_ssh(checked, index, pi);
+              update_ssh(checked, pi);
             }}
           />
           <p className="min-w-[100px] text-center">
-            {isConnecting[pi.username] ? "Connecting..." : pi.connectionStatus ? "Connected" : "Disconnected"}
+            {!pi.connectionStatus && switchStates[pi.username] ? "Connecting..." : pi.connectionStatus ? "Connected" : "Disconnected"}
           </p>
           {/* Delete button */}
           <button
@@ -101,33 +89,23 @@ export default function Home() {
     </div>
   )));
 
-  const update_ssh = async (checked: boolean, index: number, pi: ClientSidePiStatus) => {
+  const update_ssh = async (checked: boolean, pi: ClientSidePiStatus) => {
 
     setSwitchStates((prevStates) => {
-        const newStates = [...prevStates];
-        newStates[index] = checked;
-        return newStates;
+      const newStates = { ...prevStates };
+      newStates[pi.username] = checked;
+      return newStates;
     });
 
     setAlreadyFetching(true);
     try {
         let response;
         if (checked) {
-
-            setIsConnecting((prevStates) => ({
-              ...prevStates,
-              [pi.username]: true,
-            }));
-            
             response = await fetch(`${BACKEND_URL}/connect_over_ssh/${pi.username}`, {
                 method: "POST",
                 body: JSON.stringify({ enabled: true }),
                 headers: { "Content-Type": "application/json" }
             });
-            setIsConnecting((prevStates) => ({
-              ...prevStates,
-              [pi.username]: false,
-            }));
 
         } else {
             response = await fetch(`${BACKEND_URL}/disconnect_from_ssh/${pi.username}`, {
@@ -143,10 +121,11 @@ export default function Home() {
 
         // Update state based on actual backend response
         setSwitchStates((prevStates) => {
-            const newStates = [...prevStates];
-            newStates[index] = sshStatus; 
-            return newStates;
+          const newStates = { ...prevStates };
+          newStates[pi.username] = sshStatus; 
+          return newStates;
         });
+
     } catch (error) {
         console.error("Error updating SSH connection:", error);
     } finally {
@@ -172,7 +151,11 @@ const handleDelete = async (username: string, index: number) => {
         
         // If i = index of deleted pi, it is excluded from the filtered arrays...
         setPiStatuses((prevPiStatuses) => prevPiStatuses.filter((_, i) => i !== index));
-        setSwitchStates((prevStates) => prevStates.filter((_, i) => i !== index));
+        setSwitchStates((prevStates) => {
+          const newStates = { ...prevStates };
+          delete newStates[username]; // Remove from switchStates
+          return newStates;
+        });
 
       } else {
         console.error("Failed to delete the configured pi");
@@ -181,7 +164,6 @@ const handleDelete = async (username: string, index: number) => {
       console.error("Error:", error);
     } finally {
       setAlreadyFetching(false);
-      fetchPiStatuses(false);
     }
   }
 };
