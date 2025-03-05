@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-img-element */
 "use client"
 
 import { useState } from "react";
@@ -11,17 +12,23 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useParams, notFound  } from "next/navigation";
-import Image from 'next/image';
-import { CalibrationFormProps } from "@/pi_functions/interfaces";
+import { useRouter, useParams, notFound  } from "next/navigation";
+import { CalibrationImageSettings, CalibrationFormProps } from "@/pi_functions/interfaces";
+
+
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND
+
 
 export default function HomograpyCalibration() {
-    const { plane = "undefined" } = useParams();
+    const { username = "undefined" , plane = "undefined" } = useParams();
     if (plane !== "near" && plane !== "far") {
         notFound();
     }
+    const router = useRouter();
 
     const [showSaveButton, setShowSaveButton] = useState<boolean>(false);
+    const [imageUrl, setImageUrl] = useState<string | undefined>(undefined);
+    const [isLoading, setIsLoading] = useState(false);
     const [showImage, setShowImage] = useState<boolean>(false);
     const [formData, setFormData] = useState<CalibrationFormProps>({
         gain: "",
@@ -38,18 +45,60 @@ export default function HomograpyCalibration() {
         }));
       };
 
-  const takeImage = async (formData: CalibrationFormProps) => {
-        console.log(formData);
-        setShowSaveButton(false);
-        setShowImage(true);
-    };
+    const takeImage = async (formData: CalibrationFormProps) => {
+        try {
+          setShowImage(false);
+          setShowSaveButton(false);
+          setIsLoading(true);
+          const requestBody: CalibrationImageSettings = {
+            filename: "temp_distortion_image", 
+            gain: formData.gain,
+            timeDelay: 500,
+            format: "jpeg",
+            calibrationGridSize: [
+              parseInt(formData.xGridDimension.toString()), 
+              parseInt(formData.yGridDimension.toString())
+            ],
+            calibrationTileSpacing: parseFloat(formData.gridSpacing.toString())
+          };
+          
+          const response = await fetch(`${BACKEND_URL}/take_homography_calibration_image/${username}`, {
+            method: "POST",
+            body: JSON.stringify(requestBody),
+            headers: { "Content-Type": "application/json" }
+          });
+          
+          if (response.ok) {
+            const data = await response.json();
+            const imageBase64 = data.image_bytes;
+            const imageUrl = `data:image/png;base64,${imageBase64}`;
+            setImageUrl(imageUrl);
+            setShowImage(true);
+          } else {
+            throw new Error("Response is not ok: " + response);
+          }
+        }
+        catch (error) {
+          console.error("Error submitting form:", error); 
+        } finally {
+          setIsLoading(false);
+        }
+      };
+
+      const saveHomography = () => {
+        console.log("Homography saved!");
+        router.push(`/`); // in the future, return to this pi's calibration hub
+      };
 
     return (
         <div className="grid grid-rows-[15%_75%_10%] h-screen gap-2">
-            <div className="flex items-center justify-center">
-                <h1 className="text-2xl md:text-3xl font-medium tracking-normal text-gray-800 text-center underline">
-                    {plane[0].toUpperCase() + plane.slice(1)} Plane Homography Generator
+            <div className="flex flex-col items-center justify-center">
+                <h1 className="text-2xl md:text-3xl font-medium tracking-normal text-gray-800 text-center underline mb-1">
+                    {plane[0].toUpperCase() + plane.slice(1)} Plane Homography Generator 
                 </h1>
+                <h2 className="text-xl md:text-2xl font-normal tracking-wide text-gray-700 text-center">
+                    ({username})
+                </h2>
             </div>
 
             <div className="grid grid-cols-[35%_65%] gap-4">
@@ -125,16 +174,22 @@ export default function HomograpyCalibration() {
                         </CardContent>
                     </Card>
                 </div>
-                <div className="grid grid-rows-[80%_20%] gap-4">
-                    {showImage && (
+                <div className="grid grid-rows-[55%_45%] gap-4">
+                    {isLoading ? (
+                        <div className="w-full h-full flex items-center justify-center text-gray-600">
+                            Loading...
+                        </div>
+                    ) : showImage && imageUrl ? (
                          <>
-                            <div className="flex items-center justify-center">
-                                <Image
-                                src="/images/test_image.png"
-                                alt="Chessboard image for homography"
-                                className="object-contain h-full border-4 border-green-400"
+                            <div className="w-full h-full flex items-center justify-center overflow-hidden">
+                                {/* Cannot use Next.js Image tag if I want the border to work correctly! Maybe this was another thing actually....*/}
+                                <img
+                                    src={imageUrl}
+                                    alt="Chessboard image for homography"
+                                    className="max-h-full object-contain border-4 border-green-400 rounded"
                                 />
                             </div>
+
                             <div>
                             <Card className="bg-gray-200">
                                 <CardContent className="p-4">
@@ -143,7 +198,7 @@ export default function HomograpyCalibration() {
                                             <Button variant="default" className="px-2 py-1" onClick={() => {setShowSaveButton(true)}}>
                                                 Test grid recognition
                                             </Button>
-                                            {showSaveButton && <Button variant="destructive" className="px-2 py-1" onClick={() => { return; }}>
+                                            {showSaveButton && <Button variant="destructive" className="px-2 py-1" onClick={saveHomography}>
                                                 Save Homography
                                             </Button>
                                             }
@@ -156,6 +211,10 @@ export default function HomograpyCalibration() {
                             </Card>
                             </div>
                          </>
+                        ) : (
+                            <div className="w-full h-full flex items-center justify-center text-gray-600">
+                                No image captured yet
+                            </div>
                         )}
                 </div>
             </div>

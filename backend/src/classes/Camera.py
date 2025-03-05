@@ -43,7 +43,7 @@ class ImageSettings(BaseModel):
     meta_data_format: str = "dng" #TODO Can be made variable if need be
     
 
-class DistortionImageSettings(ImageSettings):
+class CalibrationImageSettings(ImageSettings):
     calibrationGridSize: List[int] = Field(..., description="Grid size as (rows, columns).")
     calibrationTileSpacing: float = Field(..., gt=0, description="Spacing between tiles in mm.")
     

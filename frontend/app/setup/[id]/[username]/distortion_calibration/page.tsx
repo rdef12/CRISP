@@ -14,7 +14,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { useRouter, useParams } from "next/navigation"
-import { DistortionImageSettings, CalibrationFormProps } from "@/pi_functions/interfaces";
+import { CalibrationImageSettings, CalibrationFormProps } from "@/pi_functions/interfaces";
 
 // In the future, I would like to import a script to allow
 // latex to be rendered within the browser.
@@ -72,8 +72,9 @@ export default function DistortionPage() {
   const takeImage = async (formData: CalibrationFormProps) => {
     try {
       setShowImage(false);
+      setShowSaveButton(false);
       setIsLoading(true);
-      const requestBody: DistortionImageSettings = {filename: "temp_distortion_image", 
+      const requestBody: CalibrationImageSettings = {filename: "temp_distortion_image", 
                                                     gain: formData.gain,
                                                     timeDelay: 500,
                                                     format: "jpeg",

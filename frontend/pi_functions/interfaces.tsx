@@ -5,7 +5,7 @@ export interface ImageSettings {
     format: string;
   }
 
-export interface DistortionImageSettings extends ImageSettings {
+export interface CalibrationImageSettings extends ImageSettings {
   calibrationGridSize: [number, number]; // Tuple for grid size (rows, columns)
   calibrationTileSpacing: number; // Spacing between tiles in mm
 }

@@ -13,7 +13,7 @@ import base64
 from src.network_functions import *
 from src.camera_functions import *
 from src.connection_functions import *
-from src.classes.Camera import ImageSettings, PhotoContext, DistortionImageSettings
+from src.classes.Camera import ImageSettings, PhotoContext, CalibrationImageSettings
 from src.calibration_functions import ROI, determine_frame_size
 from src.distortion_correction import distortion_calibration_test_for_gui
 
@@ -84,10 +84,9 @@ def take_single_picture_api(username: str, imageSettings: ImageSettings):
     if photo_bytes:
         return Response(content=photo_bytes, media_type="image/png")
 
-
 @app.post("/take_distortion_calibration_image/{username}/{image_count}")
 def take_distortion_calibration_image_api(username: str, image_count: int,
-                                          distortionImageSettings: DistortionImageSettings):
+                                          distortionImageSettings: CalibrationImageSettings):
     context = PhotoContext.GENERAL
     photo_bytes, _ = take_single_image(username, distortionImageSettings.to_image_settings(), context)
     if photo_bytes:
@@ -97,6 +96,22 @@ def take_distortion_calibration_image_api(username: str, image_count: int,
                                                                   image_count)
         response = {
             "results": calibration_results,
+            "image_bytes": base64.b64encode(photo_bytes).decode('utf-8')
+        }
+        return JSONResponse(content=response)
+
+
+@app.post("/take_homography_calibration_image/{username}")
+def take_homography_calibration_image_api(username: str, homographyImageSettings: CalibrationImageSettings):
+    context = PhotoContext.GENERAL
+    photo_bytes, _ = take_single_image(username, homographyImageSettings.to_image_settings(), context)
+    if photo_bytes:
+        image = load_image_byte_string_to_opencv(photo_bytes)
+        
+        # Add actually results soon!
+        
+        response = {
+            "results": False,
             "image_bytes": base64.b64encode(photo_bytes).decode('utf-8')
         }
         return JSONResponse(content=response)
