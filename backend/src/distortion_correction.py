@@ -7,7 +7,6 @@ have the same focal plane.
 Eventhough the chessboard can be a different size from that used for the two homography
 calibration planes, the focus must me set the same. Therefore, need to think of a directory
 hierarchy which makes it clear which distortion mapping is associated with a given image set.
-
 --------------------------------------------------------------------------------------------
 
 calibrateCamera documentation:
@@ -16,33 +15,28 @@ https://docs.opencv.org/4.x/d9/d0c/group__calib3d.html#ga687a1ab946686f0d85ae036
 NOTE: DISTORTION CORRECTION DEPENDS ON FOCUS - THIS DOES NOT MATCH THE FOCUS USED IN
 CALIBRATION IMAGES FOR HOMOGRAPHY!
 """
-
 import numpy as np
 import cv2 as cv
 import glob
 import pickle
-
 import matplotlib.pyplot as plt
-
 from src.calibration_functions import *
-from arc.viewing_functions import show_image_in_window
+from src.viewing_functions import show_image_in_window
 
 # Ipad Chessboard has its own spacing/grid size
-CHESSBOARD_GRID_SIZE = (15, 11)
-CHESSBOARD_TILE_SPACING = 10 # In millimetres
 
-DISTORTED_IMAGE_DIRECTORY = r'final_distortion_images\side_HQ'
-DISTORTED_IMAGE_PATHS = glob.glob(DISTORTED_IMAGE_DIRECTORY + r'\*.jpeg')
-TEST_IMAGE = r'final_distortion_images\side_hq_control.jpeg'
-UNDISTORTED_IMAGE_DIRECTORY =  r'final_distortion_images\side_hq_corrected_images'
+# CHESSBOARD_GRID_SIZE = (15, 11)
+# CHESSBOARD_TILE_SPACING = 10 # In millimetres
 
-CAM_TYPE = "side"
-CAM_MODEL = "hq"
+# DISTORTED_IMAGE_DIRECTORY = r'final_distortion_images\side_HQ'
+# DISTORTED_IMAGE_PATHS = glob.glob(DISTORTED_IMAGE_DIRECTORY + r'\*.jpeg')
+# UNDISTORTED_IMAGE_DIRECTORY =  r'final_distortion_images\side_hq_corrected_images'
+
+# CAM_TYPE = "side"
+# CAM_MODEL = "hq"
 
 # Termination criteria
 CRITERIA = (cv.TERM_CRITERIA_EPS + cv.TERM_CRITERIA_MAX_ITER, 30, 0.001)
-
-################ FIND CHESSBOARD CORNERS - OBJECT POINTS AND IMAGE POINTS #############################
 
 def plot_chessboard_corners(obj_points):
     
@@ -51,8 +45,8 @@ def plot_chessboard_corners(obj_points):
     plt.show(block=False)
 
 
-def build_real_world_corner_positions(chessboard_grid_size=CHESSBOARD_GRID_SIZE,
-                                      chessboard_tile_spacing=CHESSBOARD_TILE_SPACING,
+def build_real_world_corner_positions(chessboard_grid_size,
+                                      chessboard_tile_spacing,
                                       PLOT_CORNERS=False, PRINT_POINTS=False):
     """
     Same as generate_object_points in claibration_functions.py, but with more
@@ -75,49 +69,56 @@ def build_real_world_corner_positions(chessboard_grid_size=CHESSBOARD_GRID_SIZE,
     return obj_points
 
 
-def extract_corners_from_distorted_images(obj_points, image_paths=DISTORTED_IMAGE_PATHS,
-                                          criteria=CRITERIA, SHOW_IMAGES=False,
-                                          chessboard_grid_size=CHESSBOARD_GRID_SIZE):
+def get_feature_points_from_image(obj_points, image, chessboard_grid_size, image_count=None, show_images: bool=False, 
+                                  criteria=CRITERIA):
+        
+        # Find the chess board corners
+        grey_image = cv.cvtColor(image, cv.COLOR_BGR2GRAY)
+        ret, corners = cv2.findChessboardCornersSB(grey_image, chessboard_grid_size, flags=cv2.CALIB_CB_EXHAUSTIVE)
+
+        # If corners found, add object points, image points (after refining them)
+        if ret:
+            optimised_corners = cv.cornerSubPix(grey_image, corners, (11,11), (-1,-1), criteria)
+
+            if show_images:
+                cv.drawChessboardCorners(image, chessboard_grid_size, optimised_corners, ret)
+                cv.namedWindow("Distortion Image", cv.WINDOW_NORMAL)
+                cv.imshow("Distortion Image", image)
+                cv.waitKey(1000)
+            
+            return optimised_corners
+        else:
+            print(f"Image could not have its feature points identified...")
+            return False
+
+
+def extract_corners_from_distorted_images(obj_points, image_paths,
+                                          chessboard_grid_size,
+                                          show_images: bool=False):
     """
     Should test if adaptive thresholding the images removes the light reflections,
     and thus increases the amount of usable images.
     """
     
     # Two sets of points for all usable images
-    obj_points_array = [] # 3d point in real world space - how if the tilting is not encoded and z set to zero throughout?
+    obj_points_array = [] # 2d point on calibration plane
     img_points_array = [] # 2d points in image plane.
 
-    for count, image in enumerate(image_paths):
-
-        img = cv.imread(image)
-        grey_image = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
+    for count, image_path in enumerate(image_paths):
+        image = cv.imread(image_path)
         
-        # Find the chess board corners
-        ret, corners = cv2.findChessboardCornersSB(grey_image, chessboard_grid_size, flags=cv2.CALIB_CB_EXHAUSTIVE)
-
-        # If corners found, add object points, image points (after refining them)
-        if ret:
-
+        results = get_feature_points_from_image(obj_points, image, chessboard_grid_size, show_images=show_images)
+        if results:
+            img_points_array.append(results.optimised_corners)
             obj_points_array.append(obj_points)
-            optimised_corners = cv.cornerSubPix(grey_image, corners, (11,11), (-1,-1), criteria)
-            img_points_array.append(optimised_corners)
-
-            if SHOW_IMAGES:
-                cv.drawChessboardCorners(img, chessboard_grid_size, optimised_corners, ret)
-                cv.namedWindow("Distortion Image", cv.WINDOW_NORMAL)
-                cv.imshow("Distortion Image", img)
-                cv.waitKey(1000)
             
-        else:
-            print("Image {} could not be used...".format(count))
-    
     cv.destroyAllWindows()
     return obj_points_array, img_points_array
 
 
 ############## CALIBRATION #######################################################
 
-def save_camera_calibration(camera_matrix, dist, camera_type=CAM_TYPE, camera_model=CAM_MODEL):
+def save_camera_calibration(camera_matrix, dist, camera_type, camera_model):
     pickle.dump((camera_matrix, dist), open("distortion_calibration_data\{}_{}_camera_calibration.pkl".format(camera_type, camera_model), "wb" ))
 
 def load_camera_calibration(calibration_data_path):
@@ -129,8 +130,8 @@ def load_camera_calibration(calibration_data_path):
 
 ############## UNDISTORTION #####################################################
 
-def undistort_image(camera_matrix, dist, frame_size, image_path=TEST_IMAGE, save_image=False,
-                    output_directory=UNDISTORTED_IMAGE_DIRECTORY, SHOW_IMAGE=False):
+def undistort_image(camera_matrix, dist, frame_size, image_path,
+                    output_directory, SHOW_IMAGE=False, save_image=False):
     """
     Currently, I interpret the cali.png used by Robin as a test image to see
     the distortion corrction. The chessboard images are used specifically
@@ -149,7 +150,6 @@ def undistort_image(camera_matrix, dist, frame_size, image_path=TEST_IMAGE, save
         cv.waitKey(2000)
 
     h, w = frame_size
-    
     newCameraMatrix, roi = cv.getOptimalNewCameraMatrix(camera_matrix, dist, (w,h), 1, (w,h))
 
     undistorted_image = cv.undistort(img, camera_matrix, dist, None, newCameraMatrix)
@@ -177,24 +177,53 @@ def calculate_reprojection_error(obj_points_array, img_points_array,
     
     total_error = mean_error/len(obj_points_array)
     return total_error
-    
-
-def main(test_image_path=TEST_IMAGE):
-    
-    obj_points = build_real_world_corner_positions(PLOT_CORNERS=False)
-    obj_points_array, img_points_array = extract_corners_from_distorted_images(obj_points, SHOW_IMAGES=False)
-
-    frame_size = determine_frame_size(image_path=test_image_path)
-    ret, camera_matrix, dist, rvecs, tvecs = cv.calibrateCamera(obj_points_array, img_points_array, frame_size,
-                                                                None, None)
-    
-    print("Original camera matrix: \n {}".format(camera_matrix))
-    
-    save_camera_calibration(camera_matrix, dist)
-    undistort_image(camera_matrix, dist, frame_size, save_image=True)
-    print( "Total error: {}".format(calculate_reprojection_error(obj_points_array, img_points_array,
-                                                                 camera_matrix, dist, rvecs, tvecs)))
 
 
-if __name__ == "__main__":
-    main()
+def distortion_calibration_test_for_gui(image, chessboard_grid_size, chessboard_tile_spacing, image_count=None,
+                                        show_images: bool=False, criteria=CRITERIA):
+        
+        # Find the chess board corners
+        obj_points = build_real_world_corner_positions(chessboard_grid_size, chessboard_tile_spacing)
+        grey_image = cv.cvtColor(image, cv.COLOR_BGR2GRAY)
+        ret, corners = cv2.findChessboardCornersSB(grey_image, chessboard_grid_size, flags=cv2.CALIB_CB_EXHAUSTIVE)
+
+        # If corners found, add object points, image points (after refining them)
+        if ret:
+            optimised_corners = cv.cornerSubPix(grey_image, corners, (11,11), (-1,-1), criteria)
+
+            if show_images:
+                cv.drawChessboardCorners(image, chessboard_grid_size, optimised_corners, ret)
+                cv.namedWindow("Distortion Image", cv.WINDOW_NORMAL)
+                cv.imshow("Distortion Image", image)
+                cv.waitKey(1000)
+            
+            return {
+            "status": True,
+            "message": "Features points successfully identified in image {}.".format(image_count if image_count else ""),
+        }
+        else:
+            print(f"Image could not have its feature points identified...")
+            return {
+                "status": False,
+                "message": "Feature points not identifiable in image {}.".format(image_count if image_count else "")
+            }
+    
+
+# def main():
+    
+#     obj_points = build_real_world_corner_positions(PLOT_CORNERS=False)
+#     obj_points_array, img_points_array = extract_corners_from_distorted_images(obj_points, SHOW_IMAGES=False)
+
+#     frame_size = determine_frame_size(image_path=test_image_path)
+#     ret, camera_matrix, dist, rvecs, tvecs = cv.calibrateCamera(obj_points_array, img_points_array, frame_size,
+#                                                                 None, None)
+    
+#     print("Original camera matrix: \n {}".format(camera_matrix))
+    
+#     save_camera_calibration(camera_matrix, dist)
+#     undistort_image(camera_matrix, dist, frame_size, save_image=True)
+#     print( "Total error: {}".format(calculate_reprojection_error(obj_points_array, img_points_array,
+#                                                                  camera_matrix, dist, rvecs, tvecs)))
+
+# if __name__ == "__main__":
+#     main()

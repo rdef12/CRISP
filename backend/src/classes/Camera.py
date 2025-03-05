@@ -6,6 +6,7 @@ delay between consecutive images as possible. At the end of the image capturing,
 RETURN METADATA AND IMAGE TO DATABASE - for now, save to folder in frontend/public/images/cam_test
 """
 from pydantic import BaseModel, Field
+from typing import List
 import socket
 import paramiko
 import cv2
@@ -18,7 +19,6 @@ class PhotoContext(Enum): #TODO either set by the api calling it or is a path va
     GENERAL = 1 # Also used for calibration images too.
     TEST_RUN = 2
     REAL_RUN = 3
-
 
 def write_bytes_to_file(image_bytes: bytes, output_path: str):
     try:
@@ -42,6 +42,19 @@ class ImageSettings(BaseModel):
     format: str = Field("raw", example="png") # Could use Literal to validate inputted formats (or just make a drop-down)
     meta_data_format: str = "dng" #TODO Can be made variable if need be
     
+
+class DistortionImageSettings(ImageSettings):
+    calibrationGridSize: List[int] = Field(..., description="Grid size as (rows, columns).")
+    calibrationTileSpacing: float = Field(..., gt=0, description="Spacing between tiles in mm.")
+    
+    def to_image_settings(self) -> ImageSettings:
+        return ImageSettings(
+            filename=self.filename,
+            gain=self.gain,
+            timeDelay=self.timeDelay,
+            format=self.format,
+            meta_data_format=self.meta_data_format,
+        )
     
 class Camera():
   
@@ -197,12 +210,16 @@ class Camera():
         with self.sftp_client.file(remote_image_path, "rb") as remote_file1, \
              self.sftp_client.file(remote_photo_meta_data_path, "rb") as remote_file2:
             photo_bytes = remote_file1.read()
+            if not photo_bytes:
+                raise ValueError(f"Failed to read image data from {remote_image_path}, photo_bytes is empty")
+    
             photo_meta_data_bytes = remote_file2.read()
             added_photo = cdi.add_photo(camera_settings_link_id=camera_settings_link_id, photo=photo_bytes, photo_metadata=photo_meta_data_bytes)
             # added_photo = cdi.add_photo_for_testing(camera_settings_link_id=camera_settings_link_id, photo=photo_bytes)
             added_photo_id = added_photo["id"]
             print("\n\n\n\n\n I have finished this try alright")
         return added_photo_id
+    
     except FileNotFoundError as e:
         print("a")
         raise Exception(f"Error: One or more files not found on the remote server at path: {e}")

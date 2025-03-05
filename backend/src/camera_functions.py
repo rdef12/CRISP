@@ -9,10 +9,12 @@ from typing import List
 from src.database.CRUD import CRISP_database_interaction as cdi
 from src.calibration_functions import determine_frame_size
 
+def load_image_byte_string_to_opencv(image_byte_string: str):
+    nparr = np.frombuffer(image_byte_string, np.uint8)
+    return cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+
 def get_image_bytestring_frame_size(image_byte_string: str):
-    image_data = base64.b64decode(image_byte_string)
-    nparr = np.frombuffer(image_data, np.uint8)
-    image = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+    image = load_image_byte_string_to_opencv(image_byte_string)
     return determine_frame_size(image=image)
 
 def take_single_image(username: str, imageSettings: ImageSettings, context: PhotoContext):

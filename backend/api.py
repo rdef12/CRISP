@@ -13,8 +13,9 @@ import base64
 from src.network_functions import *
 from src.camera_functions import *
 from src.connection_functions import *
-from src.classes.Camera import ImageSettings, PhotoContext
+from src.classes.Camera import ImageSettings, PhotoContext, DistortionImageSettings
 from src.calibration_functions import ROI, determine_frame_size
+from src.distortion_correction import distortion_calibration_test_for_gui
 
 from src.classes.JSON_request_bodies import request_bodies as rb
 
@@ -76,12 +77,29 @@ def connect_over_ssh_api(username: str):
 def disconnect_from_ssh_api(username: str):
     return {"sshStatus": disconnect_from_ssh(username)}
 
-@app.post("/take_single_picture/{username}") #TODO Add saving to database
+@app.post("/take_single_picture/{username}")
 def take_single_picture_api(username: str, imageSettings: ImageSettings):
     context = PhotoContext.GENERAL
     photo_bytes, _ = take_single_image(username, imageSettings, context)
     if photo_bytes:
         return Response(content=photo_bytes, media_type="image/png")
+
+
+@app.post("/take_distortion_calibration_image/{username}/{image_count}")
+def take_distortion_calibration_image_api(username: str, image_count: int,
+                                          distortionImageSettings: DistortionImageSettings):
+    context = PhotoContext.GENERAL
+    photo_bytes, _ = take_single_image(username, distortionImageSettings.to_image_settings(), context)
+    if photo_bytes:
+        image = load_image_byte_string_to_opencv(photo_bytes)
+        calibration_results = distortion_calibration_test_for_gui(image, distortionImageSettings.calibrationGridSize,
+                                                                  distortionImageSettings.calibrationTileSpacing,
+                                                                  image_count)
+        response = {
+            "results": calibration_results,
+            "image_bytes": base64.b64encode(photo_bytes).decode('utf-8')
+        }
+        return JSONResponse(content=response)
 
     
 @app.get("/stream/{username}")
