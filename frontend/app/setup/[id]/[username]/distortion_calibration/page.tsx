@@ -14,26 +14,14 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { useRouter, useParams } from "next/navigation"
-import { ImageSettings } from "@/pi_functions/interfaces";
+import { DistortionImageSettings, CalibrationFormProps } from "@/pi_functions/interfaces";
 
 // In the future, I would like to import a script to allow
 // latex to be rendered within the browser.
 
-interface CalibrationImageProps {
-  gain: number | "";
-  xGridDimension: number | "";
-  yGridDimension: number | "";
-  gridSpacing: number | "";
-}
-
 interface LogMessage {
   status: boolean;
   message: string;
-}
-
-interface DistortionImageSettings extends ImageSettings {
-  calibrationGridSize: [number, number]; // Tuple for grid size (rows, columns)
-  calibrationTileSpacing: number; // Spacing between tiles in mm
 }
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND
@@ -48,7 +36,7 @@ export default function DistortionPage() {
   const [showImage, setShowImage] = useState<boolean>(false);
   const [showSaveButton, setShowSaveButton] = useState<boolean>(false)
   const [imageCount, setImageCount] = useState<number>(0);
-  const [formData, setFormData] = useState<CalibrationImageProps>({
+  const [formData, setFormData] = useState<CalibrationFormProps>({
     gain: "",
     xGridDimension: "",
     yGridDimension: "",
@@ -81,7 +69,7 @@ export default function DistortionPage() {
     };
   }, []); // Empty dependency array ensures this runs only once when the component mounts
 
-  const takeImage = async (formData: CalibrationImageProps) => {
+  const takeImage = async (formData: CalibrationFormProps) => {
     try {
       setShowImage(false);
       setIsLoading(true);
