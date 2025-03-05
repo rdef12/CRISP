@@ -190,9 +190,9 @@ const ROISelectionTool: React.FC<ROISelectionToolProps> = ({
   };
 
   return (
-    <div className="flex flex-col items-center min-h-screen py-2">
+    <div className="flex flex-col items-center min-h-screen py-1">
       {/* Plotly chart container */}
-      <div className="flex justify-center mb-8">
+      <div className="flex justify-center mb-4">
         {image && width && height && (
           <Plot
             data={[]}
@@ -208,7 +208,7 @@ const ROISelectionTool: React.FC<ROISelectionToolProps> = ({
       </div>
 
       {/* Form inputs container */}
-      <div className="grid grid-cols-2 gap-4 mb-4">
+      <div className="grid grid-cols-2 gap-4 mb-2">
         <div className="flex flex-col">
           <label className="text-sm font-medium mb-1">Horizontal ROI Start</label>
           <div className="grid grid-cols-2 gap-2">
@@ -303,7 +303,7 @@ const ROISelectionTool: React.FC<ROISelectionToolProps> = ({
       </div>
 
       {/* Save ROI button */}
-      <div className="flex justify-center mt-4">
+      <div className="flex justify-center mt-2">
         <button
           className="bg-green-500 text-white py-2 px-4 rounded-md hover:bg-green-600 transition duration-200"
           onClick={saveROI}

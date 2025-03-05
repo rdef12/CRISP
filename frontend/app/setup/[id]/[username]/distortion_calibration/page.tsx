@@ -27,7 +27,7 @@ interface CalibrationImageProps {
 }
 
 interface LogMessage {
-  status: boolean; // true for success, false for error
+  status: boolean;
   message: string;
 }
 
@@ -83,7 +83,6 @@ export default function DistortionPage() {
 
   const takeImage = async (formData: CalibrationImageProps) => {
     try {
-
       setShowImage(false);
       setIsLoading(true);
       const requestBody: DistortionImageSettings = {filename: "temp_distortion_image", 
@@ -189,50 +188,75 @@ export default function DistortionPage() {
               <CardDescription>Edit calibration image settings</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="flex flex-col space-y-2">
-                <Label className="text-green-500" htmlFor="gain">Gain</Label>
-                <Input
-                  type="number"
-                  id="gain"
-                  name="gain"
-                  placeholder="Enter gain value"
-                  value={formData.gain}
-                  onChange={handleChange}
-                />
-              </div>
-              <div className="flex flex-col space-y-2">
-                <Label className="text-green-500" htmlFor="xGridDimension">X Grid Dimension</Label>
-                <Input
-                  type="number"
-                  id="xGridDimension"
-                  name="xGridDimension"
-                  placeholder="Enter x grid dimension"
-                  value={formData.xGridDimension}
-                  onChange={handleChange}
-                />
-              </div>
-              <div className="flex flex-col space-y-2">
-                <Label className="text-green-500" htmlFor="yGridDimension">Y Grid Dimension</Label>
-                <Input
-                  type="number"
-                  id="yGridDimension"
-                  name="yGridDimension"
-                  placeholder="Enter y grid dimension"
-                  value={formData.yGridDimension}
-                  onChange={handleChange}
-                />
-              </div>
-              <div className="flex flex-col space-y-2">
-                <Label className="text-green-500" htmlFor="gridSpacing">Grid Spacing (mm)</Label>
-                <Input
-                  type="number"
-                  id="gridSpacing"
-                  name="gridSpacing"
-                  placeholder="Enter grid spacing"
-                  value={formData.gridSpacing}
-                  onChange={handleChange}
-                />
-              </div>
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();        // Prevent default form submission
+                  takeImage(formData);       // Call your function to handle image capture
+                }}
+                className="space-y-4"        // Keeps the same spacing as before
+              >
+                <div className="flex flex-col space-y-2">
+                  <Label className="text-green-500" htmlFor="gain">Gain</Label>
+                  <Input
+                    type="number"
+                    id="gain"
+                    name="gain"
+                    placeholder="Enter gain value"
+                    value={formData.gain}
+                    onChange={handleChange}
+                    required
+                  />
+                </div>
+                <div className="flex flex-col space-y-2">
+                  <Label className="text-green-500" htmlFor="xGridDimension">X Grid Dimension</Label>
+                  <Input
+                    type="number"
+                    id="xGridDimension"
+                    name="xGridDimension"
+                    placeholder="Enter x grid dimension"
+                    value={formData.xGridDimension}
+                    onChange={handleChange}
+                    required
+                  />
+                </div>
+                <div className="flex flex-col space-y-2">
+                  <Label className="text-green-500" htmlFor="yGridDimension">Y Grid Dimension</Label>
+                  <Input
+                    type="number"
+                    id="yGridDimension"
+                    name="yGridDimension"
+                    placeholder="Enter y grid dimension"
+                    value={formData.yGridDimension}
+                    onChange={handleChange}
+                    required
+                  />
+                </div>
+                <div className="flex flex-col space-y-2">
+                  <Label className="text-green-500" htmlFor="gridSpacing">Grid Spacing (mm)</Label>
+                  <Input
+                    type="number"
+                    id="gridSpacing"
+                    name="gridSpacing"
+                    placeholder="Enter grid spacing"
+                    value={formData.gridSpacing}
+                    onChange={handleChange}
+                    required
+                  />
+                </div>
+
+                {/* Submit Button */}
+                <div className="flex flex-row items-center justify-center space-x-4 mt-4">
+                  <Button type="submit" variant="default" className="px-3 py-1">
+                    Take Image
+                  </Button>
+
+                  {showSaveButton && (
+                    <Button variant="destructive" className="px-3 py-1" onClick={saveImage}>
+                      Save Image
+                    </Button>
+                  )}
+                </div>
+              </form>
             </CardContent>
             <CardFooter>
               <div className="flex flex-row items-center justify-center space-x-4">
