@@ -18,15 +18,16 @@ export default function Home() {
   const [switchStates, setSwitchStates] = useState<boolean[]>([]);
   const [piStatuses, setPiStatuses] = useState<ClientSidePiStatus[]>([]);
   const [username, setUsername] = useState("");
+  const [isAlreadyFetching, setAlreadyFetching] = useState<boolean>(false);
   const [IPAddress, setIPAddress] = useState("");
   const [password, setPassword] = useState("");
   const [cameraModel, setCameraModel] = useState("");
   const [isConnecting, setIsConnecting] = useState<Record<string, boolean>>({}); // Hashmap
 
-  const fetchPiStatuses = async () => {
+  const fetchPiStatuses = async (isAlreadyFetching: boolean) => {
     try {
       console.log("Fetching Pi Statuses...")
-      const piArray = await getPiStatuses();
+      const piArray = await getPiStatuses(isAlreadyFetching);
       setPiStatuses(piArray);
       setSwitchStates(() =>
         piArray.map((pi) =>
@@ -52,8 +53,10 @@ export default function Home() {
   };
 
   useEffect(() => {
-    fetchPiStatuses(); // Initial fetch
-    const intervalId = setInterval(fetchPiStatuses, 5000); // Fetch every 5 seconds
+    fetchPiStatuses(false);
+    const intervalId =  setInterval(() => {
+      fetchPiStatuses(isAlreadyFetching); // Fetch every 5 seconds
+    }, 5000); 
   
     return () => {
       clearInterval(intervalId); // Cleanup on unmount
@@ -87,7 +90,6 @@ export default function Home() {
           <p className="min-w-[100px] text-center">
             {isConnecting[pi.username] ? "Connecting..." : pi.connectionStatus ? "Connected" : "Disconnected"}
           </p>
-
           {/* Delete button */}
           <button
             onClick={() => handleDelete(pi.username, index)}
@@ -107,13 +109,16 @@ export default function Home() {
         return newStates;
     });
 
+    setAlreadyFetching(true);
     try {
         let response;
         if (checked) {
+
             setIsConnecting((prevStates) => ({
               ...prevStates,
               [pi.username]: true,
             }));
+            
             response = await fetch(`${BACKEND_URL}/connect_over_ssh/${pi.username}`, {
                 method: "POST",
                 body: JSON.stringify({ enabled: true }),
@@ -144,7 +149,9 @@ export default function Home() {
         });
     } catch (error) {
         console.error("Error updating SSH connection:", error);
-    };
+    } finally {
+      setAlreadyFetching(false);
+    }
 };
 
 // Handle deletion of a Pi
@@ -153,6 +160,7 @@ const handleDelete = async (username: string, index: number) => {
   const isConfirmed = window.confirm(`Are you sure you want to delete the "${username}" configuration?`);
   if (isConfirmed) {
     try {
+      setAlreadyFetching(true);
       const response = await fetch(`${BACKEND_URL}/remove_pi_${username}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -165,13 +173,15 @@ const handleDelete = async (username: string, index: number) => {
         // If i = index of deleted pi, it is excluded from the filtered arrays...
         setPiStatuses((prevPiStatuses) => prevPiStatuses.filter((_, i) => i !== index));
         setSwitchStates((prevStates) => prevStates.filter((_, i) => i !== index));
-        fetchPiStatuses(); // Update div containing switches
 
       } else {
         console.error("Failed to delete the configured pi");
       }
     } catch (error) {
       console.error("Error:", error);
+    } finally {
+      setAlreadyFetching(false);
+      fetchPiStatuses(false);
     }
   }
 };
@@ -188,6 +198,7 @@ const handleSubmit = async (e: React.FormEvent) => {
   };
 
   try {
+    setAlreadyFetching(true);
     const response = await fetch(`${BACKEND_URL}/add_pi`, {
       method: "POST",
       body: JSON.stringify(formData), // This is data sent to the backend
@@ -202,13 +213,14 @@ const handleSubmit = async (e: React.FormEvent) => {
       setIPAddress("");
       setPassword("");
       setCameraModel("");
-
-      fetchPiStatuses();
     } else {
       console.error("Failed to configure Pi");
     }
   } catch (error) {
     console.error("Error submitting form:", error);
+  } finally {
+    setAlreadyFetching(false);
+    fetchPiStatuses(false);
   }
 };
 

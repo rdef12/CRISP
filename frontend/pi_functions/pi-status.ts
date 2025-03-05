@@ -8,8 +8,10 @@ export interface ClientSidePiStatus {
 
   const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND
   
-  export const getPiStatuses = async (): Promise<ClientSidePiStatus[]> => {
+  export const getPiStatuses = async (isAlreadyFetching: boolean = false): Promise<ClientSidePiStatus[]> => {
     try {
+      if (!isAlreadyFetching) {
+      }
       const response = await fetch(`${BACKEND_URL}/get_raspberry_pi_statuses`, {
         method: "GET",
         cache: "no-cache", // Bypass the cache
@@ -18,6 +20,8 @@ export interface ClientSidePiStatus {
     } catch (error) {
       console.error("Error fetching Pi statuses:", error);
       return [];
-    }
+    } 
   };
+
+
   
