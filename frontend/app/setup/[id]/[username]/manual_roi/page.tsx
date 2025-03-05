@@ -4,13 +4,8 @@ import { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { useParams } from 'next/navigation';
 import ROISelectionTool from './ROISelectionTool';
-
-export interface ImageSettings {
-    filename: string;
-    gain: number;
-    timeDelay: number;
-    format: string;
-  }
+import { ImageSettings } from "@/pi_functions/interfaces";
+import { Label } from "@/components/ui/label";
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND
 
@@ -25,11 +20,8 @@ export default function ManualROI() {
     const [imageHeight, setImageHeight] = useState<number>(0);
     const [imageUrl, setImageUrl] = useState<string>("");
 
-    const [formData, setFormData] = useState<ImageSettings>({
-        filename: "",
-        gain: 1,
-        timeDelay: 1,
-        format: "",
+    const [formData, setFormData] = useState({
+        gain: "",
       });
 
       // Updates imageVisible state in local storage when it changes.
@@ -45,7 +37,7 @@ export default function ManualROI() {
         })
           .then((response) => response.json())
           .then((data) => {
-            setImageUrl(data.image_bytes);
+            setImageUrl(`data:image/png;base64,${data.image_bytes}`)
             setImageHeight(data.height);
             setImageWidth(data.width);
           })
@@ -65,23 +57,25 @@ export default function ManualROI() {
 
         e.preventDefault();
             try {
+
+            const requestBody: ImageSettings = {filename: `${username}_scintillator_edge_image`,
+                                                gain: formData.gain,
+                                                timeDelay: 500,
+                                                format: "jpeg"
+            }
+
             const response = await fetch(`${BACKEND_URL}/take_roi_picture/${id}/${username}`, {
                 method: "POST",
-                body: JSON.stringify(formData),
+                body: JSON.stringify(requestBody),
                 headers: { "Content-Type": "application/json" }
             });
             if (response.ok) {
 
                 const data = await response.json();
-                setImageUrl(data.image_bytes)
+                const imageUrl = `data:image/png;base64,${data.image_bytes}`
+                setImageUrl(imageUrl)
                 setImageHeight(data.height)
                 setImageWidth(data.width)
-
-                // const blob = await response.blob();
-                // // Convert the Blob to a URL
-                // const imageUrl = URL.createObjectURL(blob);
-                // setImageUrl(imageUrl);
-
                 setImageVisible(true); // Remove when API call working
             } else {
                 console.log("IMAGE NOT TAKEN")
@@ -111,35 +105,17 @@ export default function ManualROI() {
                       <div>
                         <h3 className="text-xl font-semibold mt-4 mb-4">Image Settings</h3>
                         <form onSubmit={handleSubmit} className="space-y-4">
-                          <Input
-                            type="text"
-                            name="filename"
-                            placeholder="Filename"
-                            value={formData.filename}
-                            onChange={handleChange}
-                            required
-                          />
-                          <Input
-                            type="number"
-                            name="gain"
-                            placeholder="Gain (default=1)"
-                            value={formData.gain}
-                            onChange={handleChange}
-                          />
-                          <Input
-                            type="number"
-                            name="timeDelay"
-                            placeholder="Time Delay [ms] (default=1000)"
-                            value={formData.timeDelay}
-                            onChange={handleChange}
-                          />
-                          <Input
-                            type="text"
-                            name="format"
-                            placeholder="File format (default=raw)"
-                            value={formData.format}
-                            onChange={handleChange}
-                          />
+                          <div className="flex flex-col space-y-2">
+                            <Label className="text-green-500" htmlFor="gain">Gain</Label>
+                            <Input
+                              type="number"
+                              id="gain"
+                              name="gain"
+                              placeholder="Enter gain value"
+                              value={formData.gain}
+                              onChange={handleChange}
+                            />
+                          </div>
                           <button
                             type="submit"
                             className="w-full bg-green-500 text-white py-2 px-4 rounded-md hover:bg-green-600 transition duration-200"
@@ -166,7 +142,7 @@ export default function ManualROI() {
                   <div className="flex-grow p-4 bg-white shadow-lg rounded-lg">
                     {imageVisible && imageHeight && imageWidth ? (
                       <ROISelectionTool
-                        image={`data:image/jpeg;base64,${imageUrl}`}
+                        image={imageUrl}
                         width={imageWidth}
                         height={imageHeight}
                         username={username}

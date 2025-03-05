@@ -108,11 +108,6 @@ def stream_api(username: str):
     return StreamingResponse(stream_video_feed(username),
                              media_type="multipart/x-mixed-replace; boundary=frame")
     
-    
-class ImageResponse(BaseModel):
-    image_bytes: str
-    width: int
-    height: int
 
 @app.post("/take_roi_picture/{setup_id}/{username}")
 def take_roi_picture_api(setup_id: str, username: str, imageSettings: ImageSettings):
@@ -124,15 +119,17 @@ def take_roi_picture_api(setup_id: str, username: str, imageSettings: ImageSetti
     
     # only temp encoding while using mock image
     with open("/code/temp_images/scintillator_top_image.jpeg", "rb") as img_file:
-        encoded_image = base64.b64encode(img_file.read()).decode("utf-8")
+        photo_bytes = img_file.read()
 
-    height, width = get_image_bytestring_frame_size(encoded_image)
+    height, width = get_image_bytestring_frame_size(photo_bytes)
     
-    return ImageResponse(
-    image_bytes=encoded_image,
-    width=width,
-    height=height
-)
+    response = {
+            "image_bytes": base64.b64encode(photo_bytes).decode('utf-8'),
+            "width": width,
+            "height": height
+        }
+    return JSONResponse(content=response)
+
     
 @app.get("/load_roi_image/{setup_id}/{username}")
 def load_roi_image_api(setup_id: str, username: str):
@@ -142,16 +139,17 @@ def load_roi_image_api(setup_id: str, username: str):
     # photo_id = scintillator_edges_photo_id(camera_id, setup_id)
     # image_bytes = cdi.get_photo_from_id(photo_id)
     
+    # only temp encoding while using mock image
     with open("/code/temp_images/scintillator_top_image.jpeg", "rb") as img_file:
-        encoded_image = base64.b64encode(img_file.read()).decode("utf-8")
+        photo_bytes = img_file.read()
 
-    height, width = get_image_bytestring_frame_size(encoded_image)
-    
-    return ImageResponse(
-    image_bytes=encoded_image,
-    width=width,
-    height=height
-    )
+    height, width = get_image_bytestring_frame_size(photo_bytes)
+    response = {
+            "image_bytes": base64.b64encode(photo_bytes).decode('utf-8'),
+            "width": width,
+            "height": height
+        }
+    return JSONResponse(content=response)
     
 
 @app.get("/get_setups")
