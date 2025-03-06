@@ -14,6 +14,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useRouter, useParams, notFound  } from "next/navigation";
 import { CalibrationImageSettings, CalibrationFormProps } from "@/pi_functions/interfaces";
+import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
+  } from "@/components/ui/popover"
 
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND
@@ -35,7 +40,16 @@ export default function HomograpyCalibration() {
         xGridDimension: "",
         yGridDimension: "",
         gridSpacing: "",
+        xGridDimensionError: "",
+        yGridDimensionError: ""
       });
+
+      const areGridDimensionsComplete = (formData: CalibrationFormProps): boolean => {
+        return !!formData.xGridDimension && 
+               !!formData.yGridDimension && 
+               !!formData.xGridDimensionError && 
+               !!formData.yGridDimensionError;
+    };
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
@@ -50,6 +64,7 @@ export default function HomograpyCalibration() {
           setShowImage(false);
           setShowSaveButton(false);
           setIsLoading(true);
+
           const requestBody: CalibrationImageSettings = {
             filename: "temp_distortion_image", 
             gain: formData.gain,
@@ -59,7 +74,11 @@ export default function HomograpyCalibration() {
               parseInt(formData.xGridDimension.toString()), 
               parseInt(formData.yGridDimension.toString())
             ],
-            calibrationTileSpacing: parseFloat(formData.gridSpacing.toString())
+            calibrationTileSpacing: parseFloat(formData.gridSpacing.toString()),
+            calibrationGridSizeErrors: [
+                parseInt(formData.xGridDimensionError!.toString()), // ! is used to assert non-null for optional prop
+                parseInt(formData.yGridDimensionError!.toString()) // ! is used to assert non-null for optional prop
+              ]
           };
           
           const response = await fetch(`${BACKEND_URL}/take_homography_calibration_image/${username}`, {
@@ -110,11 +129,15 @@ export default function HomograpyCalibration() {
                         </CardHeader>
                         <CardContent className="space-y-4">
                         <form
-                                onSubmit={(e) => {
-                                e.preventDefault();        // Prevent default form submission
-                                takeImage(formData);       // Call your function to handle image capture
-                                }}
-                                className="space-y-4"        // Keeps the same spacing as before
+                            onSubmit={(e) => {
+                            e.preventDefault();        // Prevent default form submission
+                            if (!areGridDimensionsComplete(formData)) {
+                                alert("Please fill in all grid dimensions.");
+                                return;
+                            }
+                            takeImage(formData);       // Call your function to handle image capture
+                            }}
+                            className="space-y-4"        // Keeps the same spacing as before
                             >
                                 <div className="flex flex-col space-y-2">
                                 <Label className="text-green-500" htmlFor="gain">Gain</Label>
@@ -128,30 +151,68 @@ export default function HomograpyCalibration() {
                                     required
                                 />
                                 </div>
+                                
                                 <div className="flex flex-col space-y-2">
-                                <Label className="text-green-500" htmlFor="xGridDimension">X Grid Dimension</Label>
-                                <Input
-                                    type="number"
-                                    id="xGridDimension"
-                                    name="xGridDimension"
-                                    placeholder="Enter x grid dimension"
-                                    value={formData.xGridDimension}
-                                    onChange={handleChange}
-                                    required
-                                />
+                                <Label className="text-green-500 mb-2" htmlFor="xGridDimension">Grid Dimensions</Label>
+                                    <Popover>
+                                        <PopoverTrigger asChild>
+                                            <Button variant="outline">
+                                                Enter Grid Dimensions
+                                            </Button>
+                                        </PopoverTrigger>
+                                        <PopoverContent>
+                                            <div className="flex flex-col space-y-4">
+                                            <Label className="mt-2" htmlFor="xGridDimension">Horizontal Grid Dimensions</Label>
+                                            <Input
+                                                type="number"
+                                                id="xGridDimension"
+                                                name="xGridDimension"
+                                                placeholder="Enter horizontal dimensions (mm)"
+                                                value={formData.xGridDimension}
+                                                onChange={handleChange}
+                                                required
+                                            />
+                                            </div>
+                                            <div className="flex flex-col space-y-4">
+                                            <Label className="mt-2" htmlFor="xGridDimensionError">Horizontal Grid Dimensions Error</Label>
+                                            <Input
+                                                type="number"
+                                                id="xGridDimensionError"
+                                                name="xGridDimensionError"
+                                                placeholder="Enter horizontal dimension error (mm)"
+                                                value={formData.xGridDimensionError}
+                                                onChange={handleChange}
+                                                required
+                                            />
+                                            </div>
+                                            <div className="flex flex-col space-y-2">
+                                            <Label className="mt-2" htmlFor="yGridDimension">Vertical Grid Dimensions</Label>
+                                            <Input
+                                                type="number"
+                                                id="yGridDimension"
+                                                name="yGridDimension"
+                                                placeholder="Enter vertical dimensions (mm)"
+                                                value={formData.yGridDimension}
+                                                onChange={handleChange}
+                                                required
+                                            />
+                                            </div>
+                                            <div className="flex flex-col space-y-4">
+                                            <Label className="mt-2" htmlFor="yGridDimensionError">Vertical Grid Dimensions Error</Label>
+                                            <Input
+                                                type="number"
+                                                id="yGridDimensionError"
+                                                name="yGridDimensionError"
+                                                placeholder="Enter vertical dimension error (mm)"
+                                                value={formData.yGridDimensionError}
+                                                onChange={handleChange}
+                                                required
+                                            />
+                                            </div>
+                                        </PopoverContent>
+                                    </Popover>
                                 </div>
-                                <div className="flex flex-col space-y-2">
-                                <Label className="text-green-500" htmlFor="yGridDimension">Y Grid Dimension</Label>
-                                <Input
-                                    type="number"
-                                    id="yGridDimension"
-                                    name="yGridDimension"
-                                    placeholder="Enter y grid dimension"
-                                    value={formData.yGridDimension}
-                                    onChange={handleChange}
-                                    required
-                                />
-                                </div>
+
                                 <div className="flex flex-col space-y-2">
                                 <Label className="text-green-500" htmlFor="gridSpacing">Grid Spacing (mm)</Label>
                                 <Input

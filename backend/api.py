@@ -108,11 +108,15 @@ def take_distortion_calibration_image_api(username: str, image_count: int,
 @app.post("/take_homography_calibration_image/{username}")
 def take_homography_calibration_image_api(username: str, homographyImageSettings: CalibrationImageSettings):
     context = PhotoContext.GENERAL
+    
+    print(f"\n\n\n SETTINGS: \n {homographyImageSettings.dict()} \n\n\n")
+    
     photo_bytes, _ = take_single_image(username, homographyImageSettings.to_image_settings(), context)
+    
     if photo_bytes:
-        image = load_image_byte_string_to_opencv(photo_bytes)
-        
-        # Add actually results soon!
+    #     image = load_image_byte_string_to_opencv(photo_bytes)
+    #       Add actual results soon!
+    #       See frontend for all passed in props.
         
         response = {
             "results": False,

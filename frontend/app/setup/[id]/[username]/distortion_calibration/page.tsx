@@ -13,6 +13,11 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
 import { useRouter, useParams } from "next/navigation"
 import { CalibrationImageSettings, CalibrationFormProps } from "@/pi_functions/interfaces";
 import { getPiStatus } from "@/pi_functions/pi-status";
@@ -206,7 +211,11 @@ export default function DistortionPage() {
               <form
                 id="calibrationForm"
                 onSubmit={(e) => {
-                  e.preventDefault();        // Prevent default form submission
+                  e.preventDefault(); // Prevent default form submission
+                  if (!formData.xGridDimension || !formData.yGridDimension) {
+                    alert("Please fill in all grid dimensions.");
+                    return;
+                }
                   takeImage(formData);       // Call your function to handle image capture
                 }}
                 className="space-y-4"        // Keeps the same spacing as before
@@ -224,28 +233,40 @@ export default function DistortionPage() {
                   />
                 </div>
                 <div className="flex flex-col space-y-2">
-                  <Label className="text-green-500" htmlFor="xGridDimension">X Grid Dimension</Label>
-                  <Input
-                    type="number"
-                    id="xGridDimension"
-                    name="xGridDimension"
-                    placeholder="Enter x grid dimension"
-                    value={formData.xGridDimension}
-                    onChange={handleChange}
-                    required
-                  />
-                </div>
-                <div className="flex flex-col space-y-2">
-                  <Label className="text-green-500" htmlFor="yGridDimension">Y Grid Dimension</Label>
-                  <Input
-                    type="number"
-                    id="yGridDimension"
-                    name="yGridDimension"
-                    placeholder="Enter y grid dimension"
-                    value={formData.yGridDimension}
-                    onChange={handleChange}
-                    required
-                  />
+                <Label className="text-green-500 mb-2" htmlFor="xGridDimension">Grid Dimensions</Label>
+                    <Popover>
+                        <PopoverTrigger asChild>
+                            <Button variant="outline">
+                                Enter Grid Dimensions
+                            </Button>
+                        </PopoverTrigger>
+                        <PopoverContent>
+                            <div className="flex flex-col space-y-4">
+                            <Label className="mt-2" htmlFor="xGridDimension">Horizontal Grid Dimensions</Label>
+                            <Input
+                                type="number"
+                                id="xGridDimension"
+                                name="xGridDimension"
+                                placeholder="Enter horizontal dimensions"
+                                value={formData.xGridDimension}
+                                onChange={handleChange}
+                                required
+                            />
+                            </div>
+                            <div className="flex flex-col space-y-2">
+                            <Label className="mt-2" htmlFor="yGridDimension">Vertical Grid Dimensions</Label>
+                            <Input
+                                type="number"
+                                id="yGridDimension"
+                                name="yGridDimension"
+                                placeholder="Enter vertical dimensions"
+                                value={formData.yGridDimension}
+                                onChange={handleChange}
+                                required
+                            />
+                            </div>
+                        </PopoverContent>
+                    </Popover>
                 </div>
                 <div className="flex flex-col space-y-2">
                   <Label className="text-green-500" htmlFor="gridSpacing">Grid Spacing (mm)</Label>

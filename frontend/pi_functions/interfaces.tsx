@@ -8,6 +8,7 @@ export interface ImageSettings {
 export interface CalibrationImageSettings extends ImageSettings {
   calibrationGridSize: [number, number]; // Tuple for grid size (rows, columns)
   calibrationTileSpacing: number; // Spacing between tiles in mm
+  calibrationGridSizeErrors?: [number, number]; // optional prop
 }
 
 export interface CalibrationFormProps {
@@ -15,4 +16,6 @@ export interface CalibrationFormProps {
   xGridDimension: number | "";
   yGridDimension: number | "";
   gridSpacing: number | "";
+  xGridDimensionError?: number | ""; // optional prop
+  yGridDimensionError?: number | ""; // optional prop
 }

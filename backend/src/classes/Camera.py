@@ -5,8 +5,8 @@ delay between consecutive images as possible. At the end of the image capturing,
 
 RETURN METADATA AND IMAGE TO DATABASE - for now, save to folder in frontend/public/images/cam_test
 """
-from pydantic import BaseModel, Field
-from typing import List
+from pydantic import BaseModel, Field, validator
+from typing import List, Optional, Literal
 import socket
 import paramiko
 import cv2
@@ -32,20 +32,32 @@ class ImageSettings(BaseModel):
     """
     Possible extra settings:
     shutter speed/exposure time/contrast/brightness/q/ISO
-    
-    --raw flag will be added to libcamera command if format == "raw"
-    For streaming, might want a different model.
     """
-    filename: str = Field(...) # without file extension!!
-    gain: int = Field(1, ge=0, example=1)
-    timeDelay: int = Field(1000, ge=0, example=1000) # Given in milliseconds
-    format: str = Field("raw", example="png") # Could use Literal to validate inputted formats (or just make a drop-down)
+    filename: str = Field(..., min_length=1, description="Filename without extension.")
+    gain: int = Field(1, gt=0, example=1)
+    timeDelay: int = Field(1000, ge=0, example=1000, description="Time delay in milliseconds") 
+    format: Literal["png", "jpg", "raw", "jpeg"] = Field("jpeg", example="png")
     meta_data_format: str = "dng" #TODO Can be made variable if need be
     
 
 class CalibrationImageSettings(ImageSettings):
-    calibrationGridSize: List[int] = Field(..., description="Grid size as (rows, columns).")
+    calibrationGridSize: List[int] = Field(..., min_items=2, max_items=2, description="Grid size as (rows, columns).")
     calibrationTileSpacing: float = Field(..., gt=0, description="Spacing between tiles in mm.")
+    calibrationGridSizeErrors: Optional[List[int]] = Field(None, description="Grid Spacing Errors in mm.")
+    
+     # Validator to ensure grid dimensions are greater than 0
+    @validator("calibrationGridSize", each_item=True)
+    def check_positive_grid_dimensions(cls, v):
+        if v <= 0:
+            raise ValueError("Grid dimensions must be greater than 0.")
+        return v
+
+    # Validator to ensure grid size errors are greater than 0 if provided
+    @validator("calibrationGridSizeErrors", each_item=True)
+    def check_positive_errors(cls, v):
+        if v <= 0:
+            raise ValueError("Grid size errors must be greater than 0.")
+        return v
     
     def to_image_settings(self) -> ImageSettings:
         return ImageSettings(
@@ -56,6 +68,7 @@ class CalibrationImageSettings(ImageSettings):
             meta_data_format=self.meta_data_format,
         )
     
+
 class Camera():
   
   def __init__(self, username, cameraModel, ssh_client):
