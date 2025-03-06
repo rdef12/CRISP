@@ -1,5 +1,6 @@
 # Gets image from Docker hub
-FROM python:3.10-slim
+# CHANGED PYTHON VERSION AFTER SPHINX INCLUDED
+FROM python:3.11-slim 
 
 WORKDIR /code
 

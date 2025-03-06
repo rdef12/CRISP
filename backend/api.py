@@ -1,6 +1,7 @@
 import uvicorn
 from fastapi import FastAPI, Response
 from fastapi.responses import StreamingResponse, FileResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
@@ -32,6 +33,11 @@ async def lifespan(app: FastAPI):
     print("API closed")
 
 app = FastAPI(lifespan=lifespan)
+
+# MOUNTING THE SPHINX DOCS FOR ACCESS BY THE FRONTEND
+docs_path = os.path.join(os.path.dirname(__file__), "docs", "_build", "html")
+# Serve the entire docs folder so all files (HTML, CSS, JS, etc.) are accessible
+app.mount("/docs", StaticFiles(directory=docs_path, html=True), name="docs")
 
 app.add_middleware(
     CORSMiddleware,
