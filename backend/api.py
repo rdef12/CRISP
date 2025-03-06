@@ -65,8 +65,12 @@ def get_raspberry_pi_statuses_api():
     response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
     response.headers["Pragma"] = "no-cache"
     response.headers["Expires"] = "0"
-    
     return response
+
+@app.get("/get_pi_status/{username}")
+def get_pi_status_api(username: str):
+    pi_status = get_single_pi_status(username)
+    return JSONResponse(content=pi_status)
 
 @app.post("/connect_over_ssh/{username}")
 def connect_over_ssh_api(username: str):

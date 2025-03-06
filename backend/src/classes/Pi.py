@@ -69,7 +69,7 @@ class Pi:
                 return True
             except (paramiko.SSHException, paramiko.AuthenticationException, socket.error):
                 print(f"\n\n\n Connection to {self.username} is lost. \n\n\n")
-                self.ssh_status = False
+                Pi.delete_pi(self.username)
                 return False
         return False
     

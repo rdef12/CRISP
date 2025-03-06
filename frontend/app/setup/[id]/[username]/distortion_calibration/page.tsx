@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 "use client";
 
 import { useState, useEffect } from "react";
@@ -9,12 +10,12 @@ import {
   Card,
   CardContent,
   CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
 import { useRouter, useParams } from "next/navigation"
 import { CalibrationImageSettings, CalibrationFormProps } from "@/pi_functions/interfaces";
+import { getPiStatus } from "@/pi_functions/pi-status";
 
 // In the future, I would like to import a script to allow
 // latex to be rendered within the browser.
@@ -31,6 +32,7 @@ export default function DistortionPage() {
 
   const [logMessages, setLogMessages] = useState<LogMessage[]>([]);
   const { username = "undefined" } = useParams();
+  const [isAlreadyFetching, setAlreadyFetching] = useState<boolean>(false);
   const [imageUrl, setImageUrl] = useState<string | undefined>(undefined);
   const [isLoading, setIsLoading] = useState(false);
   const [showImage, setShowImage] = useState<boolean>(false);
@@ -43,6 +45,26 @@ export default function DistortionPage() {
     gridSpacing: "",
   });
 
+  useEffect(() => {
+    const intervalId = setInterval(() => {
+      getPiStatus(username.toString(), isAlreadyFetching)
+        .then((status) => {
+          if (!status) {
+            clearInterval(intervalId);
+            alert(`Connection to ${username} failed!`);
+            router.push("/");  // Redirect to "/" after disconnect warning
+          }
+        })
+        .catch((error) => {
+          console.error("Error checking Pi status:", error);
+        });
+    }, 5000);
+  
+    return () => {
+      clearInterval(intervalId); // Cleanup on unmount
+    };
+  }, [isAlreadyFetching]);
+
   const incrementImageCount = () => setImageCount(imageCount + 1);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -53,24 +75,27 @@ export default function DistortionPage() {
     }));
   };
 
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Enter") {
-        takeImage(formData); // Trigger the takeImage function when Enter is pressed
-      }
-    };
+  const handleKeyDown = (e: KeyboardEvent) => {
+    if (e.key === "Enter") {
+      // Find the form element and trigger its submit
+      const form = document.getElementById("calibrationForm") as HTMLFormElement;
+      form?.requestSubmit(); // This will trigger the form's onSubmit handler
+    }
+  };
 
+  useEffect(() => {
     // Add event listener when the component mounts
     window.addEventListener("keydown", handleKeyDown);
-
     // Clean up the event listener when the component unmounts
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
     };
   }, []); // Empty dependency array ensures this runs only once when the component mounts
+  
 
   const takeImage = async (formData: CalibrationFormProps) => {
     try {
+      setAlreadyFetching(true);
       setShowImage(false);
       setShowSaveButton(false);
       setIsLoading(true);
@@ -109,6 +134,7 @@ export default function DistortionPage() {
     catch (error) {
       console.error("Error submitting form:", error); 
     } finally {
+      setAlreadyFetching(false);
       setIsLoading(false);  // Set loading to false after the image is fetched
     }
   };
@@ -178,6 +204,7 @@ export default function DistortionPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <form
+                id="calibrationForm"
                 onSubmit={(e) => {
                   e.preventDefault();        // Prevent default form submission
                   takeImage(formData);       // Call your function to handle image capture
@@ -247,21 +274,6 @@ export default function DistortionPage() {
                 </div>
               </form>
             </CardContent>
-            <CardFooter>
-              <div className="flex flex-row items-center justify-center space-x-4">
-                <Button variant="default" className="px-3 py-1" 
-                onClick={() => takeImage(formData)}
-                >
-                  Take Image
-                </Button>
-
-                {showSaveButton && (
-                  <Button variant="destructive" className="px-3 py-1" onClick={saveImage}>
-                    Save Image
-                  </Button>
-                )}
-              </div>
-            </CardFooter>
           </Card>
 
           {/* Top Right Cell - Image Log Card */}

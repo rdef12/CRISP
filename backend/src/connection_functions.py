@@ -32,7 +32,11 @@ def remove_configured_pi(username: str): # Change to interact with database
     cdi.delete_camera_with_username(username)    
     return None
 
-
+def get_single_pi_status(username: str):
+    if connected_pi := Pi.get_pi_with_username(username): 
+            return connected_pi.check_ssh_connection()
+    return False
+     
 def get_raspberry_pi_statuses():
 
     pis_in_database = Pi.parse_database()
