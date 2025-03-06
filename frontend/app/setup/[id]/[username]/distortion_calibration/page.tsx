@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import Image from 'next/image';  // Import the Next.js Image component
+import Image from 'next/image';
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -95,10 +95,10 @@ export default function DistortionPage() {
 
   const takeImage = async (formData: CalibrationFormProps) => {
     try {
+      setIsLoading(true);
       setAlreadyFetching(true);
       setShowImage(false);
       setShowSaveButton(false);
-      setIsLoading(true);
       const requestBody: CalibrationImageSettings = {filename: "temp_distortion_image", 
                                                     gain: formData.gain,
                                                     timeDelay: 500,
