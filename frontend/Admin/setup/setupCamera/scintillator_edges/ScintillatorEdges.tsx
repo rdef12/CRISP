@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { useParams } from 'next/navigation';
-import ROISelectionTool from '../../../app/setup/[id]/[username]/manual_roi/ROISelectionTool';
+import ROISelectionTool from '../../../../app/setup/[id]/[username]/manual_roi/ROISelectionTool';
 import { ImageSettings } from "@/pi_functions/interfaces";
 import { Label } from "@/components/ui/label";
 

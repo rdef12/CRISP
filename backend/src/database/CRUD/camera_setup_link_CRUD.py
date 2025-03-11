@@ -1,8 +1,12 @@
+from datetime import datetime
+import pytz
 from src.database.database import engine
 from sqlmodel import Session, select, PickleType
 from sqlalchemy.orm.exc import NoResultFound
 
-from src.database.models import CameraSetupLink
+from src.database.models import CameraSetupLink, Setup
+from src.classes.JSON_request_bodies import request_bodies as rb
+
 
 # Create
 
@@ -16,9 +20,14 @@ def add_camera_to_setup(setup_id: int, camera_id:int):
     with Session(engine) as session:
         session.add(camera_setup_link)
         session.commit()
-        return {"message": f"Camera added to setup."}
+        return {"message": f"Camera added to setup.",
+                "id": camera_setup_link.id}
 
 # Read
+
+def get_setup_camera_by_id(id: int) -> CameraSetupLink:
+    with Session(engine) as session:
+        return session.get(CameraSetupLink, id)
 
 def get_far_face_calibration_photo(camera_id:int, setup_id:int) -> bytes:
     with Session(engine) as session:
@@ -147,58 +156,58 @@ def get_scintillator_edges_photo_id(camera_id:int, setup_id:int) -> bytes:
 
 # Update
 
-def update_far_face_camera_settings_link(camera_id:int, setup_id:int, camera_settings_id:int):
-    try:
-        with Session(engine) as session:
-            statement = select(CameraSetupLink).where(CameraSetupLink.camera_id == camera_id).where(CameraSetupLink.setup_id == setup_id)
-            camera_setup_link = session.exec(statement).one()
-            camera_setup_link.far_face_calibration_photo_camera_settings_link = camera_settings_id
-            session.commit()
-            return {"message": f"Camera settings link updated for camera with id {camera_id} and setup with id {setup_id}."}
-    except NoResultFound:
-        raise ValueError(f"No camera setup link found for camera_id={camera_id} and setup_id={setup_id}.")
-    except Exception as e:
-        raise RuntimeError(f"An error occurred: {str(e)}")
+# def update_far_face_camera_settings_link(camera_id:int, setup_id:int, camera_settings_id:int):
+#     try:
+#         with Session(engine) as session:
+#             statement = select(CameraSetupLink).where(CameraSetupLink.camera_id == camera_id).where(CameraSetupLink.setup_id == setup_id)
+#             camera_setup_link = session.exec(statement).one()
+#             camera_setup_link.far_face_calibration_photo_camera_settings_link = camera_settings_id
+#             session.commit()
+#             return {"message": f"Camera settings link updated for camera with id {camera_id} and setup with id {setup_id}."}
+#     except NoResultFound:
+#         raise ValueError(f"No camera setup link found for camera_id={camera_id} and setup_id={setup_id}.")
+#     except Exception as e:
+#         raise RuntimeError(f"An error occurred: {str(e)}")
 
-def update_far_face_calibration_photo(camera_id:int, setup_id:int, far_face_calibration_photo_bytes: bytes):
-    try:
-        with Session(engine) as session:
-            statement = select(CameraSetupLink).where(CameraSetupLink.camera_id == camera_id).where(CameraSetupLink.setup_id == setup_id)
-            result = session.exec(statement).one()
-            result.far_face_calibration_photo = far_face_calibration_photo_bytes
-            session.commit()
-            return {"message": f"Far face calibration photo updated for camera with id {camera_id} and setup with id {setup_id}."}
-    except NoResultFound:
-        raise ValueError(f"No camera setup link found for camera_id={camera_id} and setup_id={setup_id}.")
-    except Exception as e:
-        raise RuntimeError(f"An error occurred: {str(e)}")
+# def update_far_face_calibration_photo(camera_id:int, setup_id:int, far_face_calibration_photo_bytes: bytes):
+#     try:
+#         with Session(engine) as session:
+#             statement = select(CameraSetupLink).where(CameraSetupLink.camera_id == camera_id).where(CameraSetupLink.setup_id == setup_id)
+#             result = session.exec(statement).one()
+#             result.far_face_calibration_photo = far_face_calibration_photo_bytes
+#             session.commit()
+#             return {"message": f"Far face calibration photo updated for camera with id {camera_id} and setup with id {setup_id}."}
+#     except NoResultFound:
+#         raise ValueError(f"No camera setup link found for camera_id={camera_id} and setup_id={setup_id}.")
+#     except Exception as e:
+#         raise RuntimeError(f"An error occurred: {str(e)}")
 
-def update_near_face_camera_settings_link(camera_id:int, setup_id:int, camera_settings_id:int):
-    try:
-        with Session(engine) as session:
-            statement = select(CameraSetupLink).where(CameraSetupLink.camera_id == camera_id).where(CameraSetupLink.setup_id == setup_id)
-            camera_setup_link = session.exec(statement).one()
-            camera_setup_link.near_face_calibration_photo_camera_settings_link = camera_settings_id
-            session.commit()
-            return {"message": f"Camera settings link updated for camera with id {camera_id} and setup with id {setup_id}."}
-    except NoResultFound:
-        raise ValueError(f"No camera setup link found for camera_id={camera_id} and setup_id={setup_id}.")
-    except Exception as e:
-        raise RuntimeError(f"An error occurred: {str(e)}")
+# def update_near_face_camera_settings_link(camera_id:int, setup_id:int, camera_settings_id:int):
+#     try:
+#         with Session(engine) as session:
+#             statement = select(CameraSetupLink).where(CameraSetupLink.camera_id == camera_id).where(CameraSetupLink.setup_id == setup_id)
+#             camera_setup_link = session.exec(statement).one()
+#             camera_setup_link.near_face_calibration_photo_camera_settings_link = camera_settings_id
+#             session.commit()
+#             return {"message": f"Camera settings link updated for camera with id {camera_id} and setup with id {setup_id}."}
+#     except NoResultFound:
+#         raise ValueError(f"No camera setup link found for camera_id={camera_id} and setup_id={setup_id}.")
+#     except Exception as e:
+#         raise RuntimeError(f"An error occurred: {str(e)}")
     
 
-def update_near_face_calibration_photo(camera_id:int, setup_id:int, near_face_calibration_photo_bytes: bytes):
-    try:
-        with Session(engine) as session:
-            statement = select(CameraSetupLink).where(CameraSetupLink.camera_id == camera_id).where(CameraSetupLink.setup_id == setup_id)
-            result = session.exec(statement).one()
-            result.near_face_calibration_photo = near_face_calibration_photo_bytes
-            session.commit()
-            return {"message": f"Near face calibration photo updated for camera with id {camera_id} and setup with id {setup_id}."}
-    except NoResultFound:
-        raise ValueError(f"No camera setup link found for camera_id={camera_id} and setup_id={setup_id}.")
-    except Exception as e:
-        raise RuntimeError(f"An error occurred: {str(e)}")
+# def update_near_face_calibration_photo(camera_id:int, setup_id:int, near_face_calibration_photo_bytes: bytes):
+#     try:
+#         with Session(engine) as session:
+#             statement = select(CameraSetupLink).where(CameraSetupLink.camera_id == camera_id).where(CameraSetupLink.setup_id == setup_id)
+#             result = session.exec(statement).one()
+#             result.near_face_calibration_photo = near_face_calibration_photo_bytes
+#             session.commit()
+#             return {"message": f"Near face calibration photo updated for camera with id {camera_id} and setup with id {setup_id}."}
+#     except NoResultFound:
+#         raise ValueError(f"No camera setup link found for camera_id={camera_id} and setup_id={setup_id}.")
+#     except Exception as e:
+#         raise RuntimeError(f"An error occurred: {str(e)}")
 
 
 def update_far_face_calibration_pattern_size(camera_id:int, setup_id:int, far_face_calibration_pattern_size: tuple[int, int]):
@@ -357,5 +366,76 @@ def update_vertical_scintillator_limits(camera_id:int, setup_id:int, vertical_sc
     except Exception as e:
         raise RuntimeError(f"An error occurred: {str(e)}")
     
+def patch_setup_camera(setup_camera_id: int, patch: rb.SetupCameraPatchRequest):
+    try:
+        with Session(engine) as session:
+            statement = select(CameraSetupLink).where(CameraSetupLink.id == setup_camera_id)
+            result = session.exec(statement).one()
+            
+        # Far Face
+            if patch.far_face_calibration_pattern_size is not None:
+                result.far_face_calibration_pattern_size = patch.far_face_calibration_pattern_size
+            if patch.far_face_calibration_pattern_type is not None:
+                result.far_face_calibration_pattern_type = patch.far_face_calibration_pattern_type
+            if patch.far_face_calibration_spacing is not None:
+                result.far_face_calibration_spacing = patch.far_face_calibration_spacing
+            if patch.far_face_calibration_spacing_unc is not None:
+                result.far_face_calibration_spacing_unc = patch.far_face_calibration_spacing_unc
+            if patch.far_face_calibration_photo_id is not None:
+                result.far_face_calibration_photo_id = patch.far_face_calibration_photo_id
+            
+            if patch.far_x_offset is not None:
+                print("\n\n\n\n\n\n\n ABOUT TO PATCH THE FAR X OFFSET \n\n\n\n\n")
+                result.far_x_offset = patch.far_x_offset
+            if patch.far_y_offset is not None:
+                result.far_y_offset = patch.far_y_offset
+            if patch.far_z_offset is not None:
+                result.far_z_offset = patch.far_z_offset
+            if patch.far_x_offset_unc is not None:
+                result.far_x_offset_unc = patch.far_x_offset_unc
+            if patch.far_y_offset_unc is not None:
+                result.far_y_offset_unc = patch.far_y_offset_unc
+            if patch.far_z_offset_unc is not None:
+                result.far_z_offset_unc = patch.far_z_offset_unc
+        # Near face
+            if patch.near_face_calibration_pattern_size is not None:
+                result.near_face_calibration_pattern_size = patch.near_face_calibration_pattern_size
+            if patch.near_face_calibration_pattern_type is not None:
+                result.near_face_calibration_pattern_type = patch.near_face_calibration_pattern_type
+            if patch.near_face_calibration_spacing is not None:
+                result.near_face_calibration_spacing = patch.near_face_calibration_spacing
+            if patch.near_face_calibration_spacing_unc is not None:
+                result.near_face_calibration_spacing_unc = patch.near_face_calibration_spacing_unc
+            if patch.near_face_calibration_photo_id is not None:
+                result.near_face_calibration_photo_id = patch.near_face_calibration_photo_id
+            
+            if patch.near_x_offset is not None:
+                result.near_x_offset = patch.near_x_offset
+            if patch.near_y_offset is not None:
+                result.near_y_offset = patch.near_y_offset
+            if patch.near_z_offset is not None:
+                result.near_z_offset = patch.near_z_offset
+            if patch.near_x_offset_unc is not None:
+                result.near_x_offset_unc = patch.near_x_offset_unc
+            if patch.near_y_offset_unc is not None:
+                result.near_y_offset_unc = patch.near_y_offset_unc
+            if patch.near_z_offset_unc is not None:
+                result.near_z_offset_unc = patch.near_z_offset_unc
+        # Scintillator edges
+            if patch.scintillator_edges_photo_id is not None:
+                result.scintillator_edges_photo_id = patch.scintillator_edges_photo_id
+            if patch.horizontal_scintillator_limits is not None:
+                result.horizontal_scintillator_limits = patch.horizontal_scintillator_limits
+            if patch.vertical_scintillator_limits is not None:
+                result.vertical_scintillator_limits = patch.vertical_scintillator_limits
+            setup_statement = select(Setup).where(CameraSetupLink.id == setup_camera_id)
+            setup_result = session.exec(setup_statement).one()
+            setup_result.date_last_edited = datetime.now(pytz.utc)
+            session.commit()
+            return f"Successfully patched parameters of setup camera with id: {setup_camera_id}"
+    except NoResultFound:
+        raise ValueError(f"No camera setup link found for setup_camera_id: {setup_camera_id}.")
+    except Exception as e:
+        raise RuntimeError(f"An error occurred: {str(e)}")
 
 # Delete

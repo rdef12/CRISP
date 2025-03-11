@@ -36,7 +36,7 @@ services: # services listed are connected using the compose file
       - POSTGRES_URL=postgresql://postgres:password@database:5432/crisp_database #added from docker docs ai
     develop:
       watch:
-        - action: sync+restart
+        - action: rebuild #sync+restart
           path: ./backend
           target: /code
     depends_on:

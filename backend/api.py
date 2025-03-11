@@ -17,6 +17,9 @@ from src.connection_functions import *
 from src.classes.Camera import ImageSettings, PhotoContext, CalibrationImageSettings
 from src.calibration_functions import ROI, determine_frame_size
 from src.distortion_correction import distortion_calibration_test_for_gui
+from src.routers import setup as setup_router
+from src.routers import setup_camera as setup_camera_router
+from src.routers import camera as camera_router
 
 from src.classes.JSON_request_bodies import request_bodies as rb
 
@@ -45,7 +48,13 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["Content-Range"]
 )
+
+app.include_router(setup_router.router)
+app.include_router(setup_camera_router.router)
+app.include_router(camera_router.router)
+
 
 @app.post("/add_pi")
 async def add_pi(pi_config: PiConfig):
