@@ -1,4 +1,4 @@
-// import { Button } from '@/components/ui/button';
+import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import {
   List,
@@ -17,16 +17,15 @@ import {
   SimpleShowLayout,
   NumberInput,
   TextInput,
-  SaveButton,
   DateInput,
-  Button,
-  EditBase,
+  useEditController,
 } from 'react-admin';
 import { Link, useParams } from 'react-router-dom';
 import DistortionPage from './DistortionCalibration';
 import HomograpyCalibration from './HomographyCalibration';
 import ManualROI from './scintillator_edges/ScintillatorEdges';
-import { useState } from 'react';
+import { DialogContent, DialogHeader } from '@/components/ui/dialog';
+import { Dialog, DialogDescription, DialogTitle, DialogTrigger } from '@radix-ui/react-dialog';
 
 
 // export const SetupCameraList = () => {
@@ -140,38 +139,109 @@ export const BoxParametersContent = () => {
 // }
 
 
-export const BoxParameters = () => {
-  const { setupId } = useParams();
-  const [isEditing, setIsEditing] = useState(false);
-  // const redirect = useRedirect();
-  // const record = useRecordContext();  // Get the current record
+// export const BoxParameters = () => {
+//   const { setupId } = useParams();
+//   const [isEditing, setIsEditing] = useState(false);
+//   // const redirect = useRedirect();
+//   // const record = useRecordContext();  // Get the current record
 
-  // if (!record) return null;  // Prevent rendering if no data is available
+//   // if (!record) return null;  // Prevent rendering if no data is available
 
-  return (<div>
-          {isEditing ? (
-            <EditBase resource="setup" id={setupId}>
-              <SimpleForm sanitizeEmptyValues>
-                  <TextInput source="name" />
-                  <DateInput source="date_created" disabled />
-                  <DateInput source="date_last_edited" disabled />
-                  <NumberInput source="block_x_dimension" />
-                  <NumberInput source="block_x_dimension_unc" />
-                  <NumberInput source="block_y_dimension" />
-                  <NumberInput source="block_y_dimension_unc" />
-                  <NumberInput source="block_z_dimension" />
-                  <NumberInput source="block_z_dimension_unc" />
-                  <NumberInput source="block_refractive_index" />
-                  <NumberInput source="block_refractive_index_unc" />
+//   return (<div>
+//           {isEditing ? (
+//             <EditBase resource="setup" id={setupId}>
+//               <SimpleForm sanitizeEmptyValues>
+//                   <TextInput source="name" />
+//                   <DateInput source="date_created" disabled />
+//                   <DateInput source="date_last_edited" disabled />
+//                   <NumberInput source="block_x_dimension" />
+//                   <NumberInput source="block_x_dimension_unc" />
+//                   <NumberInput source="block_y_dimension" />
+//                   <NumberInput source="block_y_dimension_unc" />
+//                   <NumberInput source="block_z_dimension" />
+//                   <NumberInput source="block_z_dimension_unc" />
+//                   <NumberInput source="block_refractive_index" />
+//                   <NumberInput source="block_refractive_index_unc" />
                   
-                  {/* Save and Cancel buttons */}
-                  <SaveButton />
-                  <Button onClick={() => setIsEditing(false)} color="secondary">
-                      <>Cancel</>
-                  </Button>
-              </SimpleForm>
-            </EditBase>
-          ) : (
+//                   {/* Save and Cancel buttons */}
+//                   <SaveButton />
+//                   <Button onClick={() => setIsEditing(false)} color="secondary">
+//                       <>Cancel</>
+//                   </Button>
+//               </SimpleForm>
+//             </EditBase>
+//           ) : (
+//       <ShowBase resource="setup" id={setupId}>
+//               <SimpleShowLayout>
+//                   <TextField source="name" />
+//                   <DateField source="date_created" />
+//                   <DateField source="date_last_edited" />
+//                   <NumberField source="block_x_dimension" />
+//                   <NumberField source="block_x_dimension_unc" />
+//                   <NumberField source="block_y_dimension" />
+//                   <NumberField source="block_y_dimension_unc" />
+//                   <NumberField source="block_z_dimension" />
+//                   <NumberField source="block_z_dimension_unc" />
+//                   <NumberField source="block_refractive_index" />
+//                   <NumberField source="block_refractive_index_unc" />
+
+//                   {/* Edit button switches to form mode */}
+//                   <Button onClick={() => setIsEditing(true)} color="primary" variant="contained">
+//                       <>Edit</>
+//                   </Button>
+//               </SimpleShowLayout>
+//         </ShowBase>
+//           )
+//     }
+//       </div>
+
+//   );
+// };
+
+export const EditBoxParameters = () => {
+  const { setupId } = useParams();
+  console.log("Setup id from useParams: ", setupId)
+  console.log(typeof setupId, setupId); // Check the type and value
+
+  const {  record, save, isPending } = useEditController({ resource: "setup", id: setupId });
+  if (isPending) return null;
+  return (
+    <DialogContent>
+      <DialogHeader>
+        <DialogTitle>Box parameters</DialogTitle>
+        <DialogDescription> Edit the specific parameters of your box setup here. </DialogDescription>
+      </DialogHeader>
+      <SimpleForm record={record} onSubmit={save}>
+        <TextInput source="name" />
+        <DateInput source="date_created" disabled />
+        <DateInput source="date_last_edited" disabled />
+        <NumberInput source="block_x_dimension" />
+        <NumberInput source="block_x_dimension_unc" />
+        <NumberInput source="block_y_dimension" />
+        <NumberInput source="block_y_dimension_unc" />
+        <NumberInput source="block_z_dimension" />
+        <NumberInput source="block_z_dimension_unc" />
+        <NumberInput source="block_refractive_index" />
+        <NumberInput source="block_refractive_index_unc" />
+      </SimpleForm>
+    </DialogContent>
+  )
+}
+
+export const EditBoxParametersButton = () => {
+  return (
+  <Dialog>
+    <DialogTrigger asChild>
+      <Button variant="outline">Edit</Button>
+    </DialogTrigger>
+    <EditBoxParameters />
+  </Dialog>
+  )
+}
+
+export const BoxParameters = () => {
+  const { setupId } = useParams()
+    return (  
       <ShowBase resource="setup" id={setupId}>
               <SimpleShowLayout>
                   <TextField source="name" />
@@ -185,19 +255,11 @@ export const BoxParameters = () => {
                   <NumberField source="block_z_dimension_unc" />
                   <NumberField source="block_refractive_index" />
                   <NumberField source="block_refractive_index_unc" />
-
-                  {/* Edit button switches to form mode */}
-                  <Button onClick={() => setIsEditing(true)} color="primary" variant="contained">
-                      <>Edit</>
-                  </Button>
               </SimpleShowLayout>
+              <EditBoxParametersButton />
         </ShowBase>
-          )
-    }
-      </div>
-
-  );
-};
+    )
+}
 
 export const SetupShow = () => {
   return (
