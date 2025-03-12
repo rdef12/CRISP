@@ -5,12 +5,13 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
-import time
 from datetime import datetime
 import pytz # affected by daylight saving?
 import base64
+from typing import List
 
 
+from src.viewing_functions import *
 from src.network_functions import *
 from src.camera_functions import *
 from src.connection_functions import *
@@ -208,4 +209,24 @@ def save_scintillator_edges_api(setup_id, username, submittedROI: ROI):
     cdi.update_horizontal_scintillator_scintillator_limits(camera_id, setup_id, (submittedROI.hStart, submittedROI.hEnd))
     cdi.update_vertical_scintillator_limits(camera_id, setup_id, (submittedROI.vStart, submittedROI.vEnd))
     return {"message": "ROI boundaries saved"}
+
+
+@app.post("/multiple_picture_test")
+def multiple_picture_test_api(username_list: List[str]):
+    context = PhotoContext.GENERAL
+    
+    # DEFINE BASIC IMAGESETTINGS HERE AS DEMO
+    demo_settings = [ImageSettings(filename="multiple_image_test", gain=1, timeDelay=500, format="jpeg")] * len(username_list)
+    output = take_multiple_images(username_list, demo_settings, context)
+    
+    photo_bytestring_list = list(output[:, 0]) # Slice this to get just an array of photobytes.
+    
+    # for photo, username in zip(photo_bytestring_list, username_list):
+    #     open_cv_image = load_image_byte_string_to_opencv(photo)
+    #     show_image_in_window(username,  open_cv_image)
+    
+    encoded_images = [base64.b64encode(photo).decode('utf-8') for photo in photo_bytestring_list]
+    response = {"images": encoded_images}
+    return JSONResponse(content=response)
+    
     

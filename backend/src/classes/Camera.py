@@ -65,7 +65,7 @@ class CalibrationImageSettings(ImageSettings):
             gain=self.gain,
             timeDelay=self.timeDelay,
             format=self.format,
-            meta_data_format=self.meta_data_format,
+            meta_data_format=self.meta_data_format
         )
     
 
@@ -171,7 +171,7 @@ class Camera():
         try:
             print("\n\n\n\n\n I will try to create the file")
             
-            raw = "--raw" #raw = "" #changed for testing
+            # raw = "--raw" #raw = "" #changed for testing
             if imageSettings.format == "raw":
                 raw = "--raw"
             command = f"libcamera-still -o {full_file_path}.{imageSettings.format} -t {imageSettings.timeDelay} --gain {imageSettings.gain} -n {raw}"#TODO changed for testing without camera
@@ -220,14 +220,14 @@ class Camera():
         raise Exception(f"Unexpected error while establishing SFTP connection: {e}")
     
     try:
-        with self.sftp_client.file(remote_image_path, "rb") as remote_file1, \
-             self.sftp_client.file(remote_photo_meta_data_path, "rb") as remote_file2:
+        with self.sftp_client.file(remote_image_path, "rb") as remote_file1:#, \
+            #  self.sftp_client.file(remote_photo_meta_data_path, "rb") as remote_file2:
             photo_bytes = remote_file1.read()
             if not photo_bytes:
                 raise ValueError(f"Failed to read image data from {remote_image_path}, photo_bytes is empty")
     
-            photo_meta_data_bytes = remote_file2.read()
-            added_photo = cdi.add_photo(camera_settings_link_id=camera_settings_link_id, photo=photo_bytes, photo_metadata=photo_meta_data_bytes)
+            # photo_meta_data_bytes = remote_file2.read()
+            added_photo = cdi.add_photo(camera_settings_link_id=camera_settings_link_id, photo=photo_bytes)#, photo_metadata=photo_meta_data_bytes)
             # added_photo = cdi.add_photo_for_testing(camera_settings_link_id=camera_settings_link_id, photo=photo_bytes)
             added_photo_id = added_photo["id"]
             print("\n\n\n\n\n I have finished this try alright")

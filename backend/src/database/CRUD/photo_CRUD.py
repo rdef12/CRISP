@@ -4,9 +4,9 @@ from src.database.models import Photo
 
 # Create
 
-def add_photo(camera_settings_link_id: int, photo: bytes, photo_metadata: bytes):
+def add_photo(camera_settings_link_id: int, photo: bytes): # , photo_metadata: bytes):
     try:
-        photo = Photo(camera_settings_link_id=camera_settings_link_id, photo=photo, photo_metadata=photo_metadata)
+        photo = Photo(camera_settings_link_id=camera_settings_link_id, photo=photo)#, photo_metadata=photo_metadata)
     except TypeError as e:
         raise TypeError(f"TypeError: {e}") from e
     except ValueError as e:
