@@ -18,6 +18,12 @@ from src.connection_functions import *
 from src.classes.Camera import ImageSettings, PhotoContext, CalibrationImageSettings
 from src.calibration_functions import ROI, determine_frame_size
 from src.distortion_correction import distortion_calibration_test_for_gui, perform_distortion_calibration_from_database
+from src.routers import setup as setup_router
+from src.routers import setup_camera as setup_camera_router
+from src.routers import camera as camera_router
+from src.routers import settings as settings_router
+from src.routers import camera_settings as camera_settings_router
+from src.routers import photo as photo_router
 
 from src.classes.JSON_request_bodies import request_bodies as rb
 
@@ -46,7 +52,16 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["Content-Range"]
 )
+
+app.include_router(setup_router.router)
+app.include_router(setup_camera_router.router)
+app.include_router(camera_router.router)
+app.include_router(settings_router.router)
+app.include_router(camera_settings_router.router)
+app.include_router(photo_router.router)
+
 
 @app.post("/add_pi")
 async def add_pi(pi_config: PiConfig):
@@ -181,7 +196,7 @@ def take_roi_picture_api(setup_id: str, username: str, imageSettings: ImageSetti
         }
     return JSONResponse(content=response)
 
-    
+
 @app.get("/load_roi_image/{setup_id}/{username}")
 def load_roi_image_api(setup_id: str, username: str):
     
@@ -241,10 +256,6 @@ def multiple_picture_test_api(username_list: List[str]):
     output = take_multiple_images(username_list, demo_settings, context)
     
     photo_bytestring_list = list(output[:, 0]) # Slice this to get just an array of photobytes.
-    
-    # for photo, username in zip(photo_bytestring_list, username_list):
-    #     open_cv_image = load_image_byte_string_to_opencv(photo)
-    #     show_image_in_window(username,  open_cv_image)
     
     encoded_images = [base64.b64encode(photo).decode('utf-8') for photo in photo_bytestring_list]
     response = {"images": encoded_images}

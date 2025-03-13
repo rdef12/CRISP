@@ -35,7 +35,12 @@ def get_settings_id_from_settings(frame_rate: int, lens_position: float, gain: f
             return result.id
         else:
             raise ValueError(f"Settings with frame_rate: {frame_rate}, lens_position: {lens_position}, gain: {gain} not found")
+        
 
+def get_settings_by_id(settings_id: int):
+    with Session(engine) as session:
+        settings = session.get(Settings, settings_id)
+        return settings
 # Update
 
 # Delete

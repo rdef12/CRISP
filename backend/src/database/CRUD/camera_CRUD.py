@@ -47,6 +47,17 @@ def get_all_cameras():
         results = session.exec(statement).all()
         return results
 
+def get_all_cameras_for_react_admin() -> list[Camera]:
+    with Session(engine) as session:
+        statement = select(Camera)
+        results = session.exec(statement).all()
+        return results if results else []
+    
+def get_camera_by_id(id: int) -> Camera:
+    with Session(engine) as session:
+        return session.get(Camera, id)
+    
+
 # Update
 
 # Delete
