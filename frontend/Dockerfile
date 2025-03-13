@@ -3,16 +3,13 @@ FROM node:18
 
 WORKDIR /app
 
-COPY package.json /app/
+COPY package.json package-lock.json /app/
 
-# ONLY TEMP WHILE BUILING IS FAILING?
-# RUN npm cache clean --force
-
-RUN npm install
+RUN --mount=type=cache,target=/root/.npm npm install
 
 COPY . .
 
-RUN chmod +x node_modules/.bin/next
+# RUN chmod +x node_modules/.bin/next
 
 RUN npm run build
 
