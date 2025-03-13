@@ -75,6 +75,14 @@ class CameraSetupLink(SQLModel, table=True):
     horizontal_scintillator_limits: Optional[List[float]] = Field(default=None, sa_column=Column(ARRAY(Integer))) # How do you show 2d shape? (4x1 of 2x2 array)
     vertical_scintillator_limits: Optional[List[float]] = Field(default=None, sa_column=Column(ARRAY(Integer))) # How do you show 2d shape? (4x1 of 2x2 array)
     # e_log_entry: #How is this going to be stored, surely theres a better way than just a string?
+# Distortion calibration
+    distortion_calibration_pattern_size: Optional[List[int]] = Field(default=None, sa_column=Column(ARRAY(Integer)))
+    distortion_calibration_pattern_type: Optional[str] = Field(default=None)
+    distortion_calibration_pattern_spacing: Optional[float] = Field(default=None) # in mm
+    camera_matrix: Optional[bytes] = Field(default=None, sa_column=PickleType)
+    distortion_coefficients: Optional[bytes] = Field(default=None, sa_column=PickleType)
+    distortion_calibration_camera_settings_link: Optional[int] = Field(default=None, foreign_key="camerasettingslink.id")
+
 
 
 # class Camera(SQLModel, table=True):

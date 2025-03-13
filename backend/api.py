@@ -17,7 +17,7 @@ from src.camera_functions import *
 from src.connection_functions import *
 from src.classes.Camera import ImageSettings, PhotoContext, CalibrationImageSettings
 from src.calibration_functions import ROI, determine_frame_size
-from src.distortion_correction import distortion_calibration_test_for_gui
+from src.distortion_correction import distortion_calibration_test_for_gui, perform_distortion_calibration_from_database
 
 from src.classes.JSON_request_bodies import request_bodies as rb
 
@@ -110,6 +110,27 @@ def take_distortion_calibration_image_api(username: str, image_count: int,
             "image_bytes": base64.b64encode(photo_bytes).decode('utf-8')
         }
         return JSONResponse(content=response)
+
+@app.post("/reset_distortion_calibration/{setup_id}/{username}")
+def reset_distortion_calibration_api(setup_id, username):
+    
+    cdi.update_camera_matrix(None)
+    cdi.update_distortion_coefficients(None)
+    cdi.update_distortion_calibration_pattern_size(None)
+    cdi.update_distortion_calibration_pattern_type(None)
+    cdi.update_distortion_calibration_pattern_spacing(None)
+    
+    # Call something to delete all photos associated with camera setup link
+    # Call something to delete camera setup link
+    return {"message": "distortion calibration reset"}
+
+
+@app.post("/perform_distortion_calibration/{setup_id}/{username}")
+def perform_distortion_calibration_api(setup_id, username):
+    
+    perform_distortion_calibration_from_database(setup_id, username)
+    
+    return {"message": "distortion calibration reset"}
 
 
 @app.post("/take_homography_calibration_image/{username}")

@@ -1,6 +1,8 @@
 from src.database.database import engine
 from sqlmodel import Session, select, PickleType
 from sqlalchemy.orm.exc import NoResultFound
+import numpy as np
+from typing import List
 
 from src.database.models import CameraSetupLink
 
@@ -144,6 +146,52 @@ def get_scintillator_edges_photo_id(camera_id:int, setup_id:int) -> bytes:
             return result.scintillator_edges_photo_id
         else:
             raise ValueError(f"Far face calibration photo not found for camera with id {camera_id} and setup with id {setup_id}.")
+
+def get_camera_matrix(camera_id:int, setup_id:int) -> np.ndarray:
+    with Session(engine) as session:
+        statement = select(CameraSetupLink).where(CameraSetupLink.camera_id == camera_id).where(CameraSetupLink.setup_id == setup_id)
+        result = session.exec(statement).one()
+        if result:
+            return result.camera_matrix
+        else:
+            raise ValueError(f"Camera matrix not found for camera with id {camera_id} and setup with id {setup_id}.")
+  
+      
+def get_distortion_coefficients(camera_id:int, setup_id:int) -> np.ndarray:
+    with Session(engine) as session:
+        statement = select(CameraSetupLink).where(CameraSetupLink.camera_id == camera_id).where(CameraSetupLink.setup_id == setup_id)
+        result = session.exec(statement).one()
+        if result:
+            return result.distortion_coefficients
+        else:
+            raise ValueError(f"Distortion coefficients not found for camera with id {camera_id} and setup with id {setup_id}.")
+        
+def get_distortion_calibration_pattern_size(camera_id:int, setup_id:int) -> List[int]:
+    with Session(engine) as session:
+        statement = select(CameraSetupLink).where(CameraSetupLink.camera_id == camera_id).where(CameraSetupLink.setup_id == setup_id)
+        result = session.exec(statement).one()
+        if result:
+            return result.distortion_calibration_pattern_size
+        else:
+            raise ValueError(f"Distortion calibration grid size not found for camera with id {camera_id} and setup with id {setup_id}.")
+
+def get_distortion_calibration_pattern_type(camera_id:int, setup_id:int) -> str:
+    with Session(engine) as session:
+        statement = select(CameraSetupLink).where(CameraSetupLink.camera_id == camera_id).where(CameraSetupLink.setup_id == setup_id)
+        result = session.exec(statement).one()
+        if result:
+            return result.distortion_calibration_pattern_type
+        else:
+            raise ValueError(f"Distortion calibration pattern type not found for camera with id {camera_id} and setup with id {setup_id}.")
+        
+def get_distortion_calibration_pattern_spacing(camera_id:int, setup_id:int) -> float:
+    with Session(engine) as session:
+        statement = select(CameraSetupLink).where(CameraSetupLink.camera_id == camera_id).where(CameraSetupLink.setup_id == setup_id)
+        result = session.exec(statement).one()
+        if result:
+            return result.distortion_calibration_pattern_spacing
+        else:
+            raise ValueError(f"Distortion calibration spacing type not found for camera with id {camera_id} and setup with id {setup_id}.")
 
 # Update
 
@@ -343,7 +391,6 @@ def update_horizontal_scintillator_scintillator_limits(camera_id:int, setup_id:i
     except Exception as e:
         raise RuntimeError(f"An error occurred: {str(e)}")
     
-
 def update_vertical_scintillator_limits(camera_id:int, setup_id:int, vertical_scintillator_limits: tuple[int, int]):
     try:
         with Session(engine) as session:
@@ -356,6 +403,70 @@ def update_vertical_scintillator_limits(camera_id:int, setup_id:int, vertical_sc
         raise ValueError(f"No camera setup link found for camera_id={camera_id} and setup_id={setup_id}.")
     except Exception as e:
         raise RuntimeError(f"An error occurred: {str(e)}")
+
+def update_camera_matrix(camera_id:int, setup_id:int, camera_matrix: np.ndarray[float, float]|None):
+    try:
+        with Session(engine) as session:
+            statement = select(CameraSetupLink).where(CameraSetupLink.camera_id == camera_id).where(CameraSetupLink.setup_id == setup_id)
+            result = session.exec(statement).one()
+            result.camera_matrix = camera_matrix
+            session.commit()
+            return {"message": f"Camera matrix updated for camera with id {camera_id} and setup with id {setup_id}."}
+    except NoResultFound:
+        raise ValueError(f"No camera setup link found for camera_id={camera_id} and setup_id={setup_id}.")
+    except Exception as e:
+        raise RuntimeError(f"An error occurred: {str(e)}")
+
+def update_distortion_coefficients(camera_id:int, setup_id:int, distortion_coefficients: np.ndarray[float]|None):
+    try:
+        with Session(engine) as session:
+            statement = select(CameraSetupLink).where(CameraSetupLink.camera_id == camera_id).where(CameraSetupLink.setup_id == setup_id)
+            result = session.exec(statement).one()
+            result.distortion_coefficients = distortion_coefficients
+            session.commit()
+            return {"message": f"Distortion coefficients updated for camera with id {camera_id} and setup with id {setup_id}."}
+    except NoResultFound:
+        raise ValueError(f"No camera setup link found for camera_id={camera_id} and setup_id={setup_id}.")
+    except Exception as e:
+        raise RuntimeError(f"An error occurred: {str(e)}")
     
+def update_distortion_calibration_pattern_size(camera_id:int, setup_id:int, distortion_calibration_pattern_size: List[int]|None):
+    try:
+        with Session(engine) as session:
+            statement = select(CameraSetupLink).where(CameraSetupLink.camera_id == camera_id).where(CameraSetupLink.setup_id == setup_id)
+            result = session.exec(statement).one()
+            result.distortion_calibration_pattern_size = distortion_calibration_pattern_size
+            session.commit()
+            return {"message": f"Distortion calibration pattern size updated for camera with id {camera_id} and setup with id {setup_id}."}
+    except NoResultFound:
+        raise ValueError(f"No camera setup link found for camera_id={camera_id} and setup_id={setup_id}.")
+    except Exception as e:
+        raise RuntimeError(f"An error occurred: {str(e)}")
+
+def update_distortion_calibration_pattern_type(camera_id:int, setup_id:int, distortion_calibration_pattern_type: str|None):
+    try:
+        with Session(engine) as session:
+            statement = select(CameraSetupLink).where(CameraSetupLink.camera_id == camera_id).where(CameraSetupLink.setup_id == setup_id)
+            result = session.exec(statement).one()
+            result.distortion_calibration_pattern_type = distortion_calibration_pattern_type
+            session.commit()
+            return {"message": f"Distortion calibration pattern type updated for camera with id {camera_id} and setup with id {setup_id}."}
+    except NoResultFound:
+        raise ValueError(f"No camera setup link found for camera_id={camera_id} and setup_id={setup_id}.")
+    except Exception as e:
+        raise RuntimeError(f"An error occurred: {str(e)}")
+    
+def update_distortion_calibration_pattern_spacing(camera_id:int, setup_id:int, distortion_calibration_pattern_spacing: float|None):
+    try:
+        with Session(engine) as session:
+            statement = select(CameraSetupLink).where(CameraSetupLink.camera_id == camera_id).where(CameraSetupLink.setup_id == setup_id)
+            result = session.exec(statement).one()
+            result.distortion_calibration_pattern_spacing = distortion_calibration_pattern_spacing
+            session.commit()
+            return {"message": f"Distortion calibration pattern spacing updated for camera with id {camera_id} and setup with id {setup_id}."}
+    except NoResultFound:
+        raise ValueError(f"No camera setup link found for camera_id={camera_id} and setup_id={setup_id}.")
+    except Exception as e:
+        raise RuntimeError(f"An error occurred: {str(e)}")
 
 # Delete

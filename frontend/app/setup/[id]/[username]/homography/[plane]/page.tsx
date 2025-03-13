@@ -9,6 +9,7 @@ import {
     CardDescription,
     CardHeader,
     CardTitle,
+    CardFooter
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -233,6 +234,12 @@ export default function HomograpyCalibration() {
                                 </div>
                             </form>
                         </CardContent>
+                        <CardFooter className="flex justify-center mt-4">
+                            <a href="https://https://calib.io" 
+                                target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">
+                                Chessboard Pattern Generator
+                            </a>
+                        </CardFooter>
                     </Card>
                 </div>
                 <div className="grid grid-rows-[55%_45%] gap-4">

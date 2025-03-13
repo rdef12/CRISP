@@ -77,7 +77,6 @@ class Camera():
     self.cameraModel = cameraModel
     self.ssh_client = ssh_client # Hopefully, this is a reference to the Pi SSH Client?
     self.sftp_client = None # Needs to be opened with the Camera method
-    self.local_image_directory = "/code/src/images" # Inside Backend container # Change to go directly to database in future?
     # self.remote_image_directory = f"/home/{self.username}/created_directory_2025" 
     self.remote_root_directory = f"/home/{self.username}" 
     self.general_image_directory = f"{self.remote_root_directory}/general"
@@ -91,6 +90,8 @@ class Camera():
     self.stream_codec = "libav"
     self.stream_framerate = 30
     self.stream_bitrate = "1k" # was 1M before
+    
+    self.video_script_filename = "video_script.py"
     
   def __del__(self):
         print(f"Destroying Camera object for {self.username} {self.cameraModel}")
@@ -115,7 +116,8 @@ class Camera():
           case PhotoContext.REAL_RUN:
               return f"{self.real_run_image_directory}"
   
-  def generate_filename(self, camera_settings_link_id: int, context: PhotoContext, file_format, filename=None, length_of_index=5): #TODO Think length of index must be 1-9?
+  def generate_filename(self, camera_settings_link_id: int, context: PhotoContext, file_format, 
+                        filename=None, length_of_index=5): #TODO Think length of index must be 1-9?
       match context:
           case PhotoContext.GENERAL:
               return f"{filename}_cslID_{camera_settings_link_id}"
@@ -126,7 +128,6 @@ class Camera():
           #     beam_energy = cdi.get_beam_run_id_from_camera_settings_link_id(camera_settings_link_id)
           #     return f"test_beam_run_energy_{beam_energy}_cslID_{camera_settings_link_id}%0{length_of_index}d"
 
-              
 
   def check_image_directory_exists(self, context: PhotoContext):
     try:
@@ -254,6 +255,55 @@ class Camera():
             self.close_sftp()
         except Exception as e:
             raise Exception(f"Error while closing SFTP connection: {e}")
+        
+  def check_video_script_exists(self):
+    """
+    Need to store video script file in the root, then store the 
+    images in the test run or real run directory depending on the
+    photo context. root/context/run_num/(image files here)
+    """
+    file_path = f"{self.remote_root_directory}/{self.video_script_filename}"
+    # Check if the script exists on the pi.
+    stdin, stdout, stderr = self.ssh_client.exec_command(f"[ -f '{file_path}' ] && echo true || each false")
+    
+    output = stdout.read().decode().strip()
+    error = stderr.read().decode().strip()
+    stdin.close()
+    
+    exit_status = stdout.channel.recv_exit_status()
+    if exit_status != 0:  # Only raise an error if the command failed
+        raise Exception(f"Error when checking video script exists: {e}")
+    
+    if output == "true":
+        return True
+    else:
+        # Logic for transferring script to pi
+        pass
+    
+
+  def run_pi_video_script(self, image_settings: ImageSettings):
+    """
+    If script not found on pi, transfer script from here to the pi.
+    Then run SSH command with flags from ImageSettings
+    """
+    
+    command = f"test"
+    stdin, stdout, stderr = self.ssh_client.exec_command(command) # Does timeout mean full time for command to run or time for Pi to accept command?
+            
+    output = stdout.read().decode().strip()
+    error = stderr.read().decode().strip()
+    stdin.close()
+    
+    exit_status = stdout.channel.recv_exit_status()
+    if exit_status != 0:  # Only raise an error if the command failed
+        raise Exception(f"Command '{command}' failed with exit status {exit_status}:\n{error}")
+    
+    
+    return None
+  
+  
+  def transfer_video_frames(self):
+      pass
   
   
   def stream_clean_up(self):

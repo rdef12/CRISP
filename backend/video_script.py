@@ -53,6 +53,9 @@ import numpy as np
 import os
 import shutil
 import logging
+import tarfile
+import socket # get hostname without passing into SSH command
+import time
 
 def setup_logging(directory_path, relative_directory_name):
     
@@ -196,8 +199,31 @@ def take_images(picam2, args, directory_path, frame_duration):
         image.save(f"{directory_path}/{filename}")
     
     logging.info(f"{args.num_of_images} images saved to directory.")
-    return 0
+    return 1
 
+def exclude_log(tarinfo):
+    if tarinfo.name.endswith(".log"):
+        return None
+    return tarinfo
+
+def package_images_for_transfer(directory_path):
+    """
+    - Should check if all images taken?
+    
+    Log being excluded atm just so I don't have to deal with the logic of 
+    considering which file is a .log and which are images in the backend
+    """
+    # Can I use tar without gzip? (might not be time efficient to compress again when already PNG)
+    # Replaced "w:gz" with "w"
+    # Also, shouldn't risk compression that is lossy
+    hostname = socket.gethostname()
+    timestamp = time.strftime("%Y%m%d-%H%M%S") # Needs a unique name to not be overwritten on the backend
+    archive_name = f"{hostname}_{timestamp}_images" 
+    
+    with tarfile.open("images.tar.gz", "w") as tar:
+        tar.add(directory_path, archive_name, filter=exclude_log) 
+    logging.info(f"Tar archive created for {hostname}")
+    return 0
 
 def main():
     try:
@@ -219,13 +245,6 @@ def main():
         # Assuming contrast, sharpness, saturation of 1 means effects not applied.
         frame_duration = convert_framerate_to_frame_duration(args.frame_rate)
         
-        # Yellow images but this is because the lightbulbs are biased to yellow
-        # more scientifically accurate for the image to be rendered this way. 
-        # Should reflect proportions of wavelengths detected, not what the human eye sees.
-        
-        # Sunlight is biased yellow - but looks green - still makes sense since green close
-        # to yellow on EM spectrum
-        
         # Q: Is it not possible that I actually want some processing - so we don't have to process it ourselves.
         # Assuming the processing is intended as a correction.
         picam2.set_controls({"AnalogueGain": args.gain,
@@ -236,23 +255,16 @@ def main():
                             "Sharpness": 1.0,
                             # "ColourTemperature": 5778,
                             "FrameDurationLimits": (frame_duration, frame_duration),
+                            #             "AwbEnable": False,
+                            #             "AeEnable": False,
+                            #             "AeMeteringMode": 1,
+                            #             "AeExposureMode": 0,
                             "ExposureTime": int(frame_duration/2),}) # Exposure time is a fraction of frame duration to prevent motion blur.
         
-        # picam2.set_controls({"AnalogueGain": args.gain,
-        #             "AwbEnable": False,
-        #             "AeEnable": False,
-        #             "NoiseReductionMode": 0,
-        #             "Contrast": 1.0,
-        #             "Saturation": 1.0,
-        #             "Sharpness": 1.0,
-        #             "FrameDurationLimits": (frame_duration, frame_duration),
-        #             "AeMeteringMode": 1,
-        #             "AeExposureMode": 0,
-        #             "ColourGains": (1.0, 1.0, 1.0),})
-        
-        picam2.start() #TEMP INCLUDED ATM
-        take_images(picam2, args, directory_path, frame_duration)
-        logging.info(f"Images taken successfully!")
+        picam2.start()
+        ret = take_images(picam2, args, directory_path, frame_duration)
+        if ret:
+            package_images_for_transfer(directory_path)
         return 0
     
     except Exception as e:
