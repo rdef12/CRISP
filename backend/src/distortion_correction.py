@@ -8,7 +8,6 @@ CALIBRATION IMAGES FOR HOMOGRAPHY!
 """
 import numpy as np
 import cv2 as cv
-import glob
 import pickle
 import matplotlib.pyplot as plt
 from src.calibration_functions import *
@@ -92,7 +91,7 @@ def extract_corners_from_distorted_images(obj_points, photo_id_array,
 
 ############## UNDISTORTION #####################################################
 
-def undistort_image(camera_matrix, dist, frame_size, photo_id=None, image=None):
+def undistort_image(camera_matrix, dist, frame_size, photo_id: int|None=None, image:np.ndarray|None=None):
     """
     roi: rectangle specifying area of undistorted image with valid image data
     dist: distortion coefficients

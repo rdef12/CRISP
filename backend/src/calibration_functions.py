@@ -77,11 +77,13 @@ def generate_object_points(grid_size: tuple[int, int], spacing: float):
 
 ####################################### DISTANCE CALIBRATIONS START ############################################
 
-def generate_real_grid_positions(grid_size: tuple[int, int], spacing: float): # Applies to square grid
+def generate_real_grid_positions(grid_size: tuple[int, int], spacing: List[float, float]): # Applies to rectangular grid
     
     real_grid_positions = np.empty(grid_size)
     x_length, y_length = grid_size
-    x_coords, y_coords = np.meshgrid(np.arange(x_length) * spacing, np.arange(y_length) * spacing)
+    x_spacing, y_spacing = spacing
+    
+    x_coords, y_coords = np.meshgrid(np.arange(x_length) * x_spacing, np.arange(y_length) * y_spacing)
     real_grid_positions = np.dstack([x_coords, y_coords])
     real_grid_positions = real_grid_positions.reshape(-1, 1, 2) # Reshape to match OpenCV standard
     return real_grid_positions
@@ -136,3 +138,11 @@ def generate_pixel_pairs(pixel_min: int, pixel_max: int):
 
 
 ####################################################################################################################
+
+# def main():
+    
+#     generate_real_grid_positions(grid_size=[10, 4], spacing=[1, 1.5])
+#     plot_chessboard_corners(real_grid_positions)
+
+# if __name__ == "__main__":
+#     main()

@@ -4,17 +4,8 @@ from src.calibration_functions import *
 from src.distortion_correction import *
 from src.viewing_functions import *
 from src.homography_errors import generate_homography_covariance_matrix
+from typing import Literal
 
-# FRONT_CALIBRATION_IMAGE_PATH = "pinpointing_test_images/side_arducam_front_chessboard_calibration_20_by_10_spacing_10mm.jpeg"
-# REAR_CALIBRATION_IMAGE_PATH = "pinpointing_test_images/side_arducam_back_chessboard_calibration_20_by_10_spacing_10mm.jpeg"
-
-FRONT_CALIBRATION_IMAGE_PATH = "pinpointing_test_images/top_arducam_front_chessboard_calibration_20_by_5_spacing_10mm.jpeg"
-REAR_CALIBRATION_IMAGE_PATH = "pinpointing_test_images/top_arducam_back_chessboard_calibration_20_by_5_spacing_10mm.jpeg"
-
-DISTORTION_CALIBRATION_PATH = "distortion_calibration_data/top_hq_camera_calibration.pkl"
-
-X_GRID_UNC = 0.1 # mm
-Y_GRID_UNC = 0.1 # mm
 
 def save_homography_data(data_file_path: str, homography_matrix: np.ndarray[float, float],
                          homography_covariance: np.ndarray[float, float]):
@@ -24,7 +15,6 @@ def save_homography_data(data_file_path: str, homography_matrix: np.ndarray[floa
             f.write("\n")
             np.savetxt(f, homography_covariance, delimiter=",", header="Homography Covariance")
             return None
-        
         
 def load_homography_data(data_file_path: str):
     
@@ -38,23 +28,33 @@ def load_homography_data(data_file_path: str):
     return homography_matrix, homography_position_covariance
 
 
-def build_calibration_plane_homography(image_path: str, calibration_pattern: str, 
-                                        calibration_grid_size: tuple[int, int], pattern_spacing: float, 
-                                        grid_uncertainties: tuple[int, int], correct_for_distortion: bool=False,
-                                        distortion_calibration_path: str|None=None,
+# For output to the GUI
+def test_homography_grid_identified():
+    """
+    Return the image bytestring and status of test
+    """
+
+
+def build_calibration_plane_homography(image: np.ndarray, calibration_pattern: str, 
+                                        calibration_grid_size: tuple[int, int], 
+                                        pattern_spacing: list[float, float], 
+                                        grid_uncertainties: tuple[float, float], 
+                                        correct_for_distortion: bool=False,
                                         show_recognised_chessboard: bool=False,
-                                        save_file_path: str|None=None):
-        
-        if correct_for_distortion and distortion_calibration_path is None:
-            raise ValueError("distortion_calibration_path must be provided when correct_for_distortion=True")
+                                        save_file_path: str|None=None,
+                                        save_to_database: bool=False):
+
         if correct_for_distortion:
+            
+            # NEW LOGIC FOR CORRECT FOR DISTORTION from database
+            
             camera_matrix, dist = load_camera_calibration(distortion_calibration_path)
             frame_size = determine_frame_size(image_path=image_path)
             image = undistort_image(camera_matrix, dist, frame_size, image_path=image_path)
         else:
             image = cv2.imread(image_path)
             
-        grey_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY) 
+        grey_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
         real_grid_positions = generate_real_grid_positions(calibration_grid_size, pattern_spacing)
         match calibration_pattern:
@@ -80,32 +80,38 @@ def build_calibration_plane_homography(image_path: str, calibration_pattern: str
         grid_uncertainties_array = np.full((len(image_grid_positions), 2), grid_uncertainties)
         homography_covariance = generate_homography_covariance_matrix(image_grid_positions, homography_matrix, grid_uncertainties_array)
         
+        if save_to_database:
+            # TODO - LOGIC
+            pass
+        
         if save_file_path is not None:
             save_homography_data(save_file_path, homography_matrix, homography_covariance)
             
         return homography_matrix, homography_covariance, image_grid_positions
     
     
-def main():
+def perform_homography_calibration(username: str, setup_id: int, photo_id: int, 
+                                   calibration_plane_type: Literal["far", "near"]):
     """
-    NOTE - All the camera properties are entered manually here. In reality, these arguments would need
-    sourcing from the camera/setup table of the database.
+    Applied to single plane - so ran twice for a given camera (from two different GUI pages)
     """
-    
-    # build_calibration_plane_homography(FRONT_CALIBRATION_IMAGE_PATH, "chessboard", (20, 5), 10, (X_GRID_UNC, Y_GRID_UNC), save_file_path="homography_data/front_plane_top_hq_homography.csv",
-    #                                    correct_for_distortion=True, distortion_calibration_path=DISTORTION_CALIBRATION_PATH,
-    #                                    show_recognised_chessboard=True)
-    # build_calibration_plane_homography(REAR_CALIBRATION_IMAGE_PATH,  "chessboard", (20, 5), 10, (X_GRID_UNC, Y_GRID_UNC), save_file_path="homography_data/rear_plane_top_hq_homography.csv",
-    #                                    correct_for_distortion=True, distortion_calibration_path=DISTORTION_CALIBRATION_PATH,
-    #                                    show_recognised_chessboard=True)
-    
-    build_calibration_plane_homography(FRONT_CALIBRATION_IMAGE_PATH, "chessboard", (20, 5), 10, (X_GRID_UNC, Y_GRID_UNC), save_file_path="homography_data/front_plane_top_arducam_homography.csv",
-                                       show_recognised_chessboard=True)
-    build_calibration_plane_homography(REAR_CALIBRATION_IMAGE_PATH,  "chessboard", (20, 5), 10, (X_GRID_UNC, Y_GRID_UNC), save_file_path="homography_data/rear_plane_top_arducam_homography.csv",
-                                       show_recognised_chessboard=True)
-    
-    return None
-    
+    camera_id = cdi.get_camera_id_from_username(username)
+    match calibration_plane_type:
+        case "far":
+            pattern_size = cdi.get_far_face_calibration_pattern_size(camera_id, setup_id)
+            pattern_type = cdi.get_far_face_calibration_pattern_type(camera_id, setup_id)
+            horizontal_spacing, vertical_spacing = cdi.get_far_face_calibration_spacing(camera_id, setup_id)
+            unc_horizontal_spacing, unc_vertical_spacing = cdi.get_far_face_calibration_pattern_spacing_unc(camera_id, setup_id)
+        case "near":
+            pattern_size = cdi.get_near_face_calibration_pattern_size(camera_id, setup_id)
+            pattern_type = cdi.get_near_face_calibration_pattern_type(camera_id, setup_id)
+            horizontal_spacing, vertical_spacing = cdi.get_near_face_calibration_spacing(camera_id, setup_id)
+            unc_horizontal_spacing, unc_vertical_spacing = cdi.get_near_face_calibration_pattern_spacing_unc(camera_id, setup_id)
 
-if __name__ == "__main__":
-    main()
+    image_byte_string = cdi.get_photo_from_id(photo_id)
+    image = load_image_byte_string_to_opencv(image_byte_string)
+    
+    build_calibration_plane_homography(image, pattern_type, pattern_size, (horizontal_spacing, vertical_spacing), 
+                                       (unc_horizontal_spacing, unc_vertical_spacing),
+                                       show_recognised_chessboard=False, save_to_database=True)
+    return None
