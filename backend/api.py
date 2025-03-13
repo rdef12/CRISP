@@ -20,6 +20,9 @@ from src.distortion_correction import distortion_calibration_test_for_gui
 from src.routers import setup as setup_router
 from src.routers import setup_camera as setup_camera_router
 from src.routers import camera as camera_router
+from src.routers import settings as settings_router
+from src.routers import camera_settings as camera_settings_router
+from src.routers import photo as photo_router
 
 from src.classes.JSON_request_bodies import request_bodies as rb
 
@@ -54,6 +57,9 @@ app.add_middleware(
 app.include_router(setup_router.router)
 app.include_router(setup_camera_router.router)
 app.include_router(camera_router.router)
+app.include_router(settings_router.router)
+app.include_router(camera_settings_router.router)
+app.include_router(photo_router.router)
 
 
 @app.post("/add_pi")

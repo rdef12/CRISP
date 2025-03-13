@@ -26,13 +26,24 @@ const AdminApp = () => (
     <Resource options={{ label: 'Setups' }}  name="setup" create={SetupCreate} list={SetupList} hasCreate> {/* show={SetupShow} edit={SetupEdit} */}
       <Route path=":setupId" element={<SetupShow />} />
       <Route path=":setupId/setup-camera/:setupCameraId" element={<SetupCameraShow />} />
+
       <Route path=":setupId/setup-camera/:setupCameraId/near-face" element={<NearFaceTestContent/>} /> {/*NearFaceCalibration*/} 
+      <Route path=":setupId/setup-camera/:setupCameraId/near-face/settingsId" element={<NearFaceTestContent/>} /> {/* NOT THIS PAGE OBVS */} 
+      
       <Route path=":setupId/setup-camera/:setupCameraId/far-face" element={<FarFaceTestContent/>} /> {/*FarFaceCalibration*/}
+      <Route path=":setupId/setup-camera/:setupCameraId/far-face/settingsId" element={<FarFaceTestContent/>} /> {/* NOT THIS PAGE OBVS */}
+
       <Route path=":setupId/setup-camera/:setupCameraId/distortion" element={<DistortionTestContent/>} /> {/*DistortionCalibration*/}
+      <Route path=":setupId/setup-camera/:setupCameraId/distortion/settingsId" element={<DistortionTestContent/>} /> {/* NOT THIS PAGE OBVS */}
+
       <Route path=":setupId/setup-camera/:setupCameraId/scintillator-edges" element={<ScintillatorEdgesTestContent/>} /> {/*ScintillatorEdgeCalibration*/}
-    
+      <Route path=":setupId/setup-camera/:setupCameraId/scintillator-edges/settingsId" element={<ScintillatorEdgesTestContent/>} />{/* NOT THIS PAGE OBVS */}
+     {/*I think maybe these should be /settingsId cna maybe */}
     </Resource>
-    <Resource options={{ label: 'Cameras'}} name="camera"/>
+    <Resource options={{ label: 'Cameras' }} name="camera"/>
+    <Resource options={{ label: 'Camera and Settings' }} name="camera_settings" />
+    <Resource options={{ label: 'Settings' }} name="settings" />
+    <Resource options={{ label: 'Photos' }} name="photo" />
   </Admin>
 );
 

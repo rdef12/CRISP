@@ -1,8 +1,14 @@
+// import ROISelectionTool from '@/app/setup/[id]/[username]/manual_roi/ROISelectionTool';
+// import { NumberInput, SimpleForm, useCreateController, useEditController } from 'react-admin';
 // import { useParams } from 'react-router-dom';
 
-// export const ShowScintillatorEdges = () => {
-//   const setup_camera_id = useParams();
 
+
+
+// export const CreateSettingsScintillatorEdges = () => {
+//   const { setupCameraId } = useParams();
+//   const { record, settingsSave, settingsIsPending} = useCreateController({ resource: "settings"});
+//   if (isPending) return null;
 //   return (
 //     <div className="grid grid-rows-[1fr_9fr] gap-0 min-h-screen bg-gray-50">
 //       {/* Top Cell: Title */}
@@ -18,7 +24,9 @@
 //             // Form Section
 //             <div>
 //               <h3 className="text-xl font-semibold mt-4 mb-4">Image Settings</h3>
-//               <form onSubmit={handleSubmit} className="space-y-4">
+//   {/* ----------------------------------------------------------------------------------------------------------------------------- */}
+
+//               {/* <form onSubmit={handleSubmit} className="space-y-4">
 //                 <div className="flex flex-col space-y-2">
 //                   <Label className="text-green-500" htmlFor="gain">Gain</Label>
 //                   <Input
@@ -36,7 +44,13 @@
 //                 >
 //                   Capture image
 //                 </button>
-//               </form>
+//               </form> */}
+
+//                 <SimpleForm record={settingsRecord}>
+//                   <NumberInput source="gain" />
+//                 </SimpleForm>
+
+//   {/* ----------------------------------------------------------------------------------------------------------------------------- */}
 //             </div>
 //           ) : (
 //             // Retake Button Section
