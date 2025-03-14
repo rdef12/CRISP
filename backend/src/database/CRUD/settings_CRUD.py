@@ -41,6 +41,11 @@ def get_settings_by_id(settings_id: int):
     with Session(engine) as session:
         settings = session.get(Settings, settings_id)
         return settings
+
+def get_all_settings_by_setup_camera_id(setup_camera_id: int):
+    with Session(engine) as session:
+        result = session.get(Settings, setup_camera_id)
+        return result
 # Update
 
 # Delete
