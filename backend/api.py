@@ -122,7 +122,6 @@ def take_distortion_calibration_image_api(username: str, image_count: int,
             calibration_results = distortion_calibration_test_for_gui(image, distortionImageSettings.calibrationGridSize,
                                                                     distortionImageSettings.calibrationTileSpacing,
                                                                     image_count)
-            print("3\n\n")
             response = {
                 "results": calibration_results,
                 "image_bytes": base64.b64encode(photo_bytes).decode('utf-8')
@@ -131,18 +130,20 @@ def take_distortion_calibration_image_api(username: str, image_count: int,
     except Exception as e:
         print(f"Error taking distortion calibration image: {e}")
 
-@app.post("/reset_distortion_calibration/{setup_id}/{username}")
+@app.delete("/reset_distortion_calibration/{setup_id}/{username}")
 def reset_distortion_calibration_api(setup_id, username):
     
-    cdi.update_camera_matrix(None)
-    cdi.update_distortion_coefficients(None)
-    cdi.update_distortion_calibration_pattern_size(None)
-    cdi.update_distortion_calibration_pattern_type(None)
-    cdi.update_distortion_calibration_pattern_spacing(None)
+    camera_id = cdi.get_camera_entry_with_username(username).id
+    
+    cdi.update_camera_matrix(camera_id, setup_id, None)
+    cdi.update_distortion_coefficients(camera_id, setup_id, None)
+    cdi.update_distortion_calibration_pattern_size(camera_id, setup_id, None)
+    cdi.update_distortion_calibration_pattern_type(camera_id, setup_id, None)
+    cdi.update_distortion_calibration_pattern_spacing(camera_id, setup_id, None)
     
     # Call something to delete all photos associated with camera setup link
     # Call something to delete camera setup link
-    return {"message": "distortion calibration reset"}
+    return {"message": "Distortion calibration reset"}
 
 
 @app.post("/perform_distortion_calibration/{setup_id}/{username}")
@@ -152,30 +153,31 @@ def perform_distortion_calibration_api(setup_id, username):
     return {"message": "distortion calibration completed"}
 
 
-@app.post("/take_homography_calibration_image/{username}/{plane_type}")
-def take_homography_calibration_image_api(username: str, plane_type: str,
+@app.post("/take_homography_calibration_image/{setup_id}/{username}/{plane_type}")
+def take_homography_calibration_image_api(setup_id: str, username: str, plane_type: str,
                                           homographyImageSettings: CalibrationImageSettings):
-    context = PhotoContext.GENERAL
-    
-    print(f"\n\n\n SETTINGS: \n {homographyImageSettings.dict()} \n\n\n")
-    pattern_type = "chessboard" #TODO - add setting to frontend as an option?
-    
-    photo_bytes, _ = take_single_image(username, homographyImageSettings.to_image_settings(), context)
-    if photo_bytes:
-        match calibration_plane_type:
-            case "far":
-                cdi.update_far_face_calibration_pattern_size(camera_id, setup_id, homographyImageSettings.calibrationGridSize)
-                cdi.update_far_face_calibration_pattern_type(camera_id, setup_id, pattern_type)
-                cdi.update_far_face_calibration_spacing(camera_id, setup_id, homographyImageSettings.calibrationTileSpacing)
-                cdi.update_far_face_calibration_pattern_spacing_unc(camera_id, setup_id, homographyImageSettings.calibrationTileSpacingErrors)
-            case "near":
-                cdi.update_near_face_calibration_pattern_size(camera_id, setup_id, homographyImageSettings.calibrationGridSize)
-                cdi.update_near_face_calibration_pattern_type(camera_id, setup_id, pattern_type)
-                cdi.update_near_face_calibration_spacing(camera_id, setup_id, homographyImageSettings.calibrationTileSpacing)
-                cdi.update_near_face_calibration_pattern_spacing_unc(camera_id, setup_id, homographyImageSettings.calibrationTileSpacingErrors)
+    try:
+        context = PhotoContext.GENERAL
+        pattern_type = "chessboard" #TODO - add setting to frontend as an option?
+        camera_id = cdi.get_camera_entry_with_username(username).id
         
-        return perform_homography_calibration(username, setup_id, plane_type, photo_bytes=photo_bytes)
-
+        photo_bytes, _ = take_single_image(username, homographyImageSettings.to_image_settings(), context)
+        if photo_bytes:
+            match plane_type:
+                case "far":
+                    cdi.update_far_face_calibration_pattern_size(camera_id, setup_id, homographyImageSettings.calibrationGridSize)
+                    cdi.update_far_face_calibration_pattern_type(camera_id, setup_id, pattern_type)
+                    cdi.update_far_face_calibration_spacing(camera_id, setup_id, homographyImageSettings.calibrationTileSpacing)
+                    cdi.update_far_face_calibration_pattern_spacing_unc(camera_id, setup_id, homographyImageSettings.calibrationTileSpacingErrors)
+                case "near":
+                    cdi.update_near_face_calibration_pattern_size(camera_id, setup_id, homographyImageSettings.calibrationGridSize)
+                    cdi.update_near_face_calibration_pattern_type(camera_id, setup_id, pattern_type)
+                    cdi.update_near_face_calibration_spacing(camera_id, setup_id, homographyImageSettings.calibrationTileSpacing)
+                    cdi.update_near_face_calibration_pattern_spacing_unc(camera_id, setup_id, homographyImageSettings.calibrationTileSpacingErrors)
+            
+            return test_grid_recognition_for_gui(username, setup_id, plane_type, photo_bytes=photo_bytes)
+    except Exception as e:
+        print(f"Error taking homography calibration image: {e}")
     
 @app.get("/stream/{username}")
 def stream_api(username: str):

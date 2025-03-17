@@ -26,7 +26,7 @@ const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND
 
 
 export default function HomograpyCalibration() {
-    const { username = "undefined" , plane = "undefined" } = useParams();
+    const { id = "undefined", username = "undefined" , plane = "undefined" } = useParams();
     if (plane !== "near" && plane !== "far") {
         notFound();
     }
@@ -91,7 +91,7 @@ export default function HomograpyCalibration() {
               ]
           };
           
-          const response = await fetch(`${BACKEND_URL}/take_homography_calibration_image/${username}/${plane}`, {
+          const response = await fetch(`${BACKEND_URL}/take_homography_calibration_image/${id}/${username}/${plane}`, {
             method: "POST",
             body: JSON.stringify(requestBody),
             headers: { "Content-Type": "application/json" }
