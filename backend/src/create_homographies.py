@@ -5,7 +5,7 @@ from src.distortion_correction import *
 from src.viewing_functions import *
 from src.homography_errors import generate_homography_covariance_matrix
 from typing import Literal
-
+import base64
 
 def save_homography_data(data_file_path: str, homography_matrix: np.ndarray[float, float],
                          homography_covariance: np.ndarray[float, float]):
@@ -29,10 +29,45 @@ def load_homography_data(data_file_path: str):
 
 
 # For output to the GUI
-def test_homography_grid_identified():
+def test_homography_grid_identified(image: np.ndarray, calibration_pattern: str, 
+                                    calibration_grid_size: tuple[int, int], 
+                                    pattern_spacing: list[float, float], 
+                                    grid_uncertainties: tuple[float, float], 
+                                    correct_for_distortion: bool=False):
     """
     Return the image bytestring and status of test
     """
+    if correct_for_distortion:
+        # NEW LOGIC FOR CORRECT FOR DISTORTION from database
+        camera_matrix, dist = load_camera_calibration(distortion_calibration_path)
+        frame_size = determine_frame_size(image_path=image_path)
+        image = undistort_image(camera_matrix, dist, frame_size, image_path=image_path)
+        
+    grey_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+
+    real_grid_positions = generate_real_grid_positions(calibration_grid_size, pattern_spacing)
+    match calibration_pattern:
+        case "chessboard":
+            image_grid_positions, ret = find_image_grid_positions_chessboard(grey_image, calibration_grid_size)
+        case "symmetric_circles":
+            image_grid_positions, ret = find_image_grid_positions_circles(grey_image, calibration_grid_size)
+        case _:
+            raise Exception("No calibration pattern called {} defined".format(calibration_pattern))
+        
+    if ret:
+        cv2.drawChessboardCorners(image, grid_size, image_grid_positions, ret)
+        first_point = tuple(map(int, image_grid_positions[0].ravel()))  # Convert to tuple (x, y)
+        cv2.circle(image, first_point, radius=10, color=(0, 0, 255), thickness=-1)  # Red dot
+        
+        _, buffer = cv2.imencode('.jpg', image)
+        image_bytes = base64.b64encode(buffer).decode("utf-8")
+        return {
+            "image_bytes": image_bytes
+        }
+        
+    return {
+        "image_bytes": None
+    }
 
 
 def build_calibration_plane_homography(image: np.ndarray, calibration_pattern: str, 
@@ -45,14 +80,10 @@ def build_calibration_plane_homography(image: np.ndarray, calibration_pattern: s
                                         save_to_database: bool=False):
 
         if correct_for_distortion:
-            
-            # NEW LOGIC FOR CORRECT FOR DISTORTION from database
-            
+            # NEW LOGIC NEEDED TO LOAD IN DISTORTION DATA FROM DATABASE
             camera_matrix, dist = load_camera_calibration(distortion_calibration_path)
             frame_size = determine_frame_size(image_path=image_path)
             image = undistort_image(camera_matrix, dist, frame_size, image_path=image_path)
-        else:
-            image = cv2.imread(image_path)
             
         grey_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
@@ -89,9 +120,43 @@ def build_calibration_plane_homography(image: np.ndarray, calibration_pattern: s
             
         return homography_matrix, homography_covariance, image_grid_positions
     
+
+def test_grid_recognition_for_gui(username: str, setup_id: int, 
+                                   calibration_plane_type: Literal["far", "near"],
+                                   photo_id: int|None=None, photo_bytes:str|None=None):
+
+    camera_id = cdi.get_camera_id_from_username(username)
+    match calibration_plane_type:
+        case "far":
+            pattern_size = cdi.get_far_face_calibration_pattern_size(camera_id, setup_id)
+            pattern_type = cdi.get_far_face_calibration_pattern_type(camera_id, setup_id)
+            pattern_spacing = cdi.get_far_face_calibration_spacing(camera_id, setup_id)
+            unc_spacing = cdi.get_far_face_calibration_pattern_spacing_unc(camera_id, setup_id)
+        case "near":
+            pattern_size = cdi.get_near_face_calibration_pattern_size(camera_id, setup_id)
+            pattern_type = cdi.get_near_face_calibration_pattern_type(camera_id, setup_id)
+            pattern_spacing = cdi.get_near_face_calibration_spacing(camera_id, setup_id)
+            unc_spacing = cdi.get_near_face_calibration_pattern_spacing_unc(camera_id, setup_id)
+            
+    if any(x is None for x in (pattern_size, pattern_type, pattern_spacing, unc_spacing)):
+        correct_for_distortion = False
+    else:
+        correct_for_distortion = True
+
+    if bool(photo_bytes) == bool(photo_id):  # XNOR
+        raise Exception("Only Image bytes or Photo ID must be entered")
+    if photo_id:
+        photo_bytes = cdi.get_photo_from_id(photo_id)
+    image = load_image_byte_string_to_opencv(photo_bytes)
     
-def perform_homography_calibration(username: str, setup_id: int, photo_id: int, 
-                                   calibration_plane_type: Literal["far", "near"]):
+    test_homography_grid_identified(image, pattern_type, pattern_size, 
+                                    pattern_spacing, unc_spacing, 
+                                    correct_for_distortion=correct_for_distortion)
+    
+
+def perform_homography_calibration(username: str, setup_id: int, 
+                                   calibration_plane_type: Literal["far", "near"],
+                                   photo_id: int|None=None, photo_bytes:str|None=None):
     """
     Applied to single plane - so ran twice for a given camera (from two different GUI pages)
     """
@@ -100,18 +165,27 @@ def perform_homography_calibration(username: str, setup_id: int, photo_id: int,
         case "far":
             pattern_size = cdi.get_far_face_calibration_pattern_size(camera_id, setup_id)
             pattern_type = cdi.get_far_face_calibration_pattern_type(camera_id, setup_id)
-            horizontal_spacing, vertical_spacing = cdi.get_far_face_calibration_spacing(camera_id, setup_id)
-            unc_horizontal_spacing, unc_vertical_spacing = cdi.get_far_face_calibration_pattern_spacing_unc(camera_id, setup_id)
+            pattern_spacing = cdi.get_far_face_calibration_spacing(camera_id, setup_id)
+            unc_spacing = cdi.get_far_face_calibration_pattern_spacing_unc(camera_id, setup_id)
         case "near":
             pattern_size = cdi.get_near_face_calibration_pattern_size(camera_id, setup_id)
             pattern_type = cdi.get_near_face_calibration_pattern_type(camera_id, setup_id)
-            horizontal_spacing, vertical_spacing = cdi.get_near_face_calibration_spacing(camera_id, setup_id)
-            unc_horizontal_spacing, unc_vertical_spacing = cdi.get_near_face_calibration_pattern_spacing_unc(camera_id, setup_id)
-
-    image_byte_string = cdi.get_photo_from_id(photo_id)
-    image = load_image_byte_string_to_opencv(image_byte_string)
+            pattern_spacing = cdi.get_near_face_calibration_spacing(camera_id, setup_id)
+            unc_spacing = cdi.get_near_face_calibration_pattern_spacing_unc(camera_id, setup_id)
     
-    build_calibration_plane_homography(image, pattern_type, pattern_size, (horizontal_spacing, vertical_spacing), 
-                                       (unc_horizontal_spacing, unc_vertical_spacing),
+    
+    if any(x is None for x in (pattern_size, pattern_type, pattern_spacing, unc_spacing)):
+        correct_for_distortion = False
+    else:
+        correct_for_distortion = True
+
+    if bool(photo_bytes) == bool(photo_id):  # XNOR
+        raise Exception("Only Image bytes or Photo ID must be entered")
+    if photo_id:
+        photo_bytes = cdi.get_photo_from_id(photo_id)
+    image = load_image_byte_string_to_opencv(photo_bytes)
+    
+    build_calibration_plane_homography(image, pattern_type, pattern_size, pattern_spacing, 
+                                       unc_spacing, correct_for_distortion= correct_for_distortion,
                                        show_recognised_chessboard=False, save_to_database=True)
     return None

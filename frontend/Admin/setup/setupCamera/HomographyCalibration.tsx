@@ -9,6 +9,7 @@ import {
     CardDescription,
     CardHeader,
     CardTitle,
+    CardFooter
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -43,16 +44,22 @@ export default function HomograpyCalibration( { plane }: HomographyCalibrationPr
         gain: "",
         xGridDimension: "",
         yGridDimension: "",
-        gridSpacing: "",
-        xGridDimensionError: "",
-        yGridDimensionError: ""
+        xGridSpacing: "",
+        yGridSpacing: "",
+        xGridSpacingError: "",
+        yGridSpacingError: ""
       });
 
-      const areGridDimensionsComplete = (formData: CalibrationFormProps): boolean => {
+    const areGridDimensionsComplete = (formData: CalibrationFormProps): boolean => {
         return !!formData.xGridDimension && 
-               !!formData.yGridDimension && 
-               !!formData.xGridDimensionError && 
-               !!formData.yGridDimensionError;
+               !!formData.yGridDimension;
+    };
+
+    const areGridSpacingsComplete = (formData: CalibrationFormProps): boolean => {
+        return !!formData.xGridSpacing && 
+               !!formData.yGridSpacing && 
+               !!formData.xGridSpacingError && 
+               !!formData.yGridSpacingError;
     };
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -78,10 +85,13 @@ export default function HomograpyCalibration( { plane }: HomographyCalibrationPr
               parseInt(formData.xGridDimension.toString()), 
               parseInt(formData.yGridDimension.toString())
             ],
-            calibrationTileSpacing: parseFloat(formData.gridSpacing.toString()),
-            calibrationGridSizeErrors: [
-                parseInt(formData.xGridDimensionError!.toString()), // ! is used to assert non-null for optional prop
-                parseInt(formData.yGridDimensionError!.toString()) // ! is used to assert non-null for optional prop
+            calibrationTileSpacing: [
+                parseFloat(formData.xGridSpacing.toString()),
+                parseFloat(formData.yGridSpacing.toString())
+            ],
+            calibrationTileSpacingErrors: [
+                parseInt(formData.xGridSpacingError!.toString()), // ! is used to assert non-null for optional prop
+                parseInt(formData.yGridSpacingError!.toString()) // ! is used to assert non-null for optional prop
               ]
           };
           
@@ -113,7 +123,7 @@ export default function HomograpyCalibration( { plane }: HomographyCalibrationPr
         router.push(`/`); // in the future, return to this pi's calibration hub
       };
 
-    return (
+      return (
         <div className="grid grid-rows-[15%_75%_10%] h-screen gap-2">
             <div className="flex flex-col items-center justify-center">
                 <h1 className="text-2xl md:text-3xl font-medium tracking-normal text-gray-800 text-center underline mb-1">
@@ -134,14 +144,18 @@ export default function HomograpyCalibration( { plane }: HomographyCalibrationPr
                         <CardContent className="space-y-4">
                         <form
                             onSubmit={(e) => {
-                            e.preventDefault();        // Prevent default form submission
+                            e.preventDefault(); // Prevent default form submission
                             if (!areGridDimensionsComplete(formData)) {
                                 alert("Please fill in all grid dimensions.");
                                 return;
                             }
-                            takeImage(formData);       // Call your function to handle image capture
+                            if (!areGridSpacingsComplete(formData)) {
+                                alert("Please fill in all grid spacings.");
+                                return;
+                            }
+                            takeImage(formData); // Call image capture
                             }}
-                            className="space-y-4"        // Keeps the same spacing as before
+                            className="space-y-4"
                             >
                                 <div className="flex flex-col space-y-2">
                                 <Label className="text-green-500" htmlFor="gain">Gain</Label>
@@ -177,18 +191,6 @@ export default function HomograpyCalibration( { plane }: HomographyCalibrationPr
                                                 required
                                             />
                                             </div>
-                                            <div className="flex flex-col space-y-4">
-                                            <Label className="mt-2" htmlFor="xGridDimensionError">Horizontal Grid Dimensions Error</Label>
-                                            <Input
-                                                type="number"
-                                                id="xGridDimensionError"
-                                                name="xGridDimensionError"
-                                                placeholder="Enter horizontal dimension error (mm)"
-                                                value={formData.xGridDimensionError}
-                                                onChange={handleChange}
-                                                required
-                                            />
-                                            </div>
                                             <div className="flex flex-col space-y-2">
                                             <Label className="mt-2" htmlFor="yGridDimension">Vertical Grid Dimensions</Label>
                                             <Input
@@ -201,33 +203,69 @@ export default function HomograpyCalibration( { plane }: HomographyCalibrationPr
                                                 required
                                             />
                                             </div>
+                                        </PopoverContent>
+                                    </Popover>
+                                </div>
+
+                                <div className="flex flex-col space-y-2">
+                                <Label className="text-green-500 mb-2" htmlFor="xGridDimension">Grid Spacings</Label>
+                                    <Popover>
+                                        <PopoverTrigger asChild>
+                                            <Button variant="outline">
+                                                Enter Grid Spacings
+                                            </Button>
+                                        </PopoverTrigger>
+                                        <PopoverContent>
                                             <div className="flex flex-col space-y-4">
-                                            <Label className="mt-2" htmlFor="yGridDimensionError">Vertical Grid Dimensions Error</Label>
+                                            <Label className="mt-2" htmlFor="xGridSpacing">Horizontal Grid Spacing</Label>
                                             <Input
                                                 type="number"
-                                                id="yGridDimensionError"
-                                                name="yGridDimensionError"
-                                                placeholder="Enter vertical dimension error (mm)"
-                                                value={formData.yGridDimensionError}
+                                                id="xGridSpacing"
+                                                name="xGridSpacing"
+                                                placeholder="Enter horizontal Spacing (mm)"
+                                                value={formData.xGridSpacing}
+                                                onChange={handleChange}
+                                                required
+                                            />
+                                            </div>
+                                            <div className="flex flex-col space-y-4">
+                                            <Label className="mt-2" htmlFor="xGridSpacingError">Horizontal Grid Spacing Error</Label>
+                                            <Input
+                                                type="number"
+                                                id="xGridSpacingError"
+                                                name="xGridSpacingError"
+                                                placeholder="Enter horizontal spacing error (mm)"
+                                                value={formData.xGridSpacingError}
+                                                onChange={handleChange}
+                                                required
+                                            />
+                                            </div>
+                                            <div className="flex flex-col space-y-2">
+                                            <Label className="mt-2" htmlFor="yGridSpacing">Vertical Grid Spacing</Label>
+                                            <Input
+                                                type="number"
+                                                id="yGridSpacing"
+                                                name="yGridSpacing"
+                                                placeholder="Enter vertical spacing (mm)"
+                                                value={formData.yGridSpacing}
+                                                onChange={handleChange}
+                                                required
+                                            />
+                                            </div>
+                                            <div className="flex flex-col space-y-4">
+                                            <Label className="mt-2" htmlFor="yGridSpacingError">Vertical Grid Spacing Error</Label>
+                                            <Input
+                                                type="number"
+                                                id="yGridSpacingError"
+                                                name="yGridSpacingError"
+                                                placeholder="Enter vertical spacing error (mm)"
+                                                value={formData.yGridSpacingError}
                                                 onChange={handleChange}
                                                 required
                                             />
                                             </div>
                                         </PopoverContent>
                                     </Popover>
-                                </div>
-
-                                <div className="flex flex-col space-y-2">
-                                <Label className="text-green-500" htmlFor="gridSpacing">Grid Spacing (mm)</Label>
-                                <Input
-                                    type="number"
-                                    id="gridSpacing"
-                                    name="gridSpacing"
-                                    placeholder="Enter grid spacing"
-                                    value={formData.gridSpacing}
-                                    onChange={handleChange}
-                                    required
-                                />
                                 </div>
 
                                 <div className="flex flex-row items-center justify-center space-x-4 mt-4">
@@ -237,6 +275,12 @@ export default function HomograpyCalibration( { plane }: HomographyCalibrationPr
                                 </div>
                             </form>
                         </CardContent>
+                        <CardFooter className="flex justify-center mt-4">
+                            <a href="https://https://calib.io" 
+                                target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">
+                                Chessboard Pattern Generator
+                            </a>
+                        </CardFooter>
                     </Card>
                 </div>
                 <div className="grid grid-rows-[55%_45%] gap-4">

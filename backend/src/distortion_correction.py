@@ -27,30 +27,6 @@ def plot_chessboard_corners(obj_points):
     plt.show(block=False)
 
 
-def build_real_world_corner_positions(chessboard_grid_size,
-                                      chessboard_tile_spacing,
-                                      PLOT_CORNERS=False, PRINT_POINTS=False):
-    """
-    Same as generate_object_points in claibration_functions.py, but with more
-    printing info
-    """
-    
-    # prepare object points, like (0,0,0), (1,0,0), (2,0,0) ....,(6,5,0)
-    obj_points = np.zeros((chessboard_grid_size[0] * chessboard_grid_size[1], 3), np.float32)
-    obj_points[:,:2] = np.mgrid[0:chessboard_grid_size[0],0:chessboard_grid_size[1]].T.reshape(-1,2)
-    scaled_obj_points = obj_points * chessboard_tile_spacing
-    
-    if PRINT_POINTS:
-        print("Original points {}".format(obj_points))
-        print("Scaled points {}".format(scaled_obj_points))
-        print("Number of valid chessboard corners: {}".format(len(scaled_obj_points)))
-    
-    if PLOT_CORNERS:
-        plot_chessboard_corners(scaled_obj_points)
-    
-    return obj_points
-
-
 def get_feature_points_from_image(obj_points, image, chessboard_grid_size, image_count=None, 
                                   criteria=CRITERIA):
         
@@ -98,7 +74,7 @@ def undistort_image(camera_matrix, dist, frame_size, photo_id: int|None=None, im
     alpha: set to 1 in cv.undistort (sets scale of new camera matrix)
     """
     
-    if bool(image) != bool(photo_id): # XOR
+    if bool(image) == bool(photo_id): # XNOR
         raise Exception("Only Image or Photo ID must be entered")
     if photo_id:
         image_byte_string = cdi.get_photo_from_id(photo_id)
@@ -116,9 +92,6 @@ def undistort_image(camera_matrix, dist, frame_size, photo_id: int|None=None, im
 
 def calculate_reprojection_error(obj_points_array, img_points_array,
                                  camera_matrix, dist, rvecs, tvecs):
-    """
-    Need to check what this is doing...
-    """
     mean_error = 0
     for i in range(len(obj_points_array)):
         imgpoints_2, _ = cv.projectPoints(obj_points_array[i], rvecs[i], tvecs[i], camera_matrix, dist)
@@ -132,12 +105,9 @@ def calculate_reprojection_error(obj_points_array, img_points_array,
 def distortion_calibration_test_for_gui(image, chessboard_grid_size, chessboard_tile_spacing, image_count=None,
                                         criteria=CRITERIA):
         
-        # Find the chess board corners
-        obj_points = build_real_world_corner_positions(chessboard_grid_size, chessboard_tile_spacing)
         grey_image = cv.cvtColor(image, cv.COLOR_BGR2GRAY)
         ret, corners = cv2.findChessboardCornersSB(grey_image, chessboard_grid_size, flags=cv2.CALIB_CB_EXHAUSTIVE)
-
-        # If corners found, add object points, image points (after refining them)
+        
         if ret:
             optimised_corners = cv.cornerSubPix(grey_image, corners, (11,11), (-1,-1), criteria)
             
@@ -162,7 +132,7 @@ def perform_distortion_calibration_from_database(setup_id, camera):
     pattern_spacing = cdi.get_distortion_calibration_pattern_spacing(camera_id, setup_id)
     # Use CRUD to get an array of photo IDs
     
-    obj_points = build_real_world_corner_positions(pattern_size, pattern_spacing)
+    obj_points = generate_real_grid_positions(chessboard_grid_size, chessboard_tile_spacing)
     obj_points_array, img_points_array, frame_size = extract_corners_from_distorted_images(obj_points, photo_id_array, chessboard_grid_size)
 
     ret, camera_matrix, dist, rvecs, tvecs = cv.calibrateCamera(obj_points_array, img_points_array, frame_size,

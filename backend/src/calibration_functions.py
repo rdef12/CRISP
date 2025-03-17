@@ -77,7 +77,7 @@ def generate_object_points(grid_size: tuple[int, int], spacing: float):
 
 ####################################### DISTANCE CALIBRATIONS START ############################################
 
-def generate_real_grid_positions(grid_size: tuple[int, int], spacing: List[float, float]): # Applies to rectangular grid
+def generate_real_grid_positions(grid_size: tuple[int, int], spacing: list[float, float]): # Applies to rectangular grid
     
     real_grid_positions = np.empty(grid_size)
     x_length, y_length = grid_size

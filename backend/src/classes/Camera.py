@@ -41,9 +41,12 @@ class ImageSettings(BaseModel):
     
 
 class CalibrationImageSettings(ImageSettings):
+    """
+    conlist used to specift field constraints.
+    """    
     calibrationGridSize: List[int] = Field(..., min_items=2, max_items=2, description="Grid size as (rows, columns).")
-    calibrationTileSpacing: float = Field(..., gt=0, description="Spacing between tiles in mm.")
-    calibrationGridSizeErrors: Optional[List[int]] = Field(None, description="Grid Spacing Errors in mm.")
+    calibrationTileSpacing: List[float] = Field(..., min_items=1, description="Spacing between tiles in mm.")
+    calibrationTileSpacingErrors: Optional[List[float]] = Field(None, max_items=2, description="Error in spacing between tiles in mm.")
     
      # Validator to ensure grid dimensions are greater than 0
     @validator("calibrationGridSize", each_item=True)
@@ -51,12 +54,20 @@ class CalibrationImageSettings(ImageSettings):
         if v <= 0:
             raise ValueError("Grid dimensions must be greater than 0.")
         return v
+    
+    @validator("calibrationTileSpacing", each_item=True)
+    def check_positive_spacing(cls, value):
+        if value <= 0:
+            raise ValueError("Each spacing value must be greater than 0")
+        return value
 
     # Validator to ensure grid size errors are greater than 0 if provided
-    @validator("calibrationGridSizeErrors", each_item=True)
+    @validator("calibrationTileSpacingErrors", pre=True, always=True)
     def check_positive_errors(cls, v):
-        if v <= 0:
-            raise ValueError("Grid size errors must be greater than 0.")
+        if v is None:
+            return v 
+        if any(error <= 0 for error in v):
+            raise ValueError("All grid spacing errors must be greater than 0.")
         return v
     
     def to_image_settings(self) -> ImageSettings:
@@ -171,11 +182,9 @@ class Camera():
         
         try:
             print("\n\n\n\n\n I will try to create the file")
+            raw = "--raw" if imageSettings.format == "raw" else ""
             
-            # raw = "--raw" #raw = "" #changed for testing
-            if imageSettings.format == "raw":
-                raw = "--raw"
-            command = f"libcamera-still -o {full_file_path}.{imageSettings.format} -t {imageSettings.timeDelay} --gain {imageSettings.gain} -n {raw}"#TODO changed for testing without camera
+            command = f"libcamera-still -o {full_file_path}.{imageSettings.format} -t {imageSettings.timeDelay} --gain {imageSettings.gain} -n {raw}"
             timeout=30 #TODO temporary
             stdin, stdout, stderr = self.ssh_client.exec_command(command, timeout=timeout)
             

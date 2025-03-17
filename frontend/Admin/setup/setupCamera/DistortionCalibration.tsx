@@ -1,3 +1,6 @@
+/* eslint-disable react-hooks/exhaustive-deps */
+"use client";
+
 import { useState, useEffect } from "react";
 import Image from 'next/image';
 import { Button } from "@/components/ui/button"
@@ -44,8 +47,19 @@ export default function DistortionPage() {
     gain: "",
     xGridDimension: "",
     yGridDimension: "",
-    gridSpacing: "",
+    xGridSpacing: "",
+    yGridSpacing: "",
   });
+
+const areGridDimensionsComplete = (formData: CalibrationFormProps): boolean => {
+    return !!formData.xGridDimension && 
+           !!formData.yGridDimension;
+};
+
+const areGridSpacingsComplete = (formData: CalibrationFormProps): boolean => {
+    return !!formData.xGridSpacing && 
+           !!formData.yGridSpacing;
+};
 
   useEffect(() => {
     const intervalId = setInterval(() => {
@@ -107,7 +121,8 @@ export default function DistortionPage() {
                                                     format: "jpeg",
                                                     calibrationGridSize: [parseInt(formData.xGridDimension.toString()), 
                                                                           parseInt(formData.yGridDimension.toString())],
-                                                    calibrationTileSpacing: parseFloat(formData.gridSpacing.toString())
+                                                    calibrationTileSpacing: [parseFloat(formData.xGridSpacing.toString()),
+                                                                                       parseFloat(formData.yGridSpacing.toString())]
 
       }
       const response = await fetch(`${BACKEND_URL}/take_distortion_calibration_image/${username}/${imageCount+1}`, {
@@ -209,11 +224,15 @@ export default function DistortionPage() {
                 id="calibrationForm"
                 onSubmit={(e) => {
                   e.preventDefault(); // Prevent default form submission
-                  if (!formData.xGridDimension || !formData.yGridDimension) {
+                  if (!areGridDimensionsComplete(formData)) {
                     alert("Please fill in all grid dimensions.");
                     return;
-                }
-                  takeImage(formData);       // Call your function to handle image capture
+                  }
+                  if (!areGridSpacingsComplete(formData)) {
+                      alert("Please fill in all grid spacings.");
+                      return;
+                  }
+                  takeImage(formData); // Call image capture
                 }}
                 className="space-y-4"        // Keeps the same spacing as before
               >
@@ -267,15 +286,39 @@ export default function DistortionPage() {
                 </div>
                 <div className="flex flex-col space-y-2">
                   <Label className="text-green-500" htmlFor="gridSpacing">Grid Spacing (mm)</Label>
-                  <Input
-                    type="number"
-                    id="gridSpacing"
-                    name="gridSpacing"
-                    placeholder="Enter grid spacing"
-                    value={formData.gridSpacing}
-                    onChange={handleChange}
-                    required
-                  />
+                  <Popover>
+                        <PopoverTrigger asChild>
+                            <Button variant="outline">
+                                Enter Grid Spacings
+                            </Button>
+                        </PopoverTrigger>
+                        <PopoverContent>
+                            <div className="flex flex-col space-y-4">
+                            <Label className="mt-2" htmlFor="xGridSpacing">Horizontal Grid Spacing</Label>
+                            <Input
+                                type="number"
+                                id="xGridSpacing"
+                                name="xGridDxGridSpacingimension"
+                                placeholder="Enter horizontal spacing"
+                                value={formData.xGridSpacing}
+                                onChange={handleChange}
+                                required
+                            />
+                            </div>
+                            <div className="flex flex-col space-y-2">
+                            <Label className="mt-2" htmlFor="yGridSpacing">Vertical Grid Spacing</Label>
+                            <Input
+                                type="number"
+                                id="yGridSpacing"
+                                name="yGridSpacing"
+                                placeholder="Enter vertical spacing"
+                                value={formData.yGridSpacing}
+                                onChange={handleChange}
+                                required
+                            />
+                            </div>
+                        </PopoverContent>
+                    </Popover>
                 </div>
 
                 {/* Submit Button */}

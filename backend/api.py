@@ -15,6 +15,7 @@ from src.viewing_functions import *
 from src.network_functions import *
 from src.camera_functions import *
 from src.connection_functions import *
+from src.create_homographies import *
 from src.classes.Camera import ImageSettings, PhotoContext, CalibrationImageSettings
 from src.calibration_functions import ROI, determine_frame_size
 from src.distortion_correction import distortion_calibration_test_for_gui, perform_distortion_calibration_from_database
@@ -113,18 +114,22 @@ def take_single_picture_api(username: str, imageSettings: ImageSettings):
 @app.post("/take_distortion_calibration_image/{username}/{image_count}")
 def take_distortion_calibration_image_api(username: str, image_count: int,
                                           distortionImageSettings: CalibrationImageSettings):
-    context = PhotoContext.GENERAL
-    photo_bytes, _ = take_single_image(username, distortionImageSettings.to_image_settings(), context)
-    if photo_bytes:
-        image = load_image_byte_string_to_opencv(photo_bytes)
-        calibration_results = distortion_calibration_test_for_gui(image, distortionImageSettings.calibrationGridSize,
-                                                                  distortionImageSettings.calibrationTileSpacing,
-                                                                  image_count)
-        response = {
-            "results": calibration_results,
-            "image_bytes": base64.b64encode(photo_bytes).decode('utf-8')
-        }
-        return JSONResponse(content=response)
+    try:
+        context = PhotoContext.GENERAL
+        photo_bytes, _ = take_single_image(username, distortionImageSettings.to_image_settings(), context)
+        if photo_bytes:
+            image = load_image_byte_string_to_opencv(photo_bytes)
+            calibration_results = distortion_calibration_test_for_gui(image, distortionImageSettings.calibrationGridSize,
+                                                                    distortionImageSettings.calibrationTileSpacing,
+                                                                    image_count)
+            print("3\n\n")
+            response = {
+                "results": calibration_results,
+                "image_bytes": base64.b64encode(photo_bytes).decode('utf-8')
+            }
+            return JSONResponse(content=response)
+    except Exception as e:
+        print(f"Error taking distortion calibration image: {e}")
 
 @app.post("/reset_distortion_calibration/{setup_id}/{username}")
 def reset_distortion_calibration_api(setup_id, username):
@@ -144,28 +149,32 @@ def reset_distortion_calibration_api(setup_id, username):
 def perform_distortion_calibration_api(setup_id, username):
     
     perform_distortion_calibration_from_database(setup_id, username)
-    
-    return {"message": "distortion calibration reset"}
+    return {"message": "distortion calibration completed"}
 
 
-@app.post("/take_homography_calibration_image/{username}")
-def take_homography_calibration_image_api(username: str, homographyImageSettings: CalibrationImageSettings):
+@app.post("/take_homography_calibration_image/{username}/{plane_type}")
+def take_homography_calibration_image_api(username: str, plane_type: str,
+                                          homographyImageSettings: CalibrationImageSettings):
     context = PhotoContext.GENERAL
     
     print(f"\n\n\n SETTINGS: \n {homographyImageSettings.dict()} \n\n\n")
+    pattern_type = "chessboard" #TODO - add setting to frontend as an option?
     
     photo_bytes, _ = take_single_image(username, homographyImageSettings.to_image_settings(), context)
-    
     if photo_bytes:
-    #     image = load_image_byte_string_to_opencv(photo_bytes)
-    #       Add actual results soon!
-    #       See frontend for all passed in props.
+        match calibration_plane_type:
+            case "far":
+                cdi.update_far_face_calibration_pattern_size(camera_id, setup_id, homographyImageSettings.calibrationGridSize)
+                cdi.update_far_face_calibration_pattern_type(camera_id, setup_id, pattern_type)
+                cdi.update_far_face_calibration_spacing(camera_id, setup_id, homographyImageSettings.calibrationTileSpacing)
+                cdi.update_far_face_calibration_pattern_spacing_unc(camera_id, setup_id, homographyImageSettings.calibrationTileSpacingErrors)
+            case "near":
+                cdi.update_near_face_calibration_pattern_size(camera_id, setup_id, homographyImageSettings.calibrationGridSize)
+                cdi.update_near_face_calibration_pattern_type(camera_id, setup_id, pattern_type)
+                cdi.update_near_face_calibration_spacing(camera_id, setup_id, homographyImageSettings.calibrationTileSpacing)
+                cdi.update_near_face_calibration_pattern_spacing_unc(camera_id, setup_id, homographyImageSettings.calibrationTileSpacingErrors)
         
-        response = {
-            "results": False,
-            "image_bytes": base64.b64encode(photo_bytes).decode('utf-8')
-        }
-        return JSONResponse(content=response)
+        return perform_homography_calibration(username, setup_id, plane_type, photo_bytes=photo_bytes)
 
     
 @app.get("/stream/{username}")
@@ -234,8 +243,6 @@ def add_setup_api(setup_name: rb.SetupCreateRequest):
     return {"message": f"Setup with name {setup_name} successfully added.",
             "setup_id": setup_id}
 
-
-    
 @app.post("/save_scintillator_edges/{setup_id}/{username}")
 def save_scintillator_edges_api(setup_id, username, submittedROI: ROI):
     
