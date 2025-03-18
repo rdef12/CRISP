@@ -30,10 +30,13 @@ interface HomographyCalibrationProps {
 }
 
 export default function HomograpyCalibration( { plane }: HomographyCalibrationProps ) {
-    const { username = "undefined" } = useParams(); //  , plane = "undefined"
+    const { id = "undefined", username = "undefined" } = useParams(); //  , plane = "undefined"
+    
+    // Will this get called now?
     if (plane !== "near" && plane !== "far") {
         notFound();
     }
+
     const router = useRouter();
 
     const [showSaveButton, setShowSaveButton] = useState<boolean>(false);
@@ -95,7 +98,7 @@ export default function HomograpyCalibration( { plane }: HomographyCalibrationPr
               ]
           };
           
-          const response = await fetch(`${BACKEND_URL}/take_homography_calibration_image/${username}`, {
+          const response = await fetch(`${BACKEND_URL}/take_homography_calibration_image/${id}/${username}/${plane}`, {
             method: "POST",
             body: JSON.stringify(requestBody),
             headers: { "Content-Type": "application/json" }
@@ -123,7 +126,7 @@ export default function HomograpyCalibration( { plane }: HomographyCalibrationPr
         router.push(`/`); // in the future, return to this pi's calibration hub
       };
 
-      return (
+    return (
         <div className="grid grid-rows-[15%_75%_10%] h-screen gap-2">
             <div className="flex flex-col items-center justify-center">
                 <h1 className="text-2xl md:text-3xl font-medium tracking-normal text-gray-800 text-center underline mb-1">

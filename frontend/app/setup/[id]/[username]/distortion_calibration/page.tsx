@@ -19,16 +19,12 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover"
 import { useRouter, useParams } from "next/navigation"
-import { CalibrationImageSettings, CalibrationFormProps } from "@/pi_functions/interfaces";
+import { CalibrationImageSettings, CalibrationFormProps, LogMessage } from "@/pi_functions/interfaces";
 import { getPiStatus } from "@/pi_functions/pi-status";
 
 // In the future, I would like to import a script to allow
 // latex to be rendered within the browser.
 
-interface LogMessage {
-  status: boolean;
-  message: string;
-}
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND
 

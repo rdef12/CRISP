@@ -168,16 +168,39 @@ def take_homography_calibration_image_api(setup_id: str, username: str, plane_ty
                     cdi.update_far_face_calibration_pattern_size(camera_id, setup_id, homographyImageSettings.calibrationGridSize)
                     cdi.update_far_face_calibration_pattern_type(camera_id, setup_id, pattern_type)
                     cdi.update_far_face_calibration_spacing(camera_id, setup_id, homographyImageSettings.calibrationTileSpacing)
-                    cdi.update_far_face_calibration_pattern_spacing_unc(camera_id, setup_id, homographyImageSettings.calibrationTileSpacingErrors)
+                    cdi.update_far_face_calibration_spacing_unc(camera_id, setup_id, homographyImageSettings.calibrationTileSpacingErrors)
                 case "near":
                     cdi.update_near_face_calibration_pattern_size(camera_id, setup_id, homographyImageSettings.calibrationGridSize)
                     cdi.update_near_face_calibration_pattern_type(camera_id, setup_id, pattern_type)
                     cdi.update_near_face_calibration_spacing(camera_id, setup_id, homographyImageSettings.calibrationTileSpacing)
-                    cdi.update_near_face_calibration_pattern_spacing_unc(camera_id, setup_id, homographyImageSettings.calibrationTileSpacingErrors)
+                    cdi.update_near_face_calibration_spacing_unc(camera_id, setup_id, homographyImageSettings.calibrationTileSpacingErrors)
             
-            return test_grid_recognition_for_gui(username, setup_id, plane_type, photo_bytes=photo_bytes)
+            response = test_grid_recognition_for_gui(username, setup_id, plane_type, photo_bytes=photo_bytes)
+        return JSONResponse(content=response)
     except Exception as e:
         print(f"Error taking homography calibration image: {e}")
+        
+    
+# Put because just performing the homography after data already stored in db 
+@app.put("/perform_homography_calibration/{setup_id}/{username}/{plane_type}")
+def perform_homography_calibration_image_api(setup_id: str, username: str, plane_type: str):
+    try:
+        camera_id = cdi.get_camera_id_from_username(username)
+        match plane_type:
+            case "far":
+                photo_bytes = cdi.get_far_face_calibration_photo(camera_id, setup_id)
+            case "near":
+                photo_bytes = cdi.get_near_face_calibration_photo(camera_id, setup_id)
+        
+        if perform_homography_calibration(username, setup_id, plane_type, photo_bytes=photo_bytes):
+            status = True
+        else:
+            status = False
+        response = {"status": status}
+        return JSONResponse(content=response)
+    
+    except Exception as e:
+        print(f"Error performing homography calibration: {e}")
     
 @app.get("/stream/{username}")
 def stream_api(username: str):

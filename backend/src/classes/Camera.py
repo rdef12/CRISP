@@ -51,8 +51,8 @@ class CalibrationImageSettings(ImageSettings):
      # Validator to ensure grid dimensions are greater than 0
     @validator("calibrationGridSize", each_item=True)
     def check_positive_grid_dimensions(cls, v):
-        if v <= 0:
-            raise ValueError("Grid dimensions must be greater than 0.")
+        if v <= 1:
+            raise ValueError("Grid dimensions must be greater than 1.")
         return v
     
     @validator("calibrationTileSpacing", each_item=True)
@@ -184,7 +184,7 @@ class Camera():
             print("\n\n\n\n\n I will try to create the file")
             raw = "--raw" if imageSettings.format == "raw" else ""
             
-            command = f"libcamera-still -o {full_file_path}.{imageSettings.format} -t {imageSettings.timeDelay} --gain {imageSettings.gain} -n {raw}"
+            command = f"libcamera-still -o {full_file_path}.{imageSettings.format} -t {imageSettings.timeDelay} --gain {imageSettings.gain} -n {raw} --lens-position 5"
             timeout=30 #TODO temporary
             stdin, stdout, stderr = self.ssh_client.exec_command(command, timeout=timeout)
             

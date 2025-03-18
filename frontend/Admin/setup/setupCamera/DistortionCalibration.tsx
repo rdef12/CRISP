@@ -36,7 +36,7 @@ export default function DistortionPage() {
   const router = useRouter();
 
   const [logMessages, setLogMessages] = useState<LogMessage[]>([]);
-  const { username = "undefined" } = useParams();
+  const { id = "undefined", username = "undefined" } = useParams();
   const [isAlreadyFetching, setAlreadyFetching] = useState<boolean>(false);
   const [imageUrl, setImageUrl] = useState<string | undefined>(undefined);
   const [isLoading, setIsLoading] = useState(false);
@@ -174,13 +174,35 @@ const areGridSpacingsComplete = (formData: CalibrationFormProps): boolean => {
     router.push(`/`) // in the future, return to this pi's calibration hub
   };
 
-  const resetCalibration = () => {
+  const resetCalibration = async () => {
     console.log("Calibration reset!");
     setShowImage(false);
     setShowSaveButton(false);
     setIsLoading(false);
     setImageCount(0);
     setLogMessages([]);
+
+    try {
+        const response = await fetch(`${BACKEND_URL}/reset_distortion_calibration/${id}/${username}`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" }
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP error! Status: ${response.status}`);
+      }
+      const data = await response.json();
+      setLogMessages((prev) => [
+        ...prev,
+        {status: true,  message: data.message }
+      ]);
+      
+    }
+    catch (error) {
+      console.error("Error reseting distortion calibration:", error); 
+    } finally {
+      setAlreadyFetching(false);
+      setIsLoading(false);  // Set loading to false after the image is fetched
+    }
   };
 
   return (
@@ -298,7 +320,7 @@ const areGridSpacingsComplete = (formData: CalibrationFormProps): boolean => {
                             <Input
                                 type="number"
                                 id="xGridSpacing"
-                                name="xGridDxGridSpacingimension"
+                                name="xGridSpacing"
                                 placeholder="Enter horizontal spacing"
                                 value={formData.xGridSpacing}
                                 onChange={handleChange}

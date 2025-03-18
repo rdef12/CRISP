@@ -31,21 +31,19 @@ def load_homography_data(data_file_path: str):
 # For output to the GUI
 def test_homography_grid_identified(image: np.ndarray, calibration_pattern: str, 
                                     calibration_grid_size: tuple[int, int], 
-                                    pattern_spacing: list[float, float], 
-                                    grid_uncertainties: tuple[float, float], 
                                     correct_for_distortion: bool=False):
     """
     Return the image bytestring and status of test
     """
     if correct_for_distortion:
         # NEW LOGIC FOR CORRECT FOR DISTORTION from database
-        camera_matrix, dist = load_camera_calibration(distortion_calibration_path)
-        frame_size = determine_frame_size(image_path=image_path)
-        image = undistort_image(camera_matrix, dist, frame_size, image_path=image_path)
+        # camera_matrix, dist = load_camera_calibration(distortion_calibration_path)
+        # frame_size = determine_frame_size(image_path=image_path)
+        # image = undistort_image(camera_matrix, dist, frame_size, image_path=image_path)
+        pass
         
     grey_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
-    real_grid_positions = generate_real_grid_positions(calibration_grid_size, pattern_spacing)
     match calibration_pattern:
         case "chessboard":
             image_grid_positions, ret = find_image_grid_positions_chessboard(grey_image, calibration_grid_size)
@@ -55,18 +53,23 @@ def test_homography_grid_identified(image: np.ndarray, calibration_pattern: str,
             raise Exception("No calibration pattern called {} defined".format(calibration_pattern))
         
     if ret:
-        cv2.drawChessboardCorners(image, grid_size, image_grid_positions, ret)
+        cv2.drawChessboardCorners(image, calibration_grid_size, image_grid_positions, ret)
         first_point = tuple(map(int, image_grid_positions[0].ravel()))  # Convert to tuple (x, y)
-        cv2.circle(image, first_point, radius=10, color=(0, 0, 255), thickness=-1)  # Red dot
+        cv2.circle(image, first_point, radius=50, color=(0, 0, 255), thickness=-1)  # Red dot
         
         _, buffer = cv2.imencode('.jpg', image)
         image_bytes = base64.b64encode(buffer).decode("utf-8")
         return {
+            "status": True,
+            "message": "Calibration pattern succesfully recognised. Origin of coordinate system overlayed as a red circle.",
             "image_bytes": image_bytes
         }
-        
+    
+    _, buffer = cv2.imencode('.jpg', image) # Circle should not be present if ret false
     return {
-        "image_bytes": None
+        "status": False,
+        "message": "Calibration pattern could not be recognised in the image",
+        "image_bytes": base64.b64encode(buffer).decode("utf-8")
     }
 
 
@@ -81,9 +84,10 @@ def build_calibration_plane_homography(image: np.ndarray, calibration_pattern: s
 
         if correct_for_distortion:
             # NEW LOGIC NEEDED TO LOAD IN DISTORTION DATA FROM DATABASE
-            camera_matrix, dist = load_camera_calibration(distortion_calibration_path)
-            frame_size = determine_frame_size(image_path=image_path)
-            image = undistort_image(camera_matrix, dist, frame_size, image_path=image_path)
+            # camera_matrix, dist = load_camera_calibration(distortion_calibration_path)
+            # frame_size = determine_frame_size(image_path=image_path)
+            # image = undistort_image(camera_matrix, dist, frame_size, image_path=image_path)
+            pass
             
         grey_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
@@ -130,15 +134,11 @@ def test_grid_recognition_for_gui(username: str, setup_id: int,
         case "far":
             pattern_size = cdi.get_far_face_calibration_pattern_size(camera_id, setup_id)
             pattern_type = cdi.get_far_face_calibration_pattern_type(camera_id, setup_id)
-            pattern_spacing = cdi.get_far_face_calibration_spacing(camera_id, setup_id)
-            unc_spacing = cdi.get_far_face_calibration_pattern_spacing_unc(camera_id, setup_id)
         case "near":
             pattern_size = cdi.get_near_face_calibration_pattern_size(camera_id, setup_id)
             pattern_type = cdi.get_near_face_calibration_pattern_type(camera_id, setup_id)
-            pattern_spacing = cdi.get_near_face_calibration_spacing(camera_id, setup_id)
-            unc_spacing = cdi.get_near_face_calibration_pattern_spacing_unc(camera_id, setup_id)
             
-    if any(x is None for x in (pattern_size, pattern_type, pattern_spacing, unc_spacing)):
+    if any(x is None for x in (pattern_size, pattern_type)):
         correct_for_distortion = False
     else:
         correct_for_distortion = True
@@ -149,9 +149,8 @@ def test_grid_recognition_for_gui(username: str, setup_id: int,
         photo_bytes = cdi.get_photo_from_id(photo_id)
     image = load_image_byte_string_to_opencv(photo_bytes)
     
-    test_homography_grid_identified(image, pattern_type, pattern_size, 
-                                    pattern_spacing, unc_spacing, 
-                                    correct_for_distortion=correct_for_distortion)
+    return test_homography_grid_identified(image, pattern_type, pattern_size, 
+                                           correct_for_distortion=correct_for_distortion)
     
 
 def perform_homography_calibration(username: str, setup_id: int, 
@@ -166,12 +165,12 @@ def perform_homography_calibration(username: str, setup_id: int,
             pattern_size = cdi.get_far_face_calibration_pattern_size(camera_id, setup_id)
             pattern_type = cdi.get_far_face_calibration_pattern_type(camera_id, setup_id)
             pattern_spacing = cdi.get_far_face_calibration_spacing(camera_id, setup_id)
-            unc_spacing = cdi.get_far_face_calibration_pattern_spacing_unc(camera_id, setup_id)
+            unc_spacing = cdi.get_far_face_calibration_spacing_unc(camera_id, setup_id)
         case "near":
             pattern_size = cdi.get_near_face_calibration_pattern_size(camera_id, setup_id)
             pattern_type = cdi.get_near_face_calibration_pattern_type(camera_id, setup_id)
             pattern_spacing = cdi.get_near_face_calibration_spacing(camera_id, setup_id)
-            unc_spacing = cdi.get_near_face_calibration_pattern_spacing_unc(camera_id, setup_id)
+            unc_spacing = cdi.get_near_face_calibration_spacing_unc(camera_id, setup_id)
     
     
     if any(x is None for x in (pattern_size, pattern_type, pattern_spacing, unc_spacing)):
@@ -188,4 +187,5 @@ def perform_homography_calibration(username: str, setup_id: int,
     build_calibration_plane_homography(image, pattern_type, pattern_size, pattern_spacing, 
                                        unc_spacing, correct_for_distortion= correct_for_distortion,
                                        show_recognised_chessboard=False, save_to_database=True)
-    return None
+    
+    return True # If return True, frontend knows it was successful

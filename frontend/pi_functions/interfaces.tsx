@@ -20,3 +20,8 @@ export interface CalibrationFormProps {
   xGridSpacingError?: number | ""; // optional prop
   yGridSpacingError?: number | ""; // optional prop
 }
+
+export interface LogMessage {
+  status: boolean;
+  message: string;
+}

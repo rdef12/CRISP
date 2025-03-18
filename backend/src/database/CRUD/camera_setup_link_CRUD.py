@@ -90,39 +90,39 @@ def get_near_face_calibration_pattern_type(camera_id:int, setup_id:int) -> str:
         else:
             raise ValueError(f"Near face calibration pattern type not found for camera with id {camera_id} and setup with id {setup_id}.")
         
-def get_far_face_calibration_pattern_spacing(camera_id:int, setup_id:int) -> List[float]:
+def get_far_face_calibration_spacing(camera_id:int, setup_id:int) -> List[float]:
     with Session(engine) as session:
         statement = select(CameraSetupLink).where(CameraSetupLink.camera_id == camera_id).where(CameraSetupLink.setup_id == setup_id)
         result = session.exec(statement).one()
         if result:
-            return result.far_face_calibration_pattern_spacing
+            return result.far_face_calibration_spacing
         else:
             raise ValueError(f"Far face calibration pattern spacing not found for camera with id {camera_id} and setup with id {setup_id}.")
         
-def get_near_face_calibration_pattern_spacing(camera_id:int, setup_id:int) -> List[float]:
+def get_near_face_calibration_spacing(camera_id:int, setup_id:int) -> List[float]:
     with Session(engine) as session:
         statement = select(CameraSetupLink).where(CameraSetupLink.camera_id == camera_id).where(CameraSetupLink.setup_id == setup_id)
         result = session.exec(statement).one()
         if result:
-            return result.near_face_calibration_pattern_spacing
+            return result.near_face_calibration_spacing
         else:
             raise ValueError(f"Near face calibration pattern spacing not found for camera with id {camera_id} and setup with id {setup_id}.")
         
-def get_far_face_calibration_pattern_spacing_unc(camera_id:int, setup_id:int) -> List[float]:
+def get_far_face_calibration_spacing_unc(camera_id:int, setup_id:int) -> List[float]:
     with Session(engine) as session:
         statement = select(CameraSetupLink).where(CameraSetupLink.camera_id == camera_id).where(CameraSetupLink.setup_id == setup_id)
         result = session.exec(statement).one()
         if result:
-            return result.far_face_calibration_pattern_spacing_unc
+            return result.far_face_calibration_spacing_unc
         else:
             raise ValueError(f"Far face calibration pattern spacing uncertainty not found for camera with id {camera_id} and setup with id {setup_id}.")
         
-def get_near_face_calibration_pattern_spacing_unc(camera_id:int, setup_id:int) -> List[float]:
+def get_near_face_calibration_spacing_unc(camera_id:int, setup_id:int) -> List[float]:
     with Session(engine) as session:
         statement = select(CameraSetupLink).where(CameraSetupLink.camera_id == camera_id).where(CameraSetupLink.setup_id == setup_id)
         result = session.exec(statement).one()
         if result:
-            return result.near_face_calibration_pattern_spacing_unc
+            return result.near_face_calibration_spacing_unc
         else:
             raise ValueError(f"Near face calibration pattern spacing uncertainty not found for camera with id {camera_id} and setup with id {setup_id}.")
 
@@ -584,5 +584,59 @@ def update_distortion_calibration_pattern_spacing(camera_id:int, setup_id:int, d
         raise ValueError(f"No camera setup link found for camera_id={camera_id} and setup_id={setup_id}.")
     except Exception as e:
         raise RuntimeError(f"An error occurred: {str(e)}")
+    
+    
+def update_far_face_calibration_spacing(camera_id:int, setup_id:int, far_face_calibration_spacing: list[float]|None):
+    try:
+        with Session(engine) as session:
+            statement = select(CameraSetupLink).where(CameraSetupLink.camera_id == camera_id).where(CameraSetupLink.setup_id == setup_id)
+            result = session.exec(statement).one()
+            result.far_face_calibration_spacing = far_face_calibration_spacing
+            session.commit()
+            return {"message": f"Far face homography calibration pattern spacing updated for camera with id {camera_id} and setup with id {setup_id}."}
+    except NoResultFound:
+        raise ValueError(f"No camera setup link found for camera_id={camera_id} and setup_id={setup_id}.")
+    except Exception as e:
+        raise RuntimeError(f"An error occurred: {str(e)}")
+    
+def update_near_face_calibration_spacing(camera_id:int, setup_id:int, near_face_calibration_spacing: list[float]|None):
+    try:
+        with Session(engine) as session:
+            statement = select(CameraSetupLink).where(CameraSetupLink.camera_id == camera_id).where(CameraSetupLink.setup_id == setup_id)
+            result = session.exec(statement).one()
+            result.near_face_calibration_spacing = near_face_calibration_spacing
+            session.commit()
+            return {"message": f"Near face homography calibration pattern spacing updated for camera with id {camera_id} and setup with id {setup_id}."}
+    except NoResultFound:
+        raise ValueError(f"No camera setup link found for camera_id={camera_id} and setup_id={setup_id}.")
+    except Exception as e:
+        raise RuntimeError(f"An error occurred: {str(e)}")
 
+
+def update_far_face_calibration_spacing_unc(camera_id:int, setup_id:int, far_face_calibration_spacing_unc: list[float]|None):
+    try:
+        with Session(engine) as session:
+            statement = select(CameraSetupLink).where(CameraSetupLink.camera_id == camera_id).where(CameraSetupLink.setup_id == setup_id)
+            result = session.exec(statement).one()
+            result.far_face_calibration_spacing_unc = far_face_calibration_spacing_unc
+            session.commit()
+            return {"message": f"Far face homography calibration pattern spacing uncertainty updated for camera with id {camera_id} and setup with id {setup_id}."}
+    except NoResultFound:
+        raise ValueError(f"No camera setup link found for camera_id={camera_id} and setup_id={setup_id}.")
+    except Exception as e:
+        raise RuntimeError(f"An error occurred: {str(e)}")
+
+def update_near_face_calibration_spacing_unc(camera_id:int, setup_id:int, near_face_calibration_spacing_unc: list[float]|None):
+    try:
+        with Session(engine) as session:
+            statement = select(CameraSetupLink).where(CameraSetupLink.camera_id == camera_id).where(CameraSetupLink.setup_id == setup_id)
+            result = session.exec(statement).one()
+            result.near_face_calibration_spacing_unc = near_face_calibration_spacing_unc
+            session.commit()
+            return {"message": f"Near face homography calibration pattern spacing uncertainty updated for camera with id {camera_id} and setup with id {setup_id}."}
+    except NoResultFound:
+        raise ValueError(f"No camera setup link found for camera_id={camera_id} and setup_id={setup_id}.")
+    except Exception as e:
+        raise RuntimeError(f"An error occurred: {str(e)}")
+    
 # Delete

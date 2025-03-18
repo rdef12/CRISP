@@ -14,7 +14,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useRouter, useParams, notFound  } from "next/navigation";
-import { CalibrationImageSettings, CalibrationFormProps } from "@/pi_functions/interfaces";
+import { CalibrationImageSettings, CalibrationFormProps, LogMessage } from "@/pi_functions/interfaces";
 import {
     Popover,
     PopoverContent,
@@ -32,6 +32,7 @@ export default function HomograpyCalibration() {
     }
     const router = useRouter();
 
+    const [logMessages, setLogMessages] = useState<LogMessage[]>([]);
     const [showSaveButton, setShowSaveButton] = useState<boolean>(false);
     const [imageUrl, setImageUrl] = useState<string | undefined>(undefined);
     const [isLoading, setIsLoading] = useState(false);
@@ -73,7 +74,7 @@ export default function HomograpyCalibration() {
           setIsLoading(true);
 
           const requestBody: CalibrationImageSettings = {
-            filename: "temp_distortion_image", 
+            filename: "temp_homography_image", 
             gain: formData.gain,
             timeDelay: 500,
             format: "jpeg",
@@ -99,10 +100,20 @@ export default function HomograpyCalibration() {
           
           if (response.ok) {
             const data = await response.json();
+            console.log(data)
             const imageBase64 = data.image_bytes;
-            const imageUrl = `data:image/png;base64,${imageBase64}`;
+            const imageUrl = `data:image/jpeg;base64,${imageBase64}`;
             setImageUrl(imageUrl);
+
+            setLogMessages((prev) => [
+                ...prev,
+                { status: data.status, message: data.message }
+              ]);
+
             setShowImage(true);
+            if (data.status) {
+                setShowSaveButton(true);
+            }
           } else {
             throw new Error("Response is not ok: " + response);
           }
@@ -114,9 +125,21 @@ export default function HomograpyCalibration() {
         }
       };
 
-      const saveHomography = () => {
-        console.log("Homography saved!");
-        router.push(`/`); // in the future, return to this pi's calibration hub
+      const saveHomography = async () => {
+        const response = await fetch(`${BACKEND_URL}/perform_homography_calibration/${id}/${username}/${plane}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" }
+          });
+        const data = await response.json();
+        if (data.status) {
+            router.push(`/`); // in the future, return to this pi's calibration hub
+        }
+        else {
+            setLogMessages((prev) => [
+                ...prev,
+                { status: false, message: "Error occured when performing the homography calibration." }
+              ]);
+        }
       };
 
     return (
@@ -300,16 +323,25 @@ export default function HomograpyCalibration() {
                                 <CardContent className="p-4">
                                     <div className="grid grid-cols-[50%_50%] space-x-8">
                                         <div className="flex flex-col space-y-2">
-                                            <Button variant="default" className="px-2 py-1" onClick={() => {setShowSaveButton(true)}}>
-                                                Test grid recognition
-                                            </Button>
                                             {showSaveButton && <Button variant="destructive" className="px-2 py-1" onClick={saveHomography}>
                                                 Save Homography
                                             </Button>
                                             }
                                         </div>
                                         <div className="flex items-center justify-center">
-                                            Test
+                                        <ul>
+                                            {logMessages.slice(-5).reverse().map((log, index) => (
+                                            <li
+                                                key={index}
+                                                style={{ color: log.status ? 'blue' : 'red' }}
+                                            >
+                                                - {log.message}
+                                            </li>
+                                            ))}
+                                            {logMessages.length > 5 && (
+                                            <li style={{ color: 'black', fontSize: '20px' }}>...</li>
+                                            )}
+                                        </ul>
                                         </div>
                                     </div>
                                 </CardContent>

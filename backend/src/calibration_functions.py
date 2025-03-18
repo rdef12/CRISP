@@ -32,8 +32,10 @@ def find_image_grid_positions_circles(image: np.ndarray, grid_size: tuple[int, i
     # Also a CALIB_CB_ASYMMETRIC_GRID flag if using that pattern.
     ret, initial_grid_positions = cv2.findCirclesGrid(grey_image, grid_size, cv2.CALIB_CB_SYMMETRIC_GRID + cv2.CALIB_CB_CLUSTERING)
     
+    # if not ret:
+    #     raise Exception("Grid points could not be identified")
     if not ret:
-        raise Exception("Grid points could not be identified")
+        return None, ret
     
     criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 1000, 0.0001) #TODO: Identify what this is and optimise
     image_grid_positions = cv2.cornerSubPix(grey_image, initial_grid_positions, (11,11), (-1,-1), criteria)
@@ -44,8 +46,10 @@ def find_image_grid_positions_chessboard(grey_image: np.ndarray, grid_size: tupl
     
     ret, initial_grid_positions = cv2.findChessboardCornersSB(grey_image, grid_size, flags=cv2.CALIB_CB_EXHAUSTIVE)
     
+    # if not ret:
+    #     raise Exception("Grid points could not be identified")
     if not ret:
-        raise Exception("Grid points could not be identified")
+        return None, ret
     
     criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001) #TODO: Identify what this is and optimise
     image_grid_positions = cv2.cornerSubPix(grey_image, initial_grid_positions, (11,11), (-1,-1), criteria)
