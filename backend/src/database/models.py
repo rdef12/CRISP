@@ -73,7 +73,7 @@ class CameraSetupLink(SQLModel, table=True):
 # Others
     scintillator_edges_photo_camera_settings_id: Optional[int] = Field(default=None, foreign_key="camerasettingslink.id")
     horizontal_scintillator_limits: Optional[List[float]] = Field(default=None, sa_column=Column(ARRAY(Integer))) # How do you show 2d shape? (4x1 of 2x2 array)
-    vertical_scintillator_limits: Optional[List[float]] = Field(default=None, sa_column=Column(ARRAY(Integer))) # How do you show 2d shape? (4x1 of 2x2 array)
+    vertical_scintillator_limits: Optional[List[float]] = Field(default=None, sa_column=Column(ARRAY(Integer))) # How do you show 2d shape? (4x1 of 2x2 array)#TODO these should be int type surely
     # e_log_entry: #How is this going to be stored, surely theres a better way than just a string?
 
 

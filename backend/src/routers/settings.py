@@ -39,12 +39,12 @@ def add_settings(setup_camera_id: int, settings_body: rb.SettingsCreateRequest):
     camera_settings_id = camera_settings_link["id"]
 
     cdi.update_scintillator_edges_camera_settings_id(setup_camera_id, camera_settings_id)
-    return {"id": camera_settings_id}
+    return {"id": camera_settings_id} #TODO Maybe this should be settings_id?
 
 
 @router.get("/scintillator-edges/{setup_camera_id}")
 def get_scintillator_edge_settings(setup_camera_id: int, response: Response):
-    settings = cdi.get_all_settings_by_setup_camera_id(setup_camera_id)
+    settings = cdi.get_settings_by_setup_camera_id_scintillator_edges(setup_camera_id)
     print(f"\n\n\n\n\n {settings} \n\n\n\n\n")
 
     return settings

@@ -36,7 +36,7 @@ class ImageSettings(BaseModel):
     filename: str = Field(..., min_length=1, description="Filename without extension.")
     gain: int = Field(1, gt=0, example=1)
     timeDelay: int = Field(1000, ge=0, example=1000, description="Time delay in milliseconds") 
-    format: Literal["png", "jpg", "raw", "jpeg"] = Field("jpeg", example="png")
+    format: Literal["png", "jpg", "raw", "jpeg"] = Field("jpeg", example="png") #TODO Should we disallow .raw?
     meta_data_format: str = "dng" #TODO Can be made variable if need be
     
 
@@ -154,6 +154,46 @@ class Camera():
             print(f"Error: {e} ") # TODO finish proper error handling here
             raise e
         
+        try:
+            print("\n\n\n\n\n I will try to check the directory")
+            file_path = self.check_image_directory_exists(context)
+            print("\n\n\n\n\n Directory checked")
+        except Exception as e:
+            raise e    
+        # Should there be timestamping code in here?
+        print("\n\n\n\n\n I will try to generate the file name")
+
+        filename = self.generate_filename(camera_settings_link_id, context, imageSettings.format, filename=imageSettings.filename) # TODO maybe dont need filename as key word arg if set in imageSettings class
+        full_file_path = f"{file_path}/{filename}"
+        # TODO need a overwrite confirmation here for duplicate filename not sure how to do this frontend wise (or increment the filename)
+        print("\n\n\n\n\n I have generated the file name")
+        
+        try:
+            print("\n\n\n\n\n I will try to create the file")
+            
+            # raw = "--raw" #raw = "" #changed for testing
+            if imageSettings.format == "raw":
+                raw = "--raw"
+            command = f"libcamera-still -o {full_file_path}.{imageSettings.format} -t {imageSettings.timeDelay} --gain {imageSettings.gain} -n {raw}"#TODO changed for testing without camera
+            timeout=30 #TODO temporary
+            stdin, stdout, stderr = self.ssh_client.exec_command(command, timeout=timeout)
+            
+            output = stdout.read().decode().strip()
+            error = stderr.read().decode().strip() # TODO maybe the warnings here can be logged
+            stdin.close()
+            
+            exit_status = stdout.channel.recv_exit_status()
+            if exit_status != 0:  # Only raise an error if the command failed
+                raise Exception(f"Command '{command}' failed with exit status {exit_status}:\n{error}")
+            
+            print("\n\n\n\n\n I created the file")
+            print(camera_settings_link_id)
+            print(full_file_path)
+            return camera_settings_link_id, full_file_path
+        except Exception as e:
+            raise Exception(f"Error capturing image: {e}")
+
+  def capture_image_without_making_settings(self, camera_settings_link_id:int, imageSettings: ImageSettings, context: PhotoContext):
         try:
             print("\n\n\n\n\n I will try to check the directory")
             file_path = self.check_image_directory_exists(context)

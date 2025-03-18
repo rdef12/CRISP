@@ -238,15 +238,16 @@ export const ScintillatorEdges = () => {
   if (record?.scintillator_edges_photo_camera_settings_id === null) {
     return (
       <div>
+        <h1>Create page</h1>
         <CreateSettingsScintillatorEdges />
-        {/* <TakeScintillatorEdgePictureButton /> */}
-        {/* <ShowScintillatorEdgesPhoto />
-        <EditScintillatorEdges /> */}
+        {/* Same template as editable but without anything in it */}
       </div>
       
     )}
   return (
     <div>
+      <h1>Edit page</h1>
+
       <EditSettingsScintillatorEdges />
       {/* <TakeScintillatorEdgePictureButton /> */}
       {/* <ShowScintillatorEdgesPhoto />

@@ -1,8 +1,21 @@
 from pydantic import BaseModel
 from typing import Optional, List
 
+from src.database.models import Settings
+
 class SetupCameraCreateRequest(BaseModel):
     camera_id: int
+
+
+class SetupCameraScintillatorEdgeRequest(BaseModel):
+    id: int
+    camera_id: int
+    setup_id: int
+    scintillator_edges_photo_camera_settings_id: Optional[int]
+    settings: Optional[Settings]
+    horizontal_scintillator_limits: Optional[List[int]]
+    vertical_scintillator_limits: Optional[List[int]]
+
 
 
 class SetupCameraPatchRequest(BaseModel):

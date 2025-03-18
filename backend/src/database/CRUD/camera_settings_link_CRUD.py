@@ -79,6 +79,18 @@ def get_optimal_settings_id_for_camera(camera_id: int, ESS_beam_energy: float, b
         else:
             raise ValueError(f"Optimal settings for camera_id: {camera_id} with ESS_beam_energy: {ESS_beam_energy} and beam_current: {beam_current} cannot be a found.")
 
+def get_camera_settings_by_id(camera_settings_link_id: int):
+    with Session(engine) as session:
+        statement = select(CameraSettingsLink).where(CameraSettingsLink.id == camera_settings_link_id)
+        result = session.exec(statement).one()
+        return result
+
+def get_settings_id_by_camera_settings_id(camera_settings_id: int):
+    with Session(engine) as session:
+        camera_settings = session.get(CameraSettingsLink, camera_settings_id)
+        settings_id = camera_settings.settings_id
+        return settings_id
+
 # Update
 
 def flag_optimal_settings(beam_run_id: int, camera_id: int, settings_id: int):
