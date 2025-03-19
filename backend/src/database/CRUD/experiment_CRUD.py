@@ -20,7 +20,11 @@ def add_experiment(name: str, date_started: datetime, setup_id: int):
 
 # Read
 
-def get_all_experiments() -> list[Setup]:
+def get_experiment_by_id(experiment_id: int) -> Experiment:
+    with Session(engine) as session:
+        return session.get(Experiment, experiment_id)
+
+def get_all_experiments() -> list[Experiment]:
     with Session(engine) as session:
         statement = select(Experiment)
         results = session.exec(statement).all()

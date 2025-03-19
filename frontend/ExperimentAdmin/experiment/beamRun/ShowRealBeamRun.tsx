@@ -1,5 +1,7 @@
+import { ListCamerasInExperiment } from "./ListCamerasInExperiment";
+
 export const ShowRealBeamRun = () => {
   return (
-    <div>Hello, me be routed to real</div>
+    <ListCamerasInExperiment/>
   );
 }

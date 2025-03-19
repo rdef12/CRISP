@@ -4,7 +4,7 @@ from src.database.database import engine
 from sqlmodel import Session, select, PickleType
 from sqlalchemy.orm.exc import NoResultFound
 
-from src.database.models import CameraSetupLink, Setup
+from src.database.models import Camera, CameraSetupLink, Experiment, Setup
 from src.classes.JSON_request_bodies import request_bodies as rb
 
 
@@ -30,6 +30,20 @@ def get_setup_camera_by_id(id: int) -> CameraSetupLink:
         setup_camera = session.get(CameraSetupLink, id)
         print(f"\n\n\n\n\n THINGGGGGGG: {setup_camera} \n\n\n\n\n")
         return setup_camera
+
+def get_cameras_in_setup(setup_id: int) -> list[Camera]:
+    with Session(engine) as session:
+        statement = select(Camera).where(Setup.id == setup_id)
+        cameras = session.exec(statement).all()
+        return cameras if cameras else []
+
+
+def get_cameras_in_experiment(experiment_id: int) -> list[Camera]:
+    with Session(engine) as session:
+        statement = select(Camera).where(Experiment.id == experiment_id)
+        cameras = session.exec(statement).all()
+        return cameras if cameras else []
+
 
 def get_far_face_calibration_photo(camera_id:int, setup_id:int) -> bytes:
     with Session(engine) as session:

@@ -2,6 +2,7 @@ import { Card } from "@/components/ui/card"
 import { CreateRealBeamRun } from "./CreateRealBeamRun"
 import { ListBeamRun } from "./ListBeamRun"
 import { CreateTestBeamRun } from "./CreateTestBeamRun"
+import { ShowSetupSummary } from "./ShowSetupSummary"
 
 export const ShowExperiment = () => {
   return (
@@ -11,6 +12,7 @@ export const ShowExperiment = () => {
         <CreateTestBeamRun/>
       </Card>
       <ListBeamRun />
+      <ShowSetupSummary/>
     </div>
   )
 }
