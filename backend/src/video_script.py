@@ -206,7 +206,7 @@ def exclude_log(tarinfo):
         return None
     return tarinfo
 
-def package_images_for_transfer(directory_path):
+def package_images_for_transfer(archive_path):
     """
     - Should check if all images taken?
     
@@ -218,10 +218,10 @@ def package_images_for_transfer(directory_path):
     # Also, shouldn't risk compression that is lossy
     hostname = socket.gethostname()
     timestamp = time.strftime("%Y%m%d-%H%M%S") # Needs a unique name to not be overwritten on the backend
-    archive_name = f"{hostname}_{timestamp}_images" 
+    archive_name = f"{hostname}_{timestamp}_video_frames"
     
-    with tarfile.open("images.tar.gz", "w") as tar:
-        tar.add(directory_path, archive_name, filter=exclude_log) 
+    with tarfile.open("images.tar", "w") as tar:
+        tar.add(archive_path, archive_name, filter=exclude_log) 
     logging.info(f"Tar archive created for {hostname}")
     return 0
 
@@ -264,7 +264,12 @@ def main():
         picam2.start()
         ret = take_images(picam2, args, directory_path, frame_duration)
         if ret:
-            package_images_for_transfer(directory_path)
+            logging.info(f"{directory_path}")
+            logging.info(f"{args.diretory_name}")
+            logging.info(f"{directory_path}/{args.directory_name}")
+            
+            package_images_for_transfer(f"{directory_path}/{args.directory_name}")
+        print("Image capture complete")
         return 0
     
     except Exception as e:

@@ -8,6 +8,7 @@ import numpy as np
 from typing import List
 from src.database.CRUD import CRISP_database_interaction as cdi
 from src.calibration_functions import determine_frame_size
+from src.classes.JSON_request_bodies import request_bodies as rb
 
 def load_image_byte_string_to_opencv(image_byte_string: str):
     nparr = np.frombuffer(image_byte_string, np.uint8)
@@ -97,3 +98,17 @@ def stream_video_feed(username: str):
         if 'cap' in locals():  # locals() returns a dictionary of declared variables in scope
             cap.release()
 
+
+def take_single_video(username: str, video_settings: rb.VideoSettings):
+    try:
+        if (pi := Pi.get_pi_with_username(username)) is None:
+            raise Exception(f"No Pi instantiated with the username {username}")
+        
+        if pi.camera.check_video_script_exists():
+            print("\n\n\nScript found!\n\n\n")
+            pi.camera.run_pi_video_script(video_settings)
+        else:
+            raise Exception("Video script could not be accessed on pi")
+        
+    except Exception as e:
+        print(f"Error taking video on {username}: {e}")

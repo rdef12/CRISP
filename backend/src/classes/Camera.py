@@ -1,17 +1,10 @@
-"""
-Can I add a feature for creating the directory on the Pi for storing the images if it does not yet exist. Then,
-the remote directory can be made constant for all Pis. In genetal, we need images to be saved locally because we want as little
-delay between consecutive images as possible. At the end of the image capturing, they can be transferred to the GUI.
-
-RETURN METADATA AND IMAGE TO DATABASE - for now, save to folder in frontend/public/images/cam_test
-"""
 from pydantic import BaseModel, Field, validator
 from typing import List, Optional, Literal
-import socket
 import paramiko
 import cv2
 import os
 
+from src.classes.JSON_request_bodies import request_bodies as rb
 from src.database.CRUD import CRISP_database_interaction as cdi
 from enum import Enum
 
@@ -88,7 +81,7 @@ class Camera():
     self.cameraModel = cameraModel
     self.ssh_client = ssh_client # Hopefully, this is a reference to the Pi SSH Client?
     self.sftp_client = None # Needs to be opened with the Camera method
-    # self.remote_image_directory = f"/home/{self.username}/created_directory_2025" 
+
     self.remote_root_directory = f"/home/{self.username}" 
     self.general_image_directory = f"{self.remote_root_directory}/general"
     self.test_run_image_directory = f"{self.remote_root_directory}/experiment/test_beam_run_id_"
@@ -271,9 +264,9 @@ class Camera():
     images in the test run or real run directory depending on the
     photo context. root/context/run_num/(image files here)
     """
-    file_path = f"{self.remote_root_directory}/{self.video_script_filename}"
+    script_file_path = f"{self.remote_root_directory}/{self.video_script_filename}"
     # Check if the script exists on the pi.
-    stdin, stdout, stderr = self.ssh_client.exec_command(f"[ -f '{file_path}' ] && echo true || each false")
+    stdin, stdout, stderr = self.ssh_client.exec_command(f"[ -f '{script_file_path}' ] && echo true || echo false")
     
     output = stdout.read().decode().strip()
     error = stderr.read().decode().strip()
@@ -281,33 +274,51 @@ class Camera():
     
     exit_status = stdout.channel.recv_exit_status()
     if exit_status != 0:  # Only raise an error if the command failed
-        raise Exception(f"Error when checking video script exists: {e}")
+        raise Exception(f"\n\n\nError when checking video script exists: \n\nOUTPUT: {output}\n\n" +
+                        f"ERROR: {error}\n\n\n")
     
     if output == "true":
         return True
-    else:
-        # Logic for transferring script to pi
-        pass
+    
+    try:
+        self.open_sftp()
+        local_script_path = os.path.join("/code/src", self.video_script_filename)  
+        self.sftp_client.put(local_script_path, script_file_path)
+        stdin, stdout, stderr = self.ssh_client.exec_command(f"[ -f '{script_file_path}' ] && echo true || echo false")
+        output = stdout.read().decode().strip()
+        return output == "true" # will be False if script not found
+
+    except Exception as e:
+        raise Exception(f"Error transferring video script to Pi: {e}")
+    finally:
+        self.close_sftp()
     
 
-  def run_pi_video_script(self, image_settings: ImageSettings):
+  def run_pi_video_script(self, video_settings: rb.VideoSettings):
     """
     If script not found on pi, transfer script from here to the pi.
-    Then run SSH command with flags from ImageSettings
+    Then run SSH command with flags from rb.VideoSettings
     """
+    command = (f"python video_script.py -dir {video_settings.directory_name} " +
+              f"-num {video_settings.num_of_images} -c {video_settings.colour} " +
+              f"-g {video_settings.gain} -f {video_settings.format} -log {video_settings.log}" +
+              f"-b {video_settings.bit_depth} -fr {video_settings.frame_rate}")
     
-    command = f"test"
-    stdin, stdout, stderr = self.ssh_client.exec_command(command) # Does timeout mean full time for command to run or time for Pi to accept command?
-            
-    output = stdout.read().decode().strip()
-    error = stderr.read().decode().strip()
-    stdin.close()
-    
+    stdin, stdout, stderr = self.ssh_client.exec_command(command)
     exit_status = stdout.channel.recv_exit_status()
     if exit_status != 0:  # Only raise an error if the command failed
         raise Exception(f"Command '{command}' failed with exit status {exit_status}:\n{error}")
     
+    output_lines = stdout.readlines()
+    last_line = output_lines[-1].strip() if output_lines else "" # Script prints "Image capture complete" when done
     
+    if "Image capture complete" in last_line:
+        print(f"Image capture finished on {self.username}.")
+    else:
+        error = stderr.read().decode().strip()
+        raise Exception(f"Command failed with error:\n{error}")
+    stdin.close()
+
     return None
   
   
@@ -335,7 +346,6 @@ class Camera():
     if not cap.isOpened():
         raise Exception("Unable to open stream source")
     return cap
-  
   
   def stream_to_local_device(self):
     """
