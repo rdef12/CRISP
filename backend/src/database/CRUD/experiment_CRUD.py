@@ -15,9 +15,16 @@ def add_experiment(name: str, date_started: datetime, setup_id: int):
     with Session(engine) as session:
         session.add(experiment)
         session.commit()
-        return {"message", f"Experiment added to setup called {name}."}
+        return {"message": f"Experiment added to setup called {name}.",
+                "id": experiment.id}
 
 # Read
+
+def get_all_experiments() -> list[Setup]:
+    with Session(engine) as session:
+        statement = select(Experiment)
+        results = session.exec(statement).all()
+        return results if results else []
 
 def get_experiment_id_from_name(name: str) -> int:
     with Session(engine) as session:

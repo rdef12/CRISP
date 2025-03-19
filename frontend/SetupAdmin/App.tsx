@@ -13,7 +13,7 @@ import {
 } from "./setup/setupCamera/setupCamera";
 import { SetupCreate, SetupList } from "./setup/setup";
 import CustomAdminLayout from "./CustomLayout";
-import { CreateSettingsScintillatorEdges } from "./setup/setupCamera/scintillator_edges/CreateSettingsScintillatorEdges";
+// import { CreateSettingsScintillatorEdges } from "./setup/setupCamera/scintillator_edges/CreateSettingsScintillatorEdges";
 import { ScintillatorEdges } from "./setup/setupCamera/scintillator_edges/ScintillatorEdges";
 // import { CameraSetupList } from "./CameraSetup";
 
@@ -38,7 +38,7 @@ const AdminApp = () => (
       <Route path=":setupId/setup-camera/:setupCameraId/distortion/settingsId" element={<DistortionTestContent/>} /> {/* NOT THIS PAGE OBVS */}
 
       <Route path=":setupId/setup-camera/:setupCameraId/scintillator-edges/" element={<ScintillatorEdges/>} /> {/*ScintillatorEdgeCalibration  ScintillatorEdgesTestContent*/}
-      <Route path=":setupId/setup-camera/:setupCameraId/scintillator-edges/create" element={<CreateSettingsScintillatorEdges/>} /> {/*ScintillatorEdgeCalibration  ScintillatorEdgesTestContent*/}
+      {/* <Route path=":setupId/setup-camera/:setupCameraId/scintillator-edges/create" element={<CreateSettingsScintillatorEdges/>} /> ScintillatorEdgeCalibration  ScintillatorEdgesTestContent */}
       {/* <Route path=":setupId/setup-camera/:setupCameraId/scintillator-edges/edit" element={<ScintillatorEdgesTestContent/>} />NOT THIS PAGE OBVS */}
      {/*I think maybe these should be /settingsId cna maybe */}
     </Resource>

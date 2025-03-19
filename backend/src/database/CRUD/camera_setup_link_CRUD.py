@@ -27,9 +27,9 @@ def add_camera_to_setup(setup_id: int, camera_id:int):
 
 def get_setup_camera_by_id(id: int) -> CameraSetupLink:
     with Session(engine) as session:
-        thing = session.get(CameraSetupLink, id)
-        print(f"\n\n\n\n\n THINGGGGGGG: {thing} \n\n\n\n\n")
-        return thing
+        setup_camera = session.get(CameraSetupLink, id)
+        print(f"\n\n\n\n\n THINGGGGGGG: {setup_camera} \n\n\n\n\n")
+        return setup_camera
 
 def get_far_face_calibration_photo(camera_id:int, setup_id:int) -> bytes:
     with Session(engine) as session:
@@ -341,32 +341,75 @@ def update_scintillator_edges_camera_settings_id(setup_camera_id: int, scintilla
         raise RuntimeError(f"An error occurred: {str(e)}")
     
 
-def update_horizontal_scintillator_scintillator_limits(camera_id:int, setup_id:int, horizontal_scintillator_limits: tuple[int, int]):
+def update_horizontal_scintillator_scintillator_start(setup_camera_id: int, horizontal_scintillator_start: int):
     try:
         with Session(engine) as session:
-            statement = select(CameraSetupLink).where(CameraSetupLink.camera_id == camera_id).where(CameraSetupLink.setup_id == setup_id)
-            result = session.exec(statement).one()
-            result.horizontal_scintillator_limits = horizontal_scintillator_limits
+            # statement = select(CameraSetupLink).where(CameraSetupLink.camera_id == camera_id).where(CameraSetupLink.setup_id == setup_id)
+            # result = session.exec(statement).one()
+            setup_camera = session.get(CameraSetupLink, setup_camera_id)
+            setup_camera.horizontal_scintillator_start = horizontal_scintillator_start
             session.commit()
-            return {"message": f"Horizontal scintillator limits updated for camera with id {camera_id} and setup with id {setup_id}."}
+            return {"message": f"Horizontal scintillator start updated for setup camera with id {setup_camera_id}."}
     except NoResultFound:
-        raise ValueError(f"No camera setup link found for camera_id={camera_id} and setup_id={setup_id}.")
+        raise ValueError(f"No camera setup link found for id: {setup_camera_id}.")
+    except Exception as e:
+        raise RuntimeError(f"An error occurred: {str(e)}")
+    
+def update_horizontal_scintillator_scintillator_end(setup_camera_id: int, horizontal_scintillator_end: int):
+    try:
+        with Session(engine) as session:
+            # statement = select(CameraSetupLink).where(CameraSetupLink.camera_id == camera_id).where(CameraSetupLink.setup_id == setup_id)
+            # result = session.exec(statement).one()
+            setup_camera = session.get(CameraSetupLink, setup_camera_id)
+            setup_camera.horizontal_scintillator_end = horizontal_scintillator_end
+            session.commit()
+            return {"message": f"Horizontal scintillator end updated for setup camera with id {setup_camera_id}."}
+    except NoResultFound:
+        raise ValueError(f"No camera setup link found for id: {setup_camera_id}.")
+    except Exception as e:
+        raise RuntimeError(f"An error occurred: {str(e)}")
+    
+def update_vertical_scintillator_scintillator_start(setup_camera_id: int, vertical_scintillator_start: int):
+    try:
+        with Session(engine) as session:
+            # statement = select(CameraSetupLink).where(CameraSetupLink.camera_id == camera_id).where(CameraSetupLink.setup_id == setup_id)
+            # result = session.exec(statement).one()
+            setup_camera = session.get(CameraSetupLink, setup_camera_id)
+            setup_camera.vertical_scintillator_start = vertical_scintillator_start
+            session.commit()
+            return {"message": f"Vertical scintillator start updated for setup camera with id {setup_camera_id}."}
+    except NoResultFound:
+        raise ValueError(f"No camera setup link found for id: {setup_camera_id}.")
+    except Exception as e:
+        raise RuntimeError(f"An error occurred: {str(e)}")
+    
+def update_vertical_scintillator_scintillator_end(setup_camera_id: int, vertical_scintillator_end: int):
+    try:
+        with Session(engine) as session:
+            # statement = select(CameraSetupLink).where(CameraSetupLink.camera_id == camera_id).where(CameraSetupLink.setup_id == setup_id)
+            # result = session.exec(statement).one()
+            setup_camera = session.get(CameraSetupLink, setup_camera_id)
+            setup_camera.vertical_scintillator_end = vertical_scintillator_end
+            session.commit()
+            return {"message": f"Vertical scintillator end updated for setup camera with id {setup_camera_id}."}
+    except NoResultFound:
+        raise ValueError(f"No camera setup link found for id: {setup_camera_id}.")
     except Exception as e:
         raise RuntimeError(f"An error occurred: {str(e)}")
     
 
-def update_vertical_scintillator_limits(camera_id:int, setup_id:int, vertical_scintillator_limits: tuple[int, int]):
-    try:
-        with Session(engine) as session:
-            statement = select(CameraSetupLink).where(CameraSetupLink.camera_id == camera_id).where(CameraSetupLink.setup_id == setup_id)
-            result = session.exec(statement).one()
-            result.vertical_scintillator_limits = vertical_scintillator_limits
-            session.commit()
-            return {"message": f"Vertical scintillator limits updated for camera with id {camera_id} and setup with id {setup_id}."}
-    except NoResultFound:
-        raise ValueError(f"No camera setup link found for camera_id={camera_id} and setup_id={setup_id}.")
-    except Exception as e:
-        raise RuntimeError(f"An error occurred: {str(e)}")
+# def update_vertical_scintillator_limits(camera_id:int, setup_id:int, vertical_scintillator_limits: tuple[int, int]):
+#     try:
+#         with Session(engine) as session:
+#             statement = select(CameraSetupLink).where(CameraSetupLink.camera_id == camera_id).where(CameraSetupLink.setup_id == setup_id)
+#             result = session.exec(statement).one()
+#             result.vertical_scintillator_limits = vertical_scintillator_limits
+#             session.commit()
+#             return {"message": f"Vertical scintillator limits updated for camera with id {camera_id} and setup with id {setup_id}."}
+#     except NoResultFound:
+#         raise ValueError(f"No camera setup link found for camera_id={camera_id} and setup_id={setup_id}.")
+#     except Exception as e:
+#         raise RuntimeError(f"An error occurred: {str(e)}")
     
 def patch_setup_camera(setup_camera_id: int, patch: rb.SetupCameraPatchRequest):
     try:
@@ -426,10 +469,14 @@ def patch_setup_camera(setup_camera_id: int, patch: rb.SetupCameraPatchRequest):
         # Scintillator edges
             if patch.scintillator_edges_photo_camera_settings_id is not None:
                 result.scintillator_edges_photo_camera_settings_id = patch.scintillator_edges_photo_camera_settings_id
-            if patch.horizontal_scintillator_limits is not None:
-                result.horizontal_scintillator_limits = patch.horizontal_scintillator_limits
-            if patch.vertical_scintillator_limits is not None:
-                result.vertical_scintillator_limits = patch.vertical_scintillator_limits
+            if patch.horizontal_scintillator_start is not None:
+                result.horizontal_scintillator_start = patch.horizontal_scintillator_start
+            if patch.horizontal_scintillator_end is not None:
+                result.horizontal_scintillator_end = patch.horizontal_scintillator_end
+            if patch.vertical_scintillator_start is not None:
+                result.vertical_scintillator_start = patch.vertical_scintillator_start
+            if patch.vertical_scintillator_end is not None:
+                result.vertical_scintillator_end = patch.vertical_scintillator_end
             setup_statement = select(Setup).where(CameraSetupLink.id == setup_camera_id)
             setup_result = session.exec(setup_statement).one()
             setup_result.date_last_edited = datetime.now(pytz.utc)

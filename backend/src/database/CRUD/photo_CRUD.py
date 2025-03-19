@@ -57,4 +57,26 @@ def get_photo_from_id(photo_id: int) -> bytes:
 
 # Update
 
+def update_photo(camera_settings_link_id: int, photo: bytes):  # , photo_metadata: bytes):
+    try:
+        # Check if the photo already exists for the given camera_settings_link_id
+        with Session(engine) as session:
+            statement = select(Photo).where(Photo.camera_settings_link_id == camera_settings_link_id)
+            existing_photo = session.exec(statement).first() #TODO This should ensure 1 in future
+            if existing_photo:
+                existing_photo.photo = photo
+                # existing_photo.photo_metadata = photo_metadata  # If you are using metadata
+            else:
+                existing_photo = Photo(camera_settings_link_id=camera_settings_link_id, photo=photo)  # , photo_metadata=photo_metadata)
+            session.add(existing_photo)
+            session.commit()
+
+            return {"message": "Photo added/updated to camera settings link.",
+                    "id": existing_photo.id}
+
+    except TypeError as e:
+        raise TypeError(f"TypeError: {e}") from e
+    except ValueError as e:
+        raise ValueError(f"ValueError: {e}") from e
+
 # Delete

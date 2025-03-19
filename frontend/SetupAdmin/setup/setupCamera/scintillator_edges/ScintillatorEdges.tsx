@@ -4,6 +4,8 @@ import { useParams } from "react-router-dom";
 import { useShowController } from "react-admin";
 import { CreateSettingsScintillatorEdges } from "./CreateSettingsScintillatorEdges";
 import { EditSettingsScintillatorEdges } from "./EditSettingsScintillatorEdges";
+import { CreateScintillatorEdgePictureButton } from "./CreateScintillatorEdgePictureButton";
+import { EditScintillatorEdges } from "./EditScintillatorEdges";
 
 // import { useState, useEffect } from "react";
 // import { Input } from "@/components/ui/input";
@@ -235,6 +237,7 @@ export const ScintillatorEdges = () => {
   const { setupCameraId } = useParams();
   const { record, isPending } = useShowController({resource: "setup-camera/calibration", id: setupCameraId});
   if (isPending) return null;
+  console.log("RECORD: ", record)
   if (record?.scintillator_edges_photo_camera_settings_id === null) {
     return (
       <div>
@@ -249,9 +252,18 @@ export const ScintillatorEdges = () => {
       <h1>Edit page</h1>
 
       <EditSettingsScintillatorEdges />
+      
       {/* <TakeScintillatorEdgePictureButton /> */}
       {/* <ShowScintillatorEdgesPhoto />
       <EditScintillatorEdges /> */}
+
+
+      <div>
+        <CreateScintillatorEdgePictureButton />
+      </div>
+      <div>
+        <EditScintillatorEdges />
+      </div>
     </div>
   )
   

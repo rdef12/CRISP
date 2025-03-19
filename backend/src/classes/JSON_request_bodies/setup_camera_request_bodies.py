@@ -13,9 +13,10 @@ class SetupCameraScintillatorEdgeRequest(BaseModel):
     setup_id: int
     scintillator_edges_photo_camera_settings_id: Optional[int]
     settings: Optional[Settings]
-    horizontal_scintillator_limits: Optional[List[int]]
-    vertical_scintillator_limits: Optional[List[int]]
-
+    horizontal_start: Optional[int]
+    horizontal_end: Optional[int]
+    vertical_start: Optional[int]
+    vertical_end: Optional[int]
 
 
 class SetupCameraPatchRequest(BaseModel):
@@ -46,6 +47,10 @@ class SetupCameraPatchRequest(BaseModel):
     near_z_offset_unc: Optional[float] = None
 # Others
     scintillator_edges_photo_camera_settings_id: Optional[int] = None
-    horizontal_scintillator_limits: Optional[List[float]] = None
-    vertical_scintillator_limits: Optional[List[float]] = None
+    horizontal_scintillator_start: Optional[int] = None
+    horizontal_scintillator_end: Optional[int] = None
+
+    vertical_scintillator_start: Optional[int] = None
+    vertical_scintillator_end: Optional[int] = None
+
     # e_log_entry: #How is this going to be stored, surely theres a better way than just a string?

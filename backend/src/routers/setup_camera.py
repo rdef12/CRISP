@@ -27,6 +27,11 @@ def get_camera_setups(setup_id: int, response: Response) -> list[CameraSetupLink
         response.headers["Content-Range"] = str(len(results))
         return results
 
+# @router.get("/{setup_camera_id}")
+# async def read_setup_camera(setup_camera_id: int) -> CameraSetupLink:
+#     setup_camera = cdi.get_setup_camera_by_id(setup_camera_id)
+#     return setup_camera
+
 @router.get("/calibration/{setup_camera_id}")
 async def read_setup_camera(setup_camera_id: int) -> CameraSetupLink:
     setup_camera = cdi.get_setup_camera_by_id(setup_camera_id)
@@ -38,29 +43,41 @@ async def read_setup_camera(setup_camera_id: int) -> rb.SetupCameraScintillatorE
     setup_camera = cdi.get_setup_camera_by_id(setup_camera_id)
     settings = cdi.get_settings_by_setup_camera_id_scintillator_edges(setup_camera_id)
     print(f"\n\n Settings: {settings} \n\n")
+
     setup_camera_body = rb.SetupCameraScintillatorEdgeRequest(id=setup_camera.id,
                                                               camera_id=setup_camera.id,
                                                               setup_id=setup_camera.setup_id,
                                                               scintillator_edges_photo_camera_settings_id=setup_camera.scintillator_edges_photo_camera_settings_id,
                                                               settings=settings,
-                                                              horizontal_scintillator_limits=setup_camera.horizontal_scintillator_limits,
-                                                              vertical_scintillator_limits=setup_camera.vertical_scintillator_limits)
+                                                              horizontal_start=setup_camera.horizontal_scintillator_start,
+                                                              horizontal_end=setup_camera.horizontal_scintillator_end,
+                                                              vertical_start=setup_camera.vertical_scintillator_start,
+                                                              vertical_end=setup_camera.vertical_scintillator_end)
     return setup_camera_body
 
 @router.put("/scintillator-edges/{setup_camera_id}")
 async def read_setup_camera(setup_camera_id: int, settings_body: rb.SetupCameraScintillatorEdgeRequest):
-    result = cdi.add_settings(settings_body.settings.frame_rate, settings_body.settings.lens_position, settings_body.settings.gain)
-    settings_id = result["id"]
+    if settings_body.settings is not None:
+        result = cdi.add_settings(settings_body.settings.frame_rate, settings_body.settings.lens_position, settings_body.settings.gain)
+        settings_id = result["id"]
 
-    setup_camera = cdi.get_setup_camera_by_id(setup_camera_id)
-    camera_id = setup_camera.camera_id
+        setup_camera = cdi.get_setup_camera_by_id(setup_camera_id)
+        camera_id = setup_camera.camera_id
 
-    camera_settings_link = cdi.add_camera_settings_link(camera_id, settings_id)
-    camera_settings_id = camera_settings_link["id"]
+        camera_settings_link = cdi.add_camera_settings_link(camera_id, settings_id)
+        camera_settings_id = camera_settings_link["id"]
 
-    cdi.update_scintillator_edges_camera_settings_id(setup_camera_id, camera_settings_id)
-    return {"id": setup_camera_id}
+        cdi.update_scintillator_edges_camera_settings_id(setup_camera_id, camera_settings_id)
+    if settings_body.horizontal_start is not None:
+        cdi.update_horizontal_scintillator_scintillator_start(setup_camera_id, settings_body.horizontal_start)
+    if settings_body.horizontal_end is not None:
+        cdi.update_horizontal_scintillator_scintillator_end(setup_camera_id, settings_body.horizontal_end)
 
+    if settings_body.vertical_start is not None:
+        cdi.update_vertical_scintillator_scintillator_start(setup_camera_id, settings_body.vertical_start)
+    if settings_body.vertical_end is not None:
+        cdi.update_vertical_scintillator_scintillator_end(setup_camera_id, settings_body.vertical_end)
+    return {"id": camera_settings_id}
     # setup_camera = cdi.get_setup_camera_by_id(setup_camera_id)
     # settings = cdi.get_settings_by_setup_camera_id_scintillator_edges(setup_camera_id)
     # setup_camera_body = rb.SetupCameraScintillatorEdgeRequest(id=setup_camera.id,
@@ -84,6 +101,11 @@ async def patch_setup_camera(setup_camera_id: int, patch_request: rb.SetupCamera
     cdi.patch_setup_camera(setup_camera_id, patch_request)
     return
 
+
+@router.patch("/calibration/{setup_camera_id}")
+async def patch_setup_camera(setup_camera_id: int, patch_request: rb.SetupCameraPatchRequest):
+    cdi.patch_setup_camera(setup_camera_id, patch_request)
+    return
 
     
 

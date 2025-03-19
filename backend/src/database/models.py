@@ -72,8 +72,12 @@ class CameraSetupLink(SQLModel, table=True):
     near_z_offset_unc: Optional[float] = Field(default=None)
 # Others
     scintillator_edges_photo_camera_settings_id: Optional[int] = Field(default=None, foreign_key="camerasettingslink.id")
-    horizontal_scintillator_limits: Optional[List[float]] = Field(default=None, sa_column=Column(ARRAY(Integer))) # How do you show 2d shape? (4x1 of 2x2 array)
-    vertical_scintillator_limits: Optional[List[float]] = Field(default=None, sa_column=Column(ARRAY(Integer))) # How do you show 2d shape? (4x1 of 2x2 array)#TODO these should be int type surely
+    # horizontal_scintillator_limits: Optional[List[float]] = Field(default=None, sa_column=Column(ARRAY(Integer))) # How do you show 2d shape? (4x1 of 2x2 array)
+    horizontal_scintillator_start: Optional[int]
+    horizontal_scintillator_end: Optional[int]
+    vertical_scintillator_start: Optional[int]
+    vertical_scintillator_end: Optional[int]
+    # vertical_scintillator_limits: Optional[List[float]] = Field(default=None, sa_column=Column(ARRAY(Integer))) # How do you show 2d shape? (4x1 of 2x2 array)#TODO these should be int type surely
     # e_log_entry: #How is this going to be stored, surely theres a better way than just a string?
 
 
@@ -259,7 +263,7 @@ class BeamRun(SQLModel, table=True):
     beam_current_unc: float
     #Any other beam parameters?
 
-    is_test: Optional[bool] = Field(default=None)
+    is_test: bool
 
     experiment_id: int = Field(default=None, foreign_key="experiment.id")
     experiment: Experiment = Relationship(back_populates="beam_runs")

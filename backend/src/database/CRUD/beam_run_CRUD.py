@@ -12,14 +12,16 @@ def add_beam_run(experiment_id: int,
                         datetime_of_run: datetime,
                         ESS_beam_energy: float,
                         beam_current: float,
-                        beam_current_unc: float): # And other beam parameters to be added
+                        beam_current_unc: float,
+                        is_test: bool): # And other beam parameters to be added
     try:
         beam_run = BeamRun(experiment_id=experiment_id,
                                         beam_run_number=beam_run_number,
                                         datetime_of_run=datetime_of_run,
                                         ESS_beam_energy=ESS_beam_energy,
                                         beam_current=beam_current,
-                                        beam_current_unc=beam_current_unc)
+                                        beam_current_unc=beam_current_unc,
+                                        is_test=is_test)
     except TypeError as e:
         raise TypeError(f"TypeError: {e}") from e
     except ValueError as e:
@@ -27,8 +29,10 @@ def add_beam_run(experiment_id: int,
     with Session(engine) as session:
         session.add(beam_run)
         session.commit()
-        return {"message": f"Beam run {beam_run} created for experiment with id: {experiment_id}",
-                "id": beam_run.id}
+        session.refresh(beam_run)
+        return beam_run
+        # return {"message": f"Beam run {beam_run} created for experiment with id: {experiment_id}",
+        #         "id": beam_run.id}
 
 # Read
 
