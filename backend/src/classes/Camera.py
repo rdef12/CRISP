@@ -3,6 +3,9 @@ from typing import List, Optional, Literal
 import paramiko
 import cv2
 import os
+import tarfile
+from io import BytesIO
+
 
 from src.classes.JSON_request_bodies import request_bodies as rb
 from src.database.CRUD import CRISP_database_interaction as cdi
@@ -299,31 +302,68 @@ class Camera():
     If script not found on pi, transfer script from here to the pi.
     Then run SSH command with flags from rb.VideoSettings
     """
+    log = "-log" if video_settings.log == True else ""
     command = (f"python video_script.py -dir {video_settings.directory_name} " +
               f"-num {video_settings.num_of_images} -c {video_settings.colour} " +
-              f"-g {video_settings.gain} -f {video_settings.format} -log {video_settings.log}" +
+              f"-g {video_settings.gain} -f {video_settings.format} {log} " +
               f"-b {video_settings.bit_depth} -fr {video_settings.frame_rate}")
     
     stdin, stdout, stderr = self.ssh_client.exec_command(command)
-    exit_status = stdout.channel.recv_exit_status()
-    if exit_status != 0:  # Only raise an error if the command failed
-        raise Exception(f"Command '{command}' failed with exit status {exit_status}:\n{error}")
-    
+    error = stderr.read().decode().strip()
     output_lines = stdout.readlines()
     last_line = output_lines[-1].strip() if output_lines else "" # Script prints "Image capture complete" when done
     
     if "Image capture complete" in last_line:
         print(f"Image capture finished on {self.username}.")
     else:
-        error = stderr.read().decode().strip()
         raise Exception(f"Command failed with error:\n{error}")
     stdin.close()
 
     return None
   
   
-  def transfer_video_frames(self):
-      pass
+  def create_camera_settings_link_for_video(self, username: str, video_settings: rb.VideoSettings):
+      
+        #TODO obviously these will take variable values once model is fleshed out
+        added_settings = cdi.add_settings(frame_rate=5, lens_position=0.5, gain=video_settings.gain)
+        settings_id = added_settings["id"]
+        camera_id = cdi.get_camera_id_from_username(self.username)
+        added_camera_settings_link = cdi.add_camera_settings_link(camera_id=camera_id, settings_id=settings_id)
+        camera_settings_link_id = added_camera_settings_link["id"]
+        return camera_settings_link_id
+  
+  
+  def transfer_video_frames(self, username: str, video_settings: rb.VideoSettings): 
+    try:
+        self.open_sftp()
+        # Alternatively, could print tar_archive path from script and extract from stdout
+        files_in_directory = self.sftp_client.listdir(f"{self.remote_root_directory}/{video_settings.directory_name}")
+        tarball_files = [f for f in files_in_directory if f.endswith(('.tar', '.tar.gz', '.tgz'))]
+        if not tarball_files:
+            raise Exception("No tarball found in the directory.")
+
+        # Assuming there's only one tarball, use the first match
+        tarball_name = tarball_files[0]
+        remote_tar_path = os.path.join(video_settings.directory_name, tarball_name)
+        print(f"\n\n\nFound tarball: {tarball_name}, proceeding with extraction...\n\n\n")
+        
+        camera_settings_link_id = self.create_camera_settings_link_for_video(username, video_settings)
+        photo_id_array = []
+        with self.sftp_client.open(remote_tar_path, "rb") as remote_file:
+            # Open the tarball as a stream (without loading the whole file into memory)
+            with tarfile.open(fileobj=remote_file, mode="r|*") as tar:
+                for member in tar:
+                    if member.isfile(): 
+                        extracted_file = tar.extractfile(member)
+                        image_bytes = extracted_file.read()
+                        
+                        added_photo = cdi.add_photo(camera_settings_link_id=camera_settings_link_id, photo=image_bytes)
+                        photo_id_array.append(added_photo["id"])
+                
+        return photo_id_array
+        
+    except Exception as e:
+        print(f"Error transferring video frames to local device: {e}")
   
   
   def stream_clean_up(self):

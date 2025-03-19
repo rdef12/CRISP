@@ -25,3 +25,15 @@ export interface LogMessage {
   status: boolean;
   message: string;
 }
+
+
+export interface VideoSettings {
+  directory_name: string;
+  num_of_images: number;
+  colour: string;
+  gain: number;
+  log: boolean;
+  format: string;
+  bit_depth: number;
+  frame_rate: number;
+}

@@ -18,7 +18,11 @@ def take_video(request_body: Dict[str, rb.VideoSettings]):
     Request body is a hashmap with username/camera id as the key,
     and video settings as the value
     """
-    for username, video_settings in request_body.items():
-        take_single_video(username, video_settings)
     
-    return None
+    photo_id_array = take_multiple_videos(request_body)
+    photo_bytes_array = []
+    for photo_id in photo_id_array:
+        photo_bytes = cdi.get_photo_from_id(photo_id)
+        photo_bytes_array.append(base64.b64encode(photo_bytes).decode('utf-8'))
+
+    return {"photo_bytes_array": photo_bytes_array}

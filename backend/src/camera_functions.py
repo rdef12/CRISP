@@ -5,10 +5,11 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 import os
 import base64
 import numpy as np
-from typing import List
+from typing import List, Dict
 from src.database.CRUD import CRISP_database_interaction as cdi
 from src.calibration_functions import determine_frame_size
 from src.classes.JSON_request_bodies import request_bodies as rb
+
 
 def load_image_byte_string_to_opencv(image_byte_string: str):
     nparr = np.frombuffer(image_byte_string, np.uint8)
@@ -104,11 +105,25 @@ def take_single_video(username: str, video_settings: rb.VideoSettings):
         if (pi := Pi.get_pi_with_username(username)) is None:
             raise Exception(f"No Pi instantiated with the username {username}")
         
-        if pi.camera.check_video_script_exists():
-            print("\n\n\nScript found!\n\n\n")
-            pi.camera.run_pi_video_script(video_settings)
-        else:
+        if not pi.camera.check_video_script_exists():
             raise Exception("Video script could not be accessed on pi")
+        
+        print("\n\n\nScript found!\n\n\n")
+        pi.camera.run_pi_video_script(video_settings)
+        photo_id_array = pi.camera.transfer_video_frames(username, video_settings)
+        return photo_id_array
         
     except Exception as e:
         print(f"Error taking video on {username}: {e}")
+        raise
+
+
+def take_multiple_videos(request_body: Dict[str, rb.VideoSettings]):
+    """
+    TODO - need to make this function parallel with threadpool executor
+    """
+    
+    photo_id_array= []
+    for username, video_settings in request_body.items():
+        photo_id_array.append(take_single_video(username, video_settings))
+    return photo_id_array
