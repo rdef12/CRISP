@@ -87,19 +87,11 @@ def generate_real_grid_positions(grid_size: tuple[int, int], spacing: list[float
     x_length, y_length = grid_size
     x_spacing, y_spacing = spacing
     
+    # np.arange * spackig gives an array of integers which is then scaled by the appropriate spacing
     x_coords, y_coords = np.meshgrid(np.arange(x_length) * x_spacing, np.arange(y_length) * y_spacing)
     real_grid_positions = np.dstack([x_coords, y_coords])
     real_grid_positions = real_grid_positions.reshape(-1, 1, 2) # Reshape to match OpenCV standard
     return real_grid_positions
-
-
-def generate_independent_real_grid_positions(grid_size: tuple[int, int], x_spacing: float, y_spacing: float):
-    independent_real_grid_positions = np.empty(grid_size)
-    x_length, y_length = grid_size
-    x_coords, y_coords = np.meshgrid(np.arange(x_length) * x_spacing, np.arange(y_length) * y_spacing)
-    independent_real_grid_positions = np.dstack([x_coords, y_coords])
-    independent_real_grid_positions = independent_real_grid_positions.reshape(-1, 1, 2)
-    return independent_real_grid_positions
 
 
 #TODO Add warning for pixels outside of the calibration grid

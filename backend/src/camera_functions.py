@@ -47,6 +47,7 @@ def take_multiple_images(usernames_list: List[str], imageSettings_list: List[Ima
         # Should have already validated the fact that Pis with these usernames are connected via SSH.
         pis_to_image_with = [Pi.get_pi_with_username(username) for username in usernames_list]
         if any(pi is None for pi in pis_to_image_with):
+            pi_indices = [i for i, pi in enumerate(pis_to_image_with) if pi is None]
             disconnected_usernames = [usernames_list[i] for i in pi_indices]
             raise ValueError(f"The following Raspberry Pis have disconnected: {disconnected_usernames}")
         

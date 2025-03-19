@@ -31,24 +31,24 @@ def get_setup_camera_by_id(id: int) -> CameraSetupLink:
     with Session(engine) as session:
         return session.get(CameraSetupLink, id)
 
-def get_far_face_calibration_photo(camera_id:int, setup_id:int) -> bytes:
-    with Session(engine) as session:
-        statement = select(CameraSetupLink).where(CameraSetupLink.camera_id == camera_id).where(CameraSetupLink.setup_id == setup_id)
-        result = session.exec(statement).one()
-        if result:
-            return result.far_face_calibration_photo
-        else:
-            raise ValueError(f"Far face calibration photo not found for camera with id {camera_id} and setup with id {setup_id}.")
+# def get_far_face_calibration_photo(camera_id:int, setup_id:int) -> bytes:
+#     with Session(engine) as session:
+#         statement = select(CameraSetupLink).where(CameraSetupLink.camera_id == camera_id).where(CameraSetupLink.setup_id == setup_id)
+#         result = session.exec(statement).one()
+#         if result:
+#             return result.far_face_calibration_photo
+#         else:
+#             raise ValueError(f"Far face calibration photo not found for camera with id {camera_id} and setup with id {setup_id}.")
 
 
-def get_near_face_calibration_photo(camera_id:int, setup_id:int) -> bytes:
-    with Session(engine) as session:
-        statement = select(CameraSetupLink).where(CameraSetupLink.camera_id == camera_id).where(CameraSetupLink.setup_id == setup_id)
-        result = session.exec(statement).one()
-        if result:
-            return result.near_face_calibration_photo
-        else:
-            raise ValueError(f"Near face calibration photo not found for camera with id {camera_id} and setup with id {setup_id}.")
+# def get_near_face_calibration_photo(camera_id:int, setup_id:int) -> bytes:
+#     with Session(engine) as session:
+#         statement = select(CameraSetupLink).where(CameraSetupLink.camera_id == camera_id).where(CameraSetupLink.setup_id == setup_id)
+#         result = session.exec(statement).one()
+#         if result:
+#             return result.near_face_calibration_photo
+#         else:
+#             raise ValueError(f"Near face calibration photo not found for camera with id {camera_id} and setup with id {setup_id}.")
 
 
 def get_far_face_calibration_pattern_size(camera_id:int, setup_id:int) -> tuple[int, int]:
@@ -116,7 +116,7 @@ def get_far_face_calibration_spacing_unc(camera_id:int, setup_id:int) -> List[fl
             return result.far_face_calibration_spacing_unc
         else:
             raise ValueError(f"Far face calibration pattern spacing uncertainty not found for camera with id {camera_id} and setup with id {setup_id}.")
-        
+
 def get_near_face_calibration_spacing_unc(camera_id:int, setup_id:int) -> List[float]:
     with Session(engine) as session:
         statement = select(CameraSetupLink).where(CameraSetupLink.camera_id == camera_id).where(CameraSetupLink.setup_id == setup_id)

@@ -201,7 +201,32 @@ def perform_homography_calibration_image_api(setup_id: str, username: str, plane
     
     except Exception as e:
         print(f"Error performing homography calibration: {e}")
+
+
+
+@app.post("/flip_homography_origin_position/{setup_id}/{username}/{plane_type}")
+def flip_homography_origin_position_api(setup_id: str, username: str, plane_type: str, 
+                                        imageFlips: ImageFlips):
+    """
+    Image need not be taken again in this case
+    """
+    # camera_id = cdi.get_camera_id_from_username(username)
+    # match plane_type:
+    #     case "far":
+    #         photo_bytes = cdi.get_far_face_calibration_photo(camera_id, setup_id)
+    #     case "near":
+    #         photo_bytes = cdi.get_near_face_calibration_photo(camera_id, setup_id)
     
+    print("TEST")
+    photo_id = 61
+    photo_bytes = cdi.get_photo_from_id(photo_id)
+    
+    response = test_grid_recognition_for_gui(username, setup_id, plane_type, photo_bytes=photo_bytes,
+                                             vertical_origin_flip=imageFlips.vertical_flip, 
+                                             horizontal_origin_flip=imageFlips.horizontal_flip)
+    return JSONResponse(content=response)
+    
+
 @app.get("/stream/{username}")
 def stream_api(username: str):
     # Might want to add a fastapi background task which waits until stream cleanup is needed
@@ -292,5 +317,3 @@ def multiple_picture_test_api(username_list: List[str]):
     encoded_images = [base64.b64encode(photo).decode('utf-8') for photo in photo_bytestring_list]
     response = {"images": encoded_images}
     return JSONResponse(content=response)
-    
-    

@@ -19,11 +19,18 @@ import {
     Popover,
     PopoverContent,
     PopoverTrigger,
-  } from "@/components/ui/popover"
+  } from "@/components/ui/popover";
+import { Checkbox } from "@/components/ui/checkbox"
+
 
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND
 
+
+interface ImageFlips {
+    horizontal_flip: boolean;
+    vertical_flip: boolean;
+  }
 
 export default function HomograpyCalibration() {
     const { id = "undefined", username = "undefined" , plane = "undefined" } = useParams();
@@ -46,6 +53,11 @@ export default function HomograpyCalibration() {
         xGridSpacingError: "",
         yGridSpacingError: ""
       });
+
+    const [flipState, setFlipState] = useState<ImageFlips>({
+        horizontal_flip: false,
+        vertical_flip: false,
+    });
 
     const areGridDimensionsComplete = (formData: CalibrationFormProps): boolean => {
         return !!formData.xGridDimension && 
@@ -117,6 +129,50 @@ export default function HomograpyCalibration() {
           } else {
             throw new Error("Response is not ok: " + response);
           }
+        }
+        catch (error) {
+          console.error("Error submitting form:", error); 
+        } finally {
+          setIsLoading(false);
+        }
+      };
+
+      const editFlipOrigin = (option: keyof ImageFlips, value: boolean) => {
+        setFlipState((prev) => ({ ...prev, [option]: value }));
+        console.log("flip state updated")
+      };
+
+      const handleFlip = async (flipState: ImageFlips) => {
+        try {
+            setShowImage(false);
+            setIsLoading(true);
+            setShowSaveButton(false);
+            console.log("1")
+            const response = await fetch(`${BACKEND_URL}/flip_homography_origin_position/${id}/${username}/${plane}`, {
+                method: "POST",
+                body: JSON.stringify(flipState),
+                headers: { "Content-Type": "application/json" }
+            });
+            
+            console.log("2")
+            if (response.ok) {
+                const data = await response.json();
+                const imageBase64 = data.image_bytes;
+                const imageUrl = `data:image/jpeg;base64,${imageBase64}`;
+                setImageUrl(imageUrl);
+
+                setLogMessages((prev) => [
+                    ...prev,
+                    { status: data.status, message: data.message }
+                  ]);
+    
+                setShowImage(true);
+                if (data.status) {
+                    setShowSaveButton(true);
+                }
+            } else {
+                throw new Error("Response is not ok: " + response);
+            }
         }
         catch (error) {
           console.error("Error submitting form:", error); 
@@ -227,7 +283,7 @@ export default function HomograpyCalibration() {
                                 </div>
 
                                 <div className="flex flex-col space-y-2">
-                                <Label className="text-green-500 mb-2" htmlFor="xGridDimension">Grid Spacings</Label>
+                                <Label className="text-green-500 mb-2" htmlFor="gridSpacing">Grid Spacings</Label>
                                     <Popover>
                                         <PopoverTrigger asChild>
                                             <Button variant="outline">
@@ -293,9 +349,29 @@ export default function HomograpyCalibration() {
                                 </Button>
                                 </div>
                             </form>
+
+                                { showImage && (
+                                <form onSubmit={(e) => {
+                                    e.preventDefault();
+                                    console.log("Submitting flip request with state:", flipState); 
+                                    handleFlip(flipState)}} 
+                                    className="space-y-4">
+                                        <div className="flex items-center space-x-3">
+                                        <Checkbox id="horizontal_flip" checked={flipState.horizontal_flip} onCheckedChange={(checked) => editFlipOrigin("horizontal_flip", !!checked)} />
+                                        <label htmlFor="horizontal_flip" className="text-sm font-medium">Horizontal flip</label>
+                                        </div>
+                                        <div className="flex items-center space-x-3">
+                                        <Checkbox id="vertical_flip" checked={flipState.vertical_flip} onCheckedChange={(checked) => editFlipOrigin("vertical_flip", !!checked)} />
+                                        <label htmlFor="vertical_flip" className="text-sm font-medium">Vertical Flip</label>
+                                        </div>
+                                        <Button type="submit" className="w-full">
+                                            Flip origin position
+                                        </Button>
+                                </form>
+                                )}
                         </CardContent>
                         <CardFooter className="flex justify-center mt-4">
-                            <a href="https://https://calib.io" 
+                            <a href="https://calib.io" 
                                 target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">
                                 Chessboard Pattern Generator
                             </a>

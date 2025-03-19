@@ -5,7 +5,13 @@ from src.distortion_correction import *
 from src.viewing_functions import *
 from src.homography_errors import generate_homography_covariance_matrix
 from typing import Literal
+from src.database.CRUD import CRISP_database_interaction as cdi
 import base64
+from pydantic import BaseModel
+
+class ImageFlips(BaseModel):
+    horizontal_flip: bool
+    vertical_flip: bool
 
 def save_homography_data(data_file_path: str, homography_matrix: np.ndarray[float, float],
                          homography_covariance: np.ndarray[float, float]):
@@ -28,10 +34,30 @@ def load_homography_data(data_file_path: str):
     return homography_matrix, homography_position_covariance
 
 
+def save_homography_calibration_to_database(plane_type, homography_matrix, homography_covariance):
+    match plane_type:
+        case "far":
+            cdi.update_far_face_homography_matrix(homography_matrix)
+            cdi.update_far_face_homography_covariance_matrix(homography_covariance)
+        case "near":
+            cdi.update_near_face_homography_matrix(homography_matrix)
+            cdi.update_near_face_homography_covariance_matrix(homography_covariance)
+        case _:
+            raise Exception(f"Plane type must be near or far, not {plane_type}")
+    return None
+
+
+def add_origin_to_image(image, image_grid_positions, calibration_grid_size):
+    cv2.drawChessboardCorners(image, calibration_grid_size, image_grid_positions, True)
+    first_point = tuple(map(int, image_grid_positions[0].ravel()))  # Convert to tuple (x, y)
+    cv2.circle(image, first_point, radius=50, color=(0, 0, 255), thickness=-1)  # Red dot
+
 # For output to the GUI
 def test_homography_grid_identified(image: np.ndarray, calibration_pattern: str, 
                                     calibration_grid_size: tuple[int, int], 
-                                    correct_for_distortion: bool=False):
+                                    correct_for_distortion: bool=False,
+                                    vertical_origin_flip: bool=False,
+                                    horizontal_origin_flip: bool=False):
     """
     Return the image bytestring and status of test
     """
@@ -52,28 +78,54 @@ def test_homography_grid_identified(image: np.ndarray, calibration_pattern: str,
         case _:
             raise Exception("No calibration pattern called {} defined".format(calibration_pattern))
         
-    if ret:
-        cv2.drawChessboardCorners(image, calibration_grid_size, image_grid_positions, ret)
-        first_point = tuple(map(int, image_grid_positions[0].ravel()))  # Convert to tuple (x, y)
-        cv2.circle(image, first_point, radius=50, color=(0, 0, 255), thickness=-1)  # Red dot
-        
-        _, buffer = cv2.imencode('.jpg', image)
-        image_bytes = base64.b64encode(buffer).decode("utf-8")
+    if not ret:
+        _, buffer = cv2.imencode('.jpg', image) # Circle should not be present if ret false
         return {
-            "status": True,
-            "message": "Calibration pattern succesfully recognised. Origin of coordinate system overlayed as a red circle.",
-            "image_bytes": image_bytes
-        }
+            "status": False,
+            "message": "Calibration pattern could not be recognised in the image",
+            "image_bytes": base64.b64encode(buffer).decode("utf-8")
+    }
     
-    _, buffer = cv2.imencode('.jpg', image) # Circle should not be present if ret false
+    if vertical_origin_flip:
+        print("vertical flip needed")
+    if horizontal_origin_flip:
+        print("Horizontal flip needed")
+    
+    add_origin_to_image(image, image_grid_positions, calibration_grid_size)
+    
+    _, buffer = cv2.imencode('.jpg', image)
+    image_bytes = base64.b64encode(buffer).decode("utf-8")
     return {
-        "status": False,
-        "message": "Calibration pattern could not be recognised in the image",
-        "image_bytes": base64.b64encode(buffer).decode("utf-8")
+        "status": True,
+        "message": "Calibration pattern succesfully recognised. Origin of coordinate system overlayed as a red circle.",
+        "image_bytes": image_bytes
     }
 
+    
+def horizontal_flip_of_origin_in_image(photo_id, image_grid_positions, calibration_grid_size):
+    """
+    """
+    print(image_grid_positions)
+    
+    
+    
+def vertical_flip_of_origin_in_image(photo_id, image_grid_positions, calibration_grid_size):
+    """
+    """
+    print(image_grid_positions)
 
-def build_calibration_plane_homography(image: np.ndarray, calibration_pattern: str, 
+    # LOGIC TO UPDATE IMAGE POINTS 
+    # If this is the new way to do it, then would need to change perform_homography so it flips
+    # image points/obj_points at the end
+
+    # add_origin_to_image(image, image_grid_positions, calibration_grid_size)
+    # _, buffer = cv2.imencode('.jpg', image)
+    # image_bytes = base64.b64encode(buffer).decode("utf-8")
+    # return image_bytes
+
+
+
+def build_calibration_plane_homography(image: np.ndarray, plane_type: str, calibration_pattern: str, 
                                         calibration_grid_size: tuple[int, int], 
                                         pattern_spacing: list[float, float], 
                                         grid_uncertainties: tuple[float, float], 
@@ -116,7 +168,7 @@ def build_calibration_plane_homography(image: np.ndarray, calibration_pattern: s
         homography_covariance = generate_homography_covariance_matrix(image_grid_positions, homography_matrix, grid_uncertainties_array)
         
         if save_to_database:
-            # TODO - LOGIC
+            save_homography_calibration_to_database(plane_type, homography_matrix, homography_covariance)
             pass
         
         if save_file_path is not None:
@@ -127,7 +179,9 @@ def build_calibration_plane_homography(image: np.ndarray, calibration_pattern: s
 
 def test_grid_recognition_for_gui(username: str, setup_id: int, 
                                    calibration_plane_type: Literal["far", "near"],
-                                   photo_id: int|None=None, photo_bytes:str|None=None):
+                                   photo_id: int|None=None, photo_bytes:str|None=None,
+                                   vertical_origin_flip: bool=False,
+                                   horizontal_origin_flip: bool=False):
 
     camera_id = cdi.get_camera_id_from_username(username)
     match calibration_plane_type:
@@ -150,7 +204,9 @@ def test_grid_recognition_for_gui(username: str, setup_id: int,
     image = load_image_byte_string_to_opencv(photo_bytes)
     
     return test_homography_grid_identified(image, pattern_type, pattern_size, 
-                                           correct_for_distortion=correct_for_distortion)
+                                           correct_for_distortion=correct_for_distortion,
+                                           vertical_origin_flip=vertical_origin_flip,
+                                           horizontal_origin_flip=horizontal_origin_flip)
     
 
 def perform_homography_calibration(username: str, setup_id: int, 
@@ -184,7 +240,7 @@ def perform_homography_calibration(username: str, setup_id: int,
         photo_bytes = cdi.get_photo_from_id(photo_id)
     image = load_image_byte_string_to_opencv(photo_bytes)
     
-    build_calibration_plane_homography(image, pattern_type, pattern_size, pattern_spacing, 
+    build_calibration_plane_homography(image, calibration_plane_type, pattern_type, pattern_size, pattern_spacing, 
                                        unc_spacing, correct_for_distortion= correct_for_distortion,
                                        show_recognised_chessboard=False, save_to_database=True)
     

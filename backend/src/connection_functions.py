@@ -2,7 +2,6 @@ from src.classes.Pi import Pi
 from src.database.CRUD import CRISP_database_interaction as cdi
 from pydantic import BaseModel
 import os
-import json
 
 # The database will replace this in the future
 PI_CONFIG_FILEPATH = os.path.join(os.path.dirname(__file__), "pi_config.json")
