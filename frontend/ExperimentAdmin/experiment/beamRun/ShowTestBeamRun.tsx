@@ -1,7 +1,7 @@
-import { ListCamerasInExperiment } from "./ListCamerasInExperiment";
+import { ListCamerasInExperimentTest } from "./ListCamerasInExperimentTest";
 
 export const ShowTestBeamRun = () => {
   return (
-    <ListCamerasInExperiment />
+    <ListCamerasInExperimentTest />
   );
 }
