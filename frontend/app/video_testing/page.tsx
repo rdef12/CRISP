@@ -26,11 +26,31 @@ function App() {
   // };
   
   const request_body: VideoRequestBody = {
-    "c09796mb": {
+    "raspi5n2": {
       directory_name: "video_test",
       num_of_images: 5,
       colour: "all",
-      gain: 10,
+      gain: 5,
+      log: true,
+      format: "png",
+      bit_depth: 8,
+      frame_rate: 20
+    },
+    "raspi5": {
+      directory_name: "video_test",
+      num_of_images: 5,
+      colour: "all",
+      gain: 5,
+      log: true,
+      format: "png",
+      bit_depth: 8,
+      frame_rate: 20
+    },
+    "c09796mb": {
+      directory_name: "video_test",
+      num_of_images: 5,
+      colour: "b",
+      gain: 5,
       log: true,
       format: "png",
       bit_depth: 8,
@@ -40,7 +60,7 @@ function App() {
       directory_name: "video_test",
       num_of_images: 5,
       colour: "all",
-      gain: 10,
+      gain: 5,
       log: true,
       format: "png",
       bit_depth: 8,

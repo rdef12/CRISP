@@ -123,26 +123,24 @@ def check_directory_exists(relative_dir):
 def process_frame(frame, args):
     
     image = Image.fromarray(frame)  # Convert NumPy array to a PIL image
-    match image.mode:
-        case "RGBA":
-            r, g, b, a = image.split()  # 4 channels: Red, Green, Blue, Alpha
-        case "RGB":
-            r, g, b = image.split()  # 3 channels: Red, Green, Blue
-        case _:
-            raise Exception("Expected RGBA or RGB type Pillow image.")
-    
-    r, g, b, a = image.split()
-    match args.colour:
-        case "all":
-            return image # skip bit depth and colour selection logic - just exit the function
-        case "r":
-            channel = r
-        case "g":
-            channel = g
-        case "b":
-            channel = b
-        case _:
-            raise Exception("Somehow bypassed colour argument validation")
+    if image.mode == "RGBA":
+        r, g, b, a = image.split()  # 4 channels: Red, Green, Blue, Alpha
+    elif image.mode == "RGB":
+        r, g, b = image.split()  # 3 channels: Red, Green, Blue
+    else:
+        raise Exception("Expected RGBA or RGB type Pillow image.")
+
+    if args.colour == "all":
+        return image  # Skip bit depth and colour selection logic - just exit the function
+    elif args.colour == "r":
+        channel = r
+    elif args.colour == "g":
+        channel = g
+    elif args.colour == "b":
+        channel = b
+    else:
+        raise Exception("Somehow bypassed colour argument validation")
+
     
     grayscale_image = channel.convert("L")
     # NOTE - doing the conversion here might not work because if already cast to 8 bit depth, the data is already lost
