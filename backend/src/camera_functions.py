@@ -118,12 +118,22 @@ def take_single_video(username: str, video_settings: rb.VideoSettings):
         raise
 
 
-def take_multiple_videos(request_body: Dict[str, rb.VideoSettings]):
+def take_multiple_videos(request_body: Dict[str, rb.VideoSettings]) -> Dict[str, List[str]]:
     """
-    TODO - need to make this function parallel with threadpool executor
+    Executes video recording for multiple users in parallel using ThreadPoolExecutor.
+    Returns a dictionary where each username maps to their photo ID array.
     """
-    
-    photo_id_array= []
-    for username, video_settings in request_body.items():
-        photo_id_array.append(take_single_video(username, video_settings))
-    return photo_id_array
+    results = {}
+
+    with ThreadPoolExecutor() as executor:
+        futures = {executor.submit(take_single_video, username, settings): username 
+                   for username, settings in request_body.items()}
+        
+        for future in futures:
+            username = futures[future]
+            try:
+                results[username] = future.result()  # Store result in dictionary
+            except Exception as e:
+                print(f"Error in video capture for {username}: {e}")
+                results[username] = []  # Store an empty list in case of failure
+    return results

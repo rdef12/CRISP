@@ -12,9 +12,32 @@ function App() {
   // An array to store base64 encoded strings
   const [base64Images, setBase64Images] = useState<string[]>([]);
 
+  // const request_body: VideoRequestBody = {
+  //   "lewisdean22": {
+  //     directory_name: "frontend_test",
+  //     num_of_images: 5,
+  //     colour: "all",
+  //     gain: 10,
+  //     log: true,
+  //     format: "png",
+  //     bit_depth: 8,
+  //     frame_rate: 20
+  //   }
+  // };
+  
   const request_body: VideoRequestBody = {
-    "lewisdean22": {
-      directory_name: "frontend_test",
+    "c09796mb": {
+      directory_name: "video_test",
+      num_of_images: 5,
+      colour: "all",
+      gain: 10,
+      log: true,
+      format: "png",
+      bit_depth: 8,
+      frame_rate: 20
+    },
+    "raspi4b3": {
+      directory_name: "video_test",
       num_of_images: 5,
       colour: "all",
       gain: 10,

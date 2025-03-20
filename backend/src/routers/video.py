@@ -19,10 +19,11 @@ def take_video(request_body: Dict[str, rb.VideoSettings]):
     and video settings as the value
     """
     
-    photo_id_array = take_multiple_videos(request_body)
+    photo_id_dictionary = take_multiple_videos(request_body) 
     photo_bytes_array = []
-    for photo_id in photo_id_array:
-        photo_bytes = cdi.get_photo_from_id(photo_id)
-        photo_bytes_array.append(base64.b64encode(photo_bytes).decode('utf-8'))
+    for photo_id_array in photo_id_dictionary.values():
+        for photo_id in photo_id_array:
+            photo_bytes = cdi.get_photo_from_id(photo_id)
+            photo_bytes_array.append(base64.b64encode(photo_bytes).decode('utf-8'))
 
     return {"photo_bytes_array": photo_bytes_array}
