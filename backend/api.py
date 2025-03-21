@@ -207,7 +207,7 @@ def perform_homography_calibration_image_api(setup_id: str, username: str, plane
 
 @app.post("/flip_homography_origin_position/{setup_id}/{username}/{plane_type}")
 def flip_homography_origin_position_api(setup_id: str, username: str, plane_type: str, 
-                                        imageFlips: ImageFlips):
+                                        transforms: ImagePointTransforms):
     """
     Image need not be taken again in this case
     """
@@ -218,13 +218,10 @@ def flip_homography_origin_position_api(setup_id: str, username: str, plane_type
     #     case "near":
     #         photo_bytes = cdi.get_near_face_calibration_photo(camera_id, setup_id)
     
-    print("TEST")
-    photo_id = 61
+    photo_id = 321
     photo_bytes = cdi.get_photo_from_id(photo_id)
     
-    response = test_grid_recognition_for_gui(username, setup_id, plane_type, photo_bytes=photo_bytes,
-                                             vertical_origin_flip=imageFlips.vertical_flip, 
-                                             horizontal_origin_flip=imageFlips.horizontal_flip)
+    response = test_grid_recognition_for_gui(username, setup_id, plane_type, transforms, photo_bytes=photo_bytes)
     return JSONResponse(content=response)
     
 

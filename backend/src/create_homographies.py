@@ -9,9 +9,13 @@ from src.database.CRUD import CRISP_database_interaction as cdi
 import base64
 from pydantic import BaseModel
 
-class ImageFlips(BaseModel):
+class ImagePointTransforms(BaseModel):
     horizontal_flip: bool
     vertical_flip: bool
+    swap_axes: bool
+    
+def convert_array_to_opencv_form(array):
+    return array.reshape(-1, 1, 2)
 
 def save_homography_data(data_file_path: str, homography_matrix: np.ndarray[float, float],
                          homography_covariance: np.ndarray[float, float]):
@@ -49,15 +53,24 @@ def save_homography_calibration_to_database(plane_type, homography_matrix, homog
 
 def add_origin_to_image(image, image_grid_positions, calibration_grid_size):
     cv2.drawChessboardCorners(image, calibration_grid_size, image_grid_positions, True)
-    first_point = tuple(map(int, image_grid_positions[0].ravel()))  # Convert to tuple (x, y)
-    cv2.circle(image, first_point, radius=50, color=(0, 0, 255), thickness=-1)  # Red dot
+    for img_point in image_grid_positions:
+        point_tuple = tuple(map(int, img_point.ravel()))  # Convert to tuple (x, y)
+        cv2.circle(image, point_tuple, radius=20, color=(255, 0, 0), thickness=-1)  # Blue dots
+        
+    origin = tuple(map(int, image_grid_positions[0].ravel()))  # Convert to tuple (x, y)
+    cv2.circle(image, origin, radius=50, color=(0, 0, 255), thickness=-1)  # Red dot
+    
+    # Calculate direction vector from first to second point
+    direction_vector = image_grid_positions[1] - image_grid_positions[0]
+    direction_vector = tuple(map(int, direction_vector.ravel()))  # Convert to tuple (x, y)
+    arrow_end_point = (origin[0] + direction_vector[0], origin[1] + direction_vector[1])
+    cv2.arrowedLine(image, origin, arrow_end_point, color=(0, 255, 255), thickness=20, tipLength=0.5)  # Yellow arrow
 
 # For output to the GUI
 def test_homography_grid_identified(image: np.ndarray, calibration_pattern: str, 
                                     calibration_grid_size: tuple[int, int], 
-                                    correct_for_distortion: bool=False,
-                                    vertical_origin_flip: bool=False,
-                                    horizontal_origin_flip: bool=False):
+                                    image_point_transforms: ImagePointTransforms,
+                                    correct_for_distortion: bool=False):
     """
     Return the image bytestring and status of test
     """
@@ -86,10 +99,15 @@ def test_homography_grid_identified(image: np.ndarray, calibration_pattern: str,
             "image_bytes": base64.b64encode(buffer).decode("utf-8")
     }
     
-    if vertical_origin_flip:
-        print("vertical flip needed")
-    if horizontal_origin_flip:
-        print("Horizontal flip needed")
+    if image_point_transforms.horizontal_flip:
+            image_grid_positions_reshaped = image_grid_positions.reshape((calibration_grid_size[1], calibration_grid_size[0], 2))[:, ::-1] # Reverse the order of columns
+            image_grid_positions = convert_array_to_opencv_form(image_grid_positions_reshaped)
+    if image_point_transforms.vertical_flip:
+        image_grid_positions_reshaped = image_grid_positions.reshape((calibration_grid_size[1], calibration_grid_size[0], 2))[::-1,:]  # Reverse the order of rows
+        image_grid_positions = convert_array_to_opencv_form(image_grid_positions_reshaped)
+    if image_point_transforms.swap_axes:
+        image_grid_positions_reshaped = image_grid_positions.reshape((calibration_grid_size[1], calibration_grid_size[0], 2)).transpose(1, 0, 2)  # Transpose array
+        image_grid_positions = convert_array_to_opencv_form(image_grid_positions_reshaped)
     
     add_origin_to_image(image, image_grid_positions, calibration_grid_size)
     
@@ -100,29 +118,6 @@ def test_homography_grid_identified(image: np.ndarray, calibration_pattern: str,
         "message": "Calibration pattern succesfully recognised. Origin of coordinate system overlayed as a red circle.",
         "image_bytes": image_bytes
     }
-
-    
-def horizontal_flip_of_origin_in_image(photo_id, image_grid_positions, calibration_grid_size):
-    """
-    """
-    print(image_grid_positions)
-    
-    
-    
-def vertical_flip_of_origin_in_image(photo_id, image_grid_positions, calibration_grid_size):
-    """
-    """
-    print(image_grid_positions)
-
-    # LOGIC TO UPDATE IMAGE POINTS 
-    # If this is the new way to do it, then would need to change perform_homography so it flips
-    # image points/obj_points at the end
-
-    # add_origin_to_image(image, image_grid_positions, calibration_grid_size)
-    # _, buffer = cv2.imencode('.jpg', image)
-    # image_bytes = base64.b64encode(buffer).decode("utf-8")
-    # return image_bytes
-
 
 
 def build_calibration_plane_homography(image: np.ndarray, plane_type: str, calibration_pattern: str, 
@@ -179,9 +174,10 @@ def build_calibration_plane_homography(image: np.ndarray, plane_type: str, calib
 
 def test_grid_recognition_for_gui(username: str, setup_id: int, 
                                    calibration_plane_type: Literal["far", "near"],
-                                   photo_id: int|None=None, photo_bytes:str|None=None,
-                                   vertical_origin_flip: bool=False,
-                                   horizontal_origin_flip: bool=False):
+                                   image_point_transforms: ImagePointTransforms = ImagePointTransforms(
+                                        horizontal_flip=False, vertical_flip=False, swap_axes=False
+                                   ),
+                                   photo_id: int|None=None, photo_bytes:str|None=None):
 
     camera_id = cdi.get_camera_id_from_username(username)
     match calibration_plane_type:
@@ -204,9 +200,8 @@ def test_grid_recognition_for_gui(username: str, setup_id: int,
     image = load_image_byte_string_to_opencv(photo_bytes)
     
     return test_homography_grid_identified(image, pattern_type, pattern_size, 
-                                           correct_for_distortion=correct_for_distortion,
-                                           vertical_origin_flip=vertical_origin_flip,
-                                           horizontal_origin_flip=horizontal_origin_flip)
+                                           image_point_transforms,
+                                           correct_for_distortion=correct_for_distortion)
     
 
 def perform_homography_calibration(username: str, setup_id: int, 

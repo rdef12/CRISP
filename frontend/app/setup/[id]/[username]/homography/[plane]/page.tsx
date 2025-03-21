@@ -21,15 +21,21 @@ import {
     PopoverTrigger,
   } from "@/components/ui/popover";
 import { Checkbox } from "@/components/ui/checkbox"
-
-
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
+  } from "@/components/ui/tooltip"
+  
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND
 
 
-interface ImageFlips {
+interface ImagePointTransforms {
     horizontal_flip: boolean;
     vertical_flip: boolean;
+    swap_axes: boolean;
   }
 
 export default function HomograpyCalibration() {
@@ -54,9 +60,10 @@ export default function HomograpyCalibration() {
         yGridSpacingError: ""
       });
 
-    const [flipState, setFlipState] = useState<ImageFlips>({
+    const [transformState, setTransformState] = useState<ImagePointTransforms>({
         horizontal_flip: false,
         vertical_flip: false,
+        swap_axes: false
     });
 
     const areGridDimensionsComplete = (formData: CalibrationFormProps): boolean => {
@@ -137,20 +144,19 @@ export default function HomograpyCalibration() {
         }
       };
 
-      const editFlipOrigin = (option: keyof ImageFlips, value: boolean) => {
-        setFlipState((prev) => ({ ...prev, [option]: value }));
+      const editTransforms = (option: keyof ImagePointTransforms, value: boolean) => {
+        setTransformState((prev) => ({ ...prev, [option]: value }));
         console.log("flip state updated")
       };
 
-      const handleFlip = async (flipState: ImageFlips) => {
+      const handleTransform = async (transformState: ImagePointTransforms) => {
         try {
             setShowImage(false);
             setIsLoading(true);
             setShowSaveButton(false);
-            console.log("1")
             const response = await fetch(`${BACKEND_URL}/flip_homography_origin_position/${id}/${username}/${plane}`, {
                 method: "POST",
-                body: JSON.stringify(flipState),
+                body: JSON.stringify(transformState),
                 headers: { "Content-Type": "application/json" }
             });
             
@@ -214,7 +220,7 @@ export default function HomograpyCalibration() {
                     <Card className="w-full">
                         <CardHeader>
                             <CardTitle>Settings</CardTitle>
-                            <CardDescription>Edit chessboard image settings</CardDescription>
+                            <CardDescription>Edit calibration pattern image settings</CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-4">
                         <form
@@ -351,23 +357,91 @@ export default function HomograpyCalibration() {
                             </form>
 
                                 { showImage && (
-                                <form onSubmit={(e) => {
-                                    e.preventDefault();
-                                    console.log("Submitting flip request with state:", flipState); 
-                                    handleFlip(flipState)}} 
-                                    className="space-y-4">
-                                        <div className="flex items-center space-x-3">
-                                        <Checkbox id="horizontal_flip" checked={flipState.horizontal_flip} onCheckedChange={(checked) => editFlipOrigin("horizontal_flip", !!checked)} />
-                                        <label htmlFor="horizontal_flip" className="text-sm font-medium">Horizontal flip</label>
-                                        </div>
-                                        <div className="flex items-center space-x-3">
-                                        <Checkbox id="vertical_flip" checked={flipState.vertical_flip} onCheckedChange={(checked) => editFlipOrigin("vertical_flip", !!checked)} />
-                                        <label htmlFor="vertical_flip" className="text-sm font-medium">Vertical Flip</label>
-                                        </div>
-                                        <Button type="submit" className="w-full">
-                                            Flip origin position
-                                        </Button>
-                                </form>
+                                <>
+                                <hr/>
+                                <div className="flex justify-center items-center">
+                                    <form onSubmit={(e) => {
+                                        e.preventDefault();
+                                        handleTransform(transformState)}} 
+                                        className="space-y-4">
+                                            <div className="flex items-center space-x-3 w-full">
+                                                <Checkbox 
+                                                    id="horizontal_flip" 
+                                                    checked={transformState.horizontal_flip} 
+                                                    onCheckedChange={(checked) => editTransforms("horizontal_flip", !!checked)} 
+                                                />
+                                                <div className="flex justify-between w-full items-center">
+                                                    <label htmlFor="horizontal_flip" className="text-sm font-medium">
+                                                        Apply horizontal flip to origin
+                                                    </label>
+                                                    <TooltipProvider>
+                                                        <Tooltip>
+                                                            <TooltipTrigger asChild>
+                                                                <div className="w-6 h-6 bg-black text-white flex items-center justify-center rounded-full text-sm font-bold cursor-pointer">
+                                                                    ?
+                                                                </div>
+                                                            </TooltipTrigger>
+                                                            <TooltipContent>
+                                                                <p>Text goes here</p>
+                                                            </TooltipContent>
+                                                        </Tooltip>
+                                                    </TooltipProvider>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center space-x-3 w-full">
+                                                <Checkbox 
+                                                    id="vertical_flip" 
+                                                    checked={transformState.vertical_flip} 
+                                                    onCheckedChange={(checked) => editTransforms("vertical_flip", !!checked)} 
+                                                />
+                                                <div className="flex justify-between w-full items-center">
+                                                    <label htmlFor="vertical_flip" className="text-sm font-medium">
+                                                        Apply vertical flip to origin
+                                                    </label>
+                                                    <TooltipProvider>
+                                                        <Tooltip>
+                                                            <TooltipTrigger asChild>
+                                                                <div className="w-6 h-6 bg-black text-white flex items-center justify-center rounded-full text-sm font-bold cursor-pointer">
+                                                                    ?
+                                                                </div>
+                                                            </TooltipTrigger>
+                                                            <TooltipContent>
+                                                                <p>Text goes here</p>
+                                                            </TooltipContent>
+                                                        </Tooltip>
+                                                    </TooltipProvider>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center space-x-3 w-full">
+                                                <Checkbox 
+                                                    id="swap_axes" 
+                                                    checked={transformState.swap_axes} 
+                                                    onCheckedChange={(checked) => editTransforms("swap_axes", !!checked)} 
+                                                />
+                                                <div className="flex justify-between w-full items-center">
+                                                    <label htmlFor="swap_axes" className="text-sm font-medium">
+                                                        Swap axes
+                                                    </label>
+                                                    <TooltipProvider>
+                                                        <Tooltip>
+                                                            <TooltipTrigger asChild>
+                                                                <div className="w-6 h-6 bg-black text-white flex items-center justify-center rounded-full text-sm font-bold cursor-pointer">
+                                                                    ?
+                                                                </div>
+                                                            </TooltipTrigger>
+                                                            <TooltipContent>
+                                                                <p>Swap the X and Y axes</p>
+                                                            </TooltipContent>
+                                                        </Tooltip>
+                                                    </TooltipProvider>
+                                                </div>
+                                            </div>
+                                            <Button type="submit" className="w-full">
+                                                Transform recognised grid points
+                                            </Button>
+                                    </form>
+                                </div>
+                                </>
                                 )}
                         </CardContent>
                         <CardFooter className="flex justify-center mt-4">
