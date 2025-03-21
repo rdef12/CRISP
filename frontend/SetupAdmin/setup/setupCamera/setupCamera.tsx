@@ -22,7 +22,7 @@ import {
   useListController,
 } from 'react-admin';
 import { Link, useParams } from 'react-router-dom';
-import DistortionPage from './DistortionCalibration';
+import DistortionPage from './distortionCalibration/DistortionCalibration';
 import HomograpyCalibration from './HomographyCalibration';
 // import ManualROI from './scintillator_edges/ScintillatorEdges';
 import { DialogContent, DialogHeader } from '@/components/ui/dialog';

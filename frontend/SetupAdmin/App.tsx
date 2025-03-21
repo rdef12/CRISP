@@ -14,7 +14,7 @@ import {
 import { SetupCreate, SetupList } from "./setup/setup";
 import CustomAdminLayout from "./CustomLayout";
 // import { CreateSettingsScintillatorEdges } from "./setup/setupCamera/scintillator_edges/CreateSettingsScintillatorEdges";
-import { ScintillatorEdges } from "./setup/setupCamera/scintillator_edges/ScintillatorEdges";
+import { ScintillatorEdges } from "./setup/setupCamera/scintillatorEdges/ScintillatorEdges";
 // import { CameraSetupList } from "./CameraSetup";
 
 const dataProvider = simpleRestProvider(`${process.env.NEXT_PUBLIC_BACKEND}`);
