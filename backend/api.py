@@ -181,27 +181,28 @@ def take_homography_calibration_image_api(setup_id: str, username: str, plane_ty
     except Exception as e:
         print(f"Error taking homography calibration image: {e}")
         
-    
-# Put because just performing the homography after data already stored in db 
-@app.put("/perform_homography_calibration/{setup_id}/{username}/{plane_type}")
-def perform_homography_calibration_image_api(setup_id: str, username: str, plane_type: str):
+
+@app.post("/perform_homography_calibration/{setup_id}/{username}/{plane_type}")
+def perform_homography_calibration_image_api(setup_id: str, username: str, plane_type: str,
+                                             transforms: ImagePointTransforms):
     try:
-        camera_id = cdi.get_camera_id_from_username(username)
-        match plane_type:
-            case "far":
-                photo_bytes = cdi.get_far_face_calibration_photo(camera_id, setup_id)
-            case "near":
-                photo_bytes = cdi.get_near_face_calibration_photo(camera_id, setup_id)
-        
-        if perform_homography_calibration(username, setup_id, plane_type, photo_bytes=photo_bytes):
-            status = True
-        else:
-            status = False
-        response = {"status": status}
-        return JSONResponse(content=response)
-    
+        # camera_id = cdi.get_camera_id_from_username(username)
+        # match plane_type:
+        #     case "far":
+        #         photo_bytes = cdi.get_far_face_calibration_photo(camera_id, setup_id)
+        #     case "near":
+        #         photo_bytes = cdi.get_near_face_calibration_photo(camera_id, setup_id)
+                
+        photo_id = 321
+        photo_bytes = cdi.get_photo_from_id(photo_id)
+                
+        status = perform_homography_calibration(username, setup_id, plane_type, transforms, photo_bytes=photo_bytes)
     except Exception as e:
         print(f"Error performing homography calibration: {e}")
+        status = False
+    
+    return {"status": status}
+    
 
 
 

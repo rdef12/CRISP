@@ -160,7 +160,6 @@ export default function HomograpyCalibration() {
                 headers: { "Content-Type": "application/json" }
             });
             
-            console.log("2")
             if (response.ok) {
                 const data = await response.json();
                 const imageBase64 = data.image_bytes;
@@ -189,12 +188,13 @@ export default function HomograpyCalibration() {
 
       const saveHomography = async () => {
         const response = await fetch(`${BACKEND_URL}/perform_homography_calibration/${id}/${username}/${plane}`, {
-            method: "PUT",
+            method: "POST",
+            body: JSON.stringify(transformState), // version before form submission?
             headers: { "Content-Type": "application/json" }
           });
         const data = await response.json();
         if (data.status) {
-            router.push(`/`); // in the future, return to this pi's calibration hub
+            router.push(`/setup/${id}`); // in the future, return to this pi's calibration hub
         }
         else {
             setLogMessages((prev) => [

@@ -5,6 +5,7 @@ from sqlmodel import Session, select, PickleType
 from sqlalchemy.orm.exc import NoResultFound
 import numpy as np
 from typing import List
+import pickle
 
 from src.database.models import CameraSetupLink, Setup
 from src.classes.JSON_request_bodies import request_bodies as rb
@@ -131,7 +132,7 @@ def get_far_face_homography_matrix(camera_id:int, setup_id:int) -> bytes:
         statement = select(CameraSetupLink).where(CameraSetupLink.camera_id == camera_id).where(CameraSetupLink.setup_id == setup_id)
         result = session.exec(statement).one()
         if result:
-            return result.far_face_homography_matrix
+            return pickle.loads(result.far_face_homography_matrix)
         else:
             raise ValueError(f"Homography matrix not found for camera with id {camera_id} and setup with id {setup_id}.")
 
@@ -140,7 +141,7 @@ def get_far_face_homography_covariance_matrix(camera_id:int, setup_id:int) -> by
         statement = select(CameraSetupLink).where(CameraSetupLink.camera_id == camera_id).where(CameraSetupLink.setup_id == setup_id)
         result = session.exec(statement).one()
         if result:
-            return result.far_face_homography_covariance_matrix
+            return pickle.loads(result.far_face_homography_covariance_matrix)
         else:
             raise ValueError(f"Homography covariance matrix not found for camera with id {camera_id} and setup with id {setup_id}.")
 
@@ -149,7 +150,7 @@ def get_near_face_homography_matrix(camera_id:int, setup_id:int) -> bytes:
         statement = select(CameraSetupLink).where(CameraSetupLink.camera_id == camera_id).where(CameraSetupLink.setup_id == setup_id)
         result = session.exec(statement).one()
         if result:
-            return result.near_face_homography_matrix
+            return pickle.loads(result.near_face_homography_matrix)
         else:
             raise ValueError(f"Homography matrix not found for camera with id {camera_id} and setup with id {setup_id}.")
 
@@ -159,7 +160,7 @@ def get_near_face_homography_covariance_matrix(camera_id:int, setup_id:int) -> b
         statement = select(CameraSetupLink).where(CameraSetupLink.camera_id == camera_id).where(CameraSetupLink.setup_id == setup_id)
         result = session.exec(statement).one()
         if result:
-            return result.near_face_homography_covariance_matrix
+            return pickle.loads(result.near_face_homography_covariance_matrix)
         else:
             raise ValueError(f"Homography covariance matrix not found for camera with id {camera_id} and setup with id {setup_id}.")
 

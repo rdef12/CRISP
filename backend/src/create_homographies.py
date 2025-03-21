@@ -8,6 +8,7 @@ from typing import Literal
 from src.database.CRUD import CRISP_database_interaction as cdi
 import base64
 from pydantic import BaseModel
+import pickle
 
 class ImagePointTransforms(BaseModel):
     horizontal_flip: bool
@@ -38,14 +39,17 @@ def load_homography_data(data_file_path: str):
     return homography_matrix, homography_position_covariance
 
 
-def save_homography_calibration_to_database(plane_type, homography_matrix, homography_covariance):
+def save_homography_calibration_to_database(camera_id, setup_id, plane_type, homography_matrix, homography_covariance):
+    
+    homography_matrix = pickle.dumps(homography_matrix)
+    homography_covariance = pickle.dumps(homography_covariance)
     match plane_type:
         case "far":
-            cdi.update_far_face_homography_matrix(homography_matrix)
-            cdi.update_far_face_homography_covariance_matrix(homography_covariance)
+            cdi.update_far_face_homography_matrix(camera_id, setup_id, homography_matrix)
+            cdi.update_far_face_homography_covariance_matrix(camera_id, setup_id, homography_covariance)
         case "near":
-            cdi.update_near_face_homography_matrix(homography_matrix)
-            cdi.update_near_face_homography_covariance_matrix(homography_covariance)
+            cdi.update_near_face_homography_matrix(camera_id, setup_id,homography_matrix)
+            cdi.update_near_face_homography_covariance_matrix(camera_id, setup_id, homography_covariance)
         case _:
             raise Exception(f"Plane type must be near or far, not {plane_type}")
     return None
@@ -124,8 +128,9 @@ def build_calibration_plane_homography(image: np.ndarray, plane_type: str, calib
                                         calibration_grid_size: tuple[int, int], 
                                         pattern_spacing: list[float, float], 
                                         grid_uncertainties: tuple[float, float], 
+                                        image_point_transforms: ImagePointTransforms,
+                                        camera_id: int, setup_id: int,
                                         correct_for_distortion: bool=False,
-                                        show_recognised_chessboard: bool=False,
                                         save_file_path: str|None=None,
                                         save_to_database: bool=False):
 
@@ -138,7 +143,6 @@ def build_calibration_plane_homography(image: np.ndarray, plane_type: str, calib
             
         grey_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
-        real_grid_positions = generate_real_grid_positions(calibration_grid_size, pattern_spacing)
         match calibration_pattern:
             case "chessboard":
                 image_grid_positions, ret = find_image_grid_positions_chessboard(grey_image, calibration_grid_size)
@@ -147,23 +151,24 @@ def build_calibration_plane_homography(image: np.ndarray, plane_type: str, calib
             case _:
                 raise Exception("No calibration pattern called {} defined".format(calibration_pattern))
 
-        # RUDIMENTARY reverse of real grid points based on where first image point is.
-        # Reverses image grid positions array if first x coord bigger than last x coord
-        if image_grid_positions[0, 0, 0] > image_grid_positions[-1, 0, 0]:
-            image_grid_positions = image_grid_positions[::-1]
-            
-        if show_recognised_chessboard:
-            first_position = tuple(image_grid_positions[0].ravel().astype(int))
-            cv2.circle(image, first_position, radius=40, color=(0, 255, 0), thickness=-1)
-            print("{0} origin is at the pixel {1} (marked with a green circle)".format(real_grid_positions[0], first_position))
-            overlay_identified_grid("Overlayed grid", image, image_grid_positions, calibration_grid_size, ret)
+        if image_point_transforms.horizontal_flip:
+            image_grid_positions_reshaped = image_grid_positions.reshape((calibration_grid_size[1], calibration_grid_size[0], 2))[:, ::-1] # Reverse the order of columns
+            image_grid_positions = convert_array_to_opencv_form(image_grid_positions_reshaped)
+        if image_point_transforms.vertical_flip:
+            image_grid_positions_reshaped = image_grid_positions.reshape((calibration_grid_size[1], calibration_grid_size[0], 2))[::-1,:]  # Reverse the order of rows
+            image_grid_positions = convert_array_to_opencv_form(image_grid_positions_reshaped)
+        if image_point_transforms.swap_axes:
+            image_grid_positions_reshaped = image_grid_positions.reshape((calibration_grid_size[1], calibration_grid_size[0], 2)).transpose(1, 0, 2)  # Transpose array
+            image_grid_positions = convert_array_to_opencv_form(image_grid_positions_reshaped)
 
+        real_grid_positions = generate_real_grid_positions(calibration_grid_size, pattern_spacing, image_point_transforms.swap_axes)
         homography_matrix, _ = cv2.findHomography(image_grid_positions, real_grid_positions)
         grid_uncertainties_array = np.full((len(image_grid_positions), 2), grid_uncertainties)
         homography_covariance = generate_homography_covariance_matrix(image_grid_positions, homography_matrix, grid_uncertainties_array)
         
         if save_to_database:
-            save_homography_calibration_to_database(plane_type, homography_matrix, homography_covariance)
+            save_homography_calibration_to_database(camera_id, setup_id, plane_type, homography_matrix, 
+                                                    homography_covariance)
             pass
         
         if save_file_path is not None:
@@ -204,39 +209,45 @@ def test_grid_recognition_for_gui(username: str, setup_id: int,
                                            correct_for_distortion=correct_for_distortion)
     
 
-def perform_homography_calibration(username: str, setup_id: int, 
+def perform_homography_calibration(username: str, setup_id: int,
                                    calibration_plane_type: Literal["far", "near"],
+                                   image_point_transforms: ImagePointTransforms = ImagePointTransforms(
+                                        horizontal_flip=False, vertical_flip=False, swap_axes=False
+                                   ),
                                    photo_id: int|None=None, photo_bytes:str|None=None):
     """
     Applied to single plane - so ran twice for a given camera (from two different GUI pages)
     """
-    camera_id = cdi.get_camera_id_from_username(username)
-    match calibration_plane_type:
-        case "far":
-            pattern_size = cdi.get_far_face_calibration_pattern_size(camera_id, setup_id)
-            pattern_type = cdi.get_far_face_calibration_pattern_type(camera_id, setup_id)
-            pattern_spacing = cdi.get_far_face_calibration_spacing(camera_id, setup_id)
-            unc_spacing = cdi.get_far_face_calibration_spacing_unc(camera_id, setup_id)
-        case "near":
-            pattern_size = cdi.get_near_face_calibration_pattern_size(camera_id, setup_id)
-            pattern_type = cdi.get_near_face_calibration_pattern_type(camera_id, setup_id)
-            pattern_spacing = cdi.get_near_face_calibration_spacing(camera_id, setup_id)
-            unc_spacing = cdi.get_near_face_calibration_spacing_unc(camera_id, setup_id)
-    
-    
-    if any(x is None for x in (pattern_size, pattern_type, pattern_spacing, unc_spacing)):
-        correct_for_distortion = False
-    else:
-        correct_for_distortion = True
+    try:
+        camera_id = cdi.get_camera_id_from_username(username)
+        match calibration_plane_type:
+            case "far":
+                pattern_size = cdi.get_far_face_calibration_pattern_size(camera_id, setup_id)
+                pattern_type = cdi.get_far_face_calibration_pattern_type(camera_id, setup_id)
+                pattern_spacing = cdi.get_far_face_calibration_spacing(camera_id, setup_id)
+                unc_spacing = cdi.get_far_face_calibration_spacing_unc(camera_id, setup_id)
+            case "near":
+                pattern_size = cdi.get_near_face_calibration_pattern_size(camera_id, setup_id)
+                pattern_type = cdi.get_near_face_calibration_pattern_type(camera_id, setup_id)
+                pattern_spacing = cdi.get_near_face_calibration_spacing(camera_id, setup_id)
+                unc_spacing = cdi.get_near_face_calibration_spacing_unc(camera_id, setup_id)
+        
+        
+        if any(x is None for x in (pattern_size, pattern_type, pattern_spacing, unc_spacing)):
+            correct_for_distortion = False
+        else:
+            correct_for_distortion = True
 
-    if bool(photo_bytes) == bool(photo_id):  # XNOR
-        raise Exception("Only Image bytes or Photo ID must be entered")
-    if photo_id:
-        photo_bytes = cdi.get_photo_from_id(photo_id)
-    image = load_image_byte_string_to_opencv(photo_bytes)
-    
-    build_calibration_plane_homography(image, calibration_plane_type, pattern_type, pattern_size, pattern_spacing, 
-                                       unc_spacing, correct_for_distortion= correct_for_distortion,
-                                       show_recognised_chessboard=False, save_to_database=True)
-    
-    return True # If return True, frontend knows it was successful
+        if bool(photo_bytes) == bool(photo_id):  # XNOR
+            raise Exception("Only Image bytes or Photo ID must be entered")
+        if photo_id:
+            photo_bytes = cdi.get_photo_from_id(photo_id)
+        image = load_image_byte_string_to_opencv(photo_bytes)
+        
+        build_calibration_plane_homography(image, calibration_plane_type, pattern_type, pattern_size, pattern_spacing, 
+                                        unc_spacing, image_point_transforms, camera_id, setup_id, correct_for_distortion= correct_for_distortion,
+                                        save_to_database=True)
+        
+        return True # If return True, frontend knows it was successful
+    except Exception as e:
+        raise
