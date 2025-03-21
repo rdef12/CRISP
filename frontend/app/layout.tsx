@@ -64,9 +64,9 @@ export default function RootLayout({
                     </Link>
                   </NavigationMenuItem>
                   <NavigationMenuItem>
-                    <Link href="/data_run" legacyBehavior passHref>
+                    <Link href="/experiments" legacyBehavior passHref>
                       <NavigationMenuLink className={`${navigationMenuTriggerStyle()} text-2xl`}>
-                        Data run
+                        Experiments
                       </NavigationMenuLink>
                     </Link>
                   </NavigationMenuItem>

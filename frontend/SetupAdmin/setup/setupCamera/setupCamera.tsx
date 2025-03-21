@@ -19,11 +19,12 @@ import {
   TextInput,
   DateInput,
   useEditController,
+  useListController,
 } from 'react-admin';
 import { Link, useParams } from 'react-router-dom';
 import DistortionPage from './DistortionCalibration';
 import HomograpyCalibration from './HomographyCalibration';
-import ManualROI from './scintillator_edges/ScintillatorEdges';
+// import ManualROI from './scintillator_edges/ScintillatorEdges';
 import { DialogContent, DialogHeader } from '@/components/ui/dialog';
 import { Dialog, DialogDescription, DialogTitle, DialogTrigger } from '@radix-ui/react-dialog';
 
@@ -60,16 +61,17 @@ export const AddSetupCameraDropDown = () => {
 
 export const SetupCameraList = () => {
   const { setupId } = useParams();
+  const { resource, data, isPending } = useListController({ resource:`setup-camera/${setupId}`, queryOptions: {meta: { camera: "camera"}}})
   const cameraSetupRowClick = (id: Identifier, resource: string, record: RaRecord) =>
     `/setup/${record.setup_id}/setup-camera/${record.id}`
+  console.log("DATAAA: ", data)
+  if (isPending) return null;
   return (
-    <List resource="setup-camera" 
-    filter={{ setup_id: setupId }}
-    >
-      <Datagrid rowClick={cameraSetupRowClick} >
-        <TextField source="id" />
-        <TextField source="camera_id" />
-        <TextField source="setup_id" />
+    <List resource={resource}>
+      <Datagrid data={data} rowClick={cameraSetupRowClick} bulkActionButtons={false} >
+        {/* <TextField source="camera.id" /> */}
+        <TextField source="camera.username" />
+        {/* <TextField source="setup_id" /> */}
       </Datagrid>
     </List>
   );
@@ -328,6 +330,27 @@ export const ScintillatorEdgeSelectionButton = () => (
   </Button>
 )
 
+// export const ScintillatorEdgeSelectionButton = () => {
+//   const {setupCameraId } = useParams()
+//   console.log("Setup camera id: ", setupCameraId)
+//   const { record, isPending } = useShowController({resource: "setup-camera/calibration", id: setupCameraId});
+//   if (isPending) return null;
+//   console.log("THINGMEJIG", record?.scintillator_edges_photo_camera_settings_id)
+//   console.log(record)
+//   if (record?.scintillator_edges_photo_camera_settings_id === null) {
+//     return (
+//       <Button>
+//         <Link to="scintillator-edges/create">Scintillator Edge Selection</Link>
+//       </Button>
+//     )
+//   }
+//   return (
+//   <Button>
+//     <Link to="scintillator-edges/edit">Scintillator Edge Selection</Link>
+//   </Button>
+// )
+// }
+
 export const NearFaceTestContent = () => (
   <HomograpyCalibration plane={"near"} />
 )
@@ -338,9 +361,9 @@ export const FarFaceTestContent = () => (
 export const DistortionTestContent = () => (
   <DistortionPage />
 )
-export const ScintillatorEdgesTestContent = () => (
-  <ManualROI />
-)
+// export const ScintillatorEdgesTestContent = () => (
+//   <ManualROI />
+// )
 
 export const SetupCameraShow = () => (
   <div>

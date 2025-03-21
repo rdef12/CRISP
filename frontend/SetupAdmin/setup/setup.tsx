@@ -25,8 +25,8 @@ export const SetupList = () => {
       <h1>Setups </h1>
         <Datagrid rowClick={setupRowClick}>
           <TextField source="name" />
-          <DateField source="date_created" />
-          <DateField source="date_last_edited" />
+          <DateField source="date_created" showTime={true}/>
+          <DateField source="date_last_edited" showTime={true}/>
         </Datagrid>
         <Pagination />
       </List>
