@@ -43,6 +43,13 @@ export const ROISelectionTool: React.FC<ROISelectionToolProps> = ({
         vStart: record?.vertical_scintillator_start,
         vEnd: record?.vertical_scintillator_end,
       });
+      // Call updateROI when record changes to show the lines
+      updateROI({
+        hStart: record?.horizontal_scintillator_start,
+        hEnd: record?.horizontal_scintillator_end,
+        vStart: record?.vertical_scintillator_start,
+        vEnd: record?.vertical_scintillator_end,
+      });
     }
   }, [record]);
   
@@ -50,10 +57,10 @@ export const ROISelectionTool: React.FC<ROISelectionToolProps> = ({
   const initializeLayout = () => {
     const layout = {
       margin: {
-        t: 20, // top margin, reducing the padding (default is usually 80)
-        b: 40, // bottom margin
-        l: 40, // left margin
-        r: 40, // right margin
+        t: 20,
+        b: 40,
+        l: 40,
+        r: 40,
       },
       images: [
         {
@@ -85,7 +92,41 @@ export const ROISelectionTool: React.FC<ROISelectionToolProps> = ({
         zorder: 2,
         scaleanchor: "x",
         scaleratio: 1,
-      }, // Reversed y-axis
+      },
+      shapes: [
+        {
+          type: "line",
+          x0: roi.hStart,
+          x1: roi.hStart,
+          y0: height,
+          y1: 0,
+          line: { color: "red", width: 2, dash: "dash" },
+        },
+        {
+          type: "line",
+          x0: roi.hEnd,
+          x1: roi.hEnd,
+          y0: height,
+          y1: 0,
+          line: { color: "red", width: 2, dash: "dash" },
+        },
+        {
+          type: "line",
+          x0: 0,
+          x1: width,
+          y0: roi.vStart,
+          y1: roi.vStart,
+          line: { color: "blue", width: 2, dash: "dash" },
+        },
+        {
+          type: "line",
+          x0: 0,
+          x1: width,
+          y0: roi.vEnd,
+          y1: roi.vEnd,
+          line: { color: "blue", width: 2, dash: "dash" },
+        },
+      ],
     };
     setCurrentLayout(layout);
   };
@@ -96,9 +137,19 @@ export const ROISelectionTool: React.FC<ROISelectionToolProps> = ({
     }
   }, [image, width, height]);
 
+  useEffect(() => {
+    if (record) {
+      setRoi({
+        hStart: record?.horizontal_scintillator_start,
+        hEnd: record?.horizontal_scintillator_end,
+        vStart: record?.vertical_scintillator_start,
+        vEnd: record?.vertical_scintillator_end,
+      });
+    }
+  }, [record]);
+
   const updateROI = (newRoi: ROI) => {
     const { hStart, hEnd, vStart, vEnd } = newRoi;
-    console.log("UPDATA: hstart, hend, vstart, vend", hStart, hEnd, vStart, vEnd)
     const updatedLayout = {
       ...currentLayout,
       shapes: [
@@ -136,31 +187,21 @@ export const ROISelectionTool: React.FC<ROISelectionToolProps> = ({
         },
       ],
     };
-    setCurrentLayout(updatedLayout); // Update the layout to reflect the changes
+    setCurrentLayout(updatedLayout);
   };
   
-  const handleROIChange = (name: string, value: number | number[]) => {
-    if (Array.isArray(value)) {
-      console.log("In Array - Updating", name, "to", value[0]);
-      // Handle the array value from slider (e.g., multi-range slider)
-      setRoi((prevState) => {
-        const newState = { ...prevState, [name]: value[0] };
-        updateROI(newState); // Ensure layout is updated after state change
-        console.log("In Array post - Updating", name, "to", newState.vStart);
-        return newState;
-      });
-    } else {
-      setRoi((prevState) => {
-        console.log("In Box - Updating", name, "to", value);
-        const newState = { ...prevState, [name]: value };
-        updateROI(newState); // Ensure layout is updated after state change
-        return newState;
-      });
-    }
+  const handleROIChange = (name: string, value: number) => {
+    setRoi((prevState) => {
+      const newState = { ...prevState, [name]: value };
+      updateROI(newState);
+      return newState;
+    });
   };
 
   const RoiInput = ({ inputSource, label, roiParamName }: {inputSource: string, label: string, roiParamName: keyof ROI}) => {
     const { field } = useInput({ source: inputSource });
+    const currentValue = roi[roiParamName];
+
     return (
       <div>
         <label className="text-sm font-medium mb-1">{label}</label>
@@ -169,11 +210,12 @@ export const ROISelectionTool: React.FC<ROISelectionToolProps> = ({
             name={inputSource}
             min={0}
             max={roiParamName.startsWith('h') ? width : height}
-            value={[roi[roiParamName]]}
+            value={[currentValue]}
             step={1}
             onValueChange={(value) => {
-              handleROIChange(roiParamName, value);
-              field.onChange(value[0]);
+              const newValue = value[0];
+              field.onChange(newValue);
+              handleROIChange(roiParamName, newValue);
             }}
             className="w-full"
           />
@@ -182,11 +224,11 @@ export const ROISelectionTool: React.FC<ROISelectionToolProps> = ({
             type="number"
             name={inputSource}
             placeholder="0"
-            value={roi[roiParamName]}
+            value={currentValue}
             onChange={(e) => {
-              const value = parseInt(e.target.value);
-              handleROIChange(roiParamName, value);
+              const value = e.target.value === '' ? 0 : parseInt(e.target.value);
               field.onChange(value);
+              handleROIChange(roiParamName, value);
             }}
             className="w-full border rounded-md px-2 py-1"
           />
