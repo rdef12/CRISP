@@ -15,9 +15,20 @@ def add_experiment(name: str, date_started: datetime, setup_id: int):
     with Session(engine) as session:
         session.add(experiment)
         session.commit()
-        return {"message", f"Experiment added to setup called {name}."}
+        return {"message": f"Experiment added to setup called {name}.",
+                "id": experiment.id}
 
 # Read
+
+def get_experiment_by_id(experiment_id: int) -> Experiment:
+    with Session(engine) as session:
+        return session.get(Experiment, experiment_id)
+
+def get_all_experiments() -> list[Experiment]:
+    with Session(engine) as session:
+        statement = select(Experiment)
+        results = session.exec(statement).all()
+        return results if results else []
 
 def get_experiment_id_from_name(name: str) -> int:
     with Session(engine) as session:
@@ -41,7 +52,7 @@ def get_setup_id_from_experiment_id(experiment_id: int) -> int:
 
 def get_camera_ids_from_experiment_id(experiment_id: int) -> int:
     with Session(engine) as session:
-        statement = select(CameraSetupLink).where(Experiment.id == experiment_id)
+        statement = select(CameraSetupLink).join(Experiment).where(Experiment.id == experiment_id)
         results = session.exec(statement).all()
         camera_ids = []
         for result in results:

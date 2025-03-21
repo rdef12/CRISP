@@ -5,7 +5,7 @@ from src.database.database import engine
 from sqlmodel import Session, select, PickleType
 from sqlalchemy.orm.exc import NoResultFound
 
-from src.database.models import Setup
+from src.database.models import Experiment, Setup
 from src.classes.JSON_request_bodies import request_bodies as rb
 
 
@@ -30,6 +30,12 @@ def add_setup(setup_name: str, date_created: datetime, date_last_edited: datetim
 def get_setup_by_id(id: int) -> Setup:
     with Session(engine) as session:
         return session.get(Setup, id)
+    
+def get_setup_by_experiment_id(experiment_id: int) -> Setup:
+    with Session(engine) as session:
+        statement = select(Setup).join(Experiment).where(Experiment.id == experiment_id)
+        setup = session.exec(statement).one()
+        return setup
         
 
 def get_setup_id_from_name(name: str) -> int:

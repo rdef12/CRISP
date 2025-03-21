@@ -153,6 +153,7 @@ const ROISelectionTool: React.FC<ROISelectionToolProps> = ({
     const vEndConverted = height - vEnd;
 
     // Debugging: Check if values are retrieved correctly
+    console.log("OLD ROI:", { hStart, hEnd, vStart, vEnd });
     console.log("Saving ROI:", { hStart, hEnd, vStartConverted, vEndConverted });
 
     if (isNaN(hStart) || isNaN(hEnd) || isNaN(vStartConverted) || isNaN(vEndConverted)) {

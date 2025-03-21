@@ -20,14 +20,14 @@ def add_real_beam_run_settings_and_camera(real_beam_run_id: int, camera_id: int,
 
 # Read
 
-def get_real_beam_run_settings_and_cameras_id(real_beam_run_id: int, camera_id: int, settings_id: int):
-    with Session(engine) as session:
-        statement = select(RealBeamRunSettingsAndCamera).where(RealBeamRunSettingsAndCamera.real_beam_run_id == real_beam_run_id).where(RealBeamRunSettingsAndCamera.camera_id == camera_id).where(RealBeamRunSettingsAndCamera.settings_id == settings_id)
-        result = session.exec(statement).one()
-        if result:
-            return result.id
-        else:
-            raise ValueError(f"Real beam run settings and camera with real_beam_run_id: {real_beam_run_id}, camera_id: {camera_id} and settings_id: {settings_id} not found")
+# def get_real_beam_run_settings_and_cameras_id(real_beam_run_id: int, camera_id: int, settings_id: int):
+#     with Session(engine) as session:
+#         statement = select(RealBeamRunSettingsAndCamera).where(RealBeamRunSettingsAndCamera.real_beam_run_id == real_beam_run_id).where(RealBeamRunSettingsAndCamera.camera_id == camera_id).where(RealBeamRunSettingsAndCamera.settings_id == settings_id)
+#         result = session.exec(statement).one()
+#         if result:
+#             return result.id
+#         else:
+#             raise ValueError(f"Real beam run settings and camera with real_beam_run_id: {real_beam_run_id}, camera_id: {camera_id} and settings_id: {settings_id} not found")
 
 # Something to return all pairs of camera_id and settings_id for a given real_beam_run_id
 

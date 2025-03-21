@@ -26,3 +26,8 @@ def add_camera_settings_link(camera_id, settings_body: rb.SettingsCreateRequest)
     settings_id = cdi.add_settings(settings_body.frame_rate, settings_body.lens_position, settings_body.gain)["id"]
     camera_settings_link_id = cdi.add_camera_settings_link(camera_id, settings_id)["id"]
     return {"id": camera_settings_link_id}
+
+@router.get("/calibration/{camera_settings_id}")
+def get_camera_settings_link(camera_settings_id):
+    camera_settings = cdi.get_camera_settings_by_id(camera_settings_id)
+    return camera_settings

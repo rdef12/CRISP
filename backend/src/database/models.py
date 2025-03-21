@@ -41,7 +41,7 @@ class CameraSetupLink(SQLModel, table=True):
     far_face_calibration_spacing: Optional[List[float]] = Field(default=None, sa_column=Column(ARRAY(Integer)))
     far_face_calibration_spacing_unc: Optional[List[float]] = Field(default=None, sa_column=Column(ARRAY(Integer)))
     # far_face_calibratoin_photo_settings_id: Optional[int] = Field(default=None, foreign_key="settings.id") # Add back filling bit to settings
-    far_face_calibration_photo_camera_settings_link: Optional[int] = Field(default=None, foreign_key="camerasettingslink.id")
+    far_face_calibration_photo_camera_settings_id: Optional[int] = Field(default=None, foreign_key="camerasettingslink.id")
     # far_face_calibration_photo: Optional[bytes] = Field(default=None, sa_column=Column(LargeBinary))
     # far_face_calibration_photo_id: Optional[int] = Field(default=None, foreign_key="photo.id")
 
@@ -59,7 +59,7 @@ class CameraSetupLink(SQLModel, table=True):
     near_face_calibration_spacing: Optional[List[float]] = Field(default=None, sa_column=Column(ARRAY(Integer)))
     near_face_calibration_spacing_unc: Optional[List[float]] = Field(default=None, sa_column=Column(ARRAY(Integer)))
     # near_face_calibratoin_photo_settings_id: Optional[int] = Field(default=None, foreign_key="settings.id") # Add back filling bit to setting
-    near_face_calibration_photo_camera_settings_link: Optional[int] = Field(default=None, foreign_key="camerasettingslink.id")
+    near_face_calibration_photo_camera_settings_id: Optional[int] = Field(default=None, foreign_key="camerasettingslink.id")
     # near_face_calibration_photo: Optional[bytes] = Field(default=None, sa_column=Column(LargeBinary))
     # near_face_calibration_photo_id: Optional[int] = Field(default=None, foreign_key="photo.id")
     near_face_homography_matrix: Optional[bytes] = Field(default=None, sa_column=PickleType) # How do you show 2d shape? (3x3 array)
@@ -71,9 +71,13 @@ class CameraSetupLink(SQLModel, table=True):
     near_z_offset: Optional[float] = Field(default=None)
     near_z_offset_unc: Optional[float] = Field(default=None)
 # Others
-    scintillator_edges_photo_camera_settings_link: Optional[int] = Field(default=None, foreign_key="camerasettingslink.id")
-    horizontal_scintillator_limits: Optional[List[float]] = Field(default=None, sa_column=Column(ARRAY(Integer))) # How do you show 2d shape? (4x1 of 2x2 array)
-    vertical_scintillator_limits: Optional[List[float]] = Field(default=None, sa_column=Column(ARRAY(Integer))) # How do you show 2d shape? (4x1 of 2x2 array)
+    scintillator_edges_photo_camera_settings_id: Optional[int] = Field(default=None, foreign_key="camerasettingslink.id")
+    # horizontal_scintillator_limits: Optional[List[float]] = Field(default=None, sa_column=Column(ARRAY(Integer))) # How do you show 2d shape? (4x1 of 2x2 array)
+    horizontal_scintillator_start: Optional[int]
+    horizontal_scintillator_end: Optional[int]
+    vertical_scintillator_start: Optional[int]
+    vertical_scintillator_end: Optional[int]
+    # vertical_scintillator_limits: Optional[List[float]] = Field(default=None, sa_column=Column(ARRAY(Integer))) # How do you show 2d shape? (4x1 of 2x2 array)#TODO these should be int type surely
     # e_log_entry: #How is this going to be stored, surely theres a better way than just a string?
 # Distortion calibration
     distortion_calibration_pattern_size: Optional[List[int]] = Field(default=None, sa_column=Column(ARRAY(Integer)))
@@ -266,7 +270,7 @@ class BeamRun(SQLModel, table=True):
     beam_current_unc: float
     #Any other beam parameters?
 
-    is_test: Optional[bool] = Field(default=None)
+    is_test: bool
 
     experiment_id: int = Field(default=None, foreign_key="experiment.id")
     experiment: Experiment = Relationship(back_populates="beam_runs")

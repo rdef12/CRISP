@@ -3,3 +3,7 @@ from src.classes.JSON_request_bodies.setup_camera_request_bodies import *
 from src.classes.JSON_request_bodies.settings_request_bodies import *
 from src.classes.JSON_request_bodies.camera_settings_request_body import *
 from src.classes.JSON_request_bodies.video_request_body import *
+from src.classes.JSON_request_bodies.experiment_request_bodies import *
+from src.classes.JSON_request_bodies.beam_run_request_bodies import *
+from src.classes.JSON_request_bodies.photo_request_bodies import *
+

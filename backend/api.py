@@ -26,6 +26,8 @@ from src.routers import settings as settings_router
 from src.routers import camera_settings as camera_settings_router
 from src.routers import photo as photo_router
 from src.routers import video as video_router
+from src.routers import experiment as experiment_router
+from src.routers import beam_run as beam_run_router
 
 from src.classes.JSON_request_bodies import request_bodies as rb
 
@@ -64,6 +66,8 @@ app.include_router(settings_router.router)
 app.include_router(camera_settings_router.router)
 app.include_router(photo_router.router)
 app.include_router(video_router.router)
+app.include_router(experiment_router.router)
+app.include_router(beam_run_router.router)
 
 @app.post("/add_pi")
 async def add_pi(pi_config: PiConfig):

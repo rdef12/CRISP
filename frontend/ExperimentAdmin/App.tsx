@@ -1,0 +1,30 @@
+import { Admin, Resource } from "react-admin"
+import simpleRestProvider from "ra-data-simple-rest";
+import { Route } from 'react-router-dom';
+import CustomAdminLayout from "./CustomLayout";
+import { ExperimentCreate } from "./CreateExperiment";
+import { ExperimentList } from "./ListExperiment";
+import { ShowExperiment } from "./experiment/ShowExperiment";
+import { ShowRealBeamRun } from "./experiment/beamRun/ShowRealBeamRun";
+import { ShowTestBeamRun } from "./experiment/beamRun/ShowTestBeamRun";
+
+const dataProvider = simpleRestProvider(`${process.env.NEXT_PUBLIC_BACKEND}`);
+
+const AdminApp = () => (
+  <Admin
+   dataProvider={dataProvider}
+    layout={CustomAdminLayout}
+    >
+    <Resource options={{ label: 'Experiments' }}  name="experiment" 
+      create={ExperimentCreate} list={ExperimentList} hasCreate
+    >
+      <Route path=":experimentId" element={<ShowExperiment />} />
+      <Route path=":experimentId/beam-run/real/:beamRunId" element={<ShowRealBeamRun />} />
+      <Route path=":experimentId/beam-run/test/:beamRunId" element={<ShowTestBeamRun />} />
+
+    </Resource>
+
+  </Admin>
+);
+
+export default AdminApp;

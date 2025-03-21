@@ -32,7 +32,7 @@ class ImageSettings(BaseModel):
     filename: str = Field(..., min_length=1, description="Filename without extension.")
     gain: int = Field(1, gt=0, example=1)
     timeDelay: int = Field(1000, ge=0, example=1000, description="Time delay in milliseconds") 
-    format: Literal["png", "jpg", "raw", "jpeg"] = Field("jpeg", example="png")
+    format: Literal["png", "jpg", "raw", "jpeg"] = Field("jpeg", example="png") #TODO Should we disallow .raw?
     meta_data_format: str = "dng" #TODO Can be made variable if need be
     
 
@@ -198,6 +198,110 @@ class Camera():
             return camera_settings_link_id, full_file_path
         except Exception as e:
             raise Exception(f"Error capturing image: {e}")
+
+  def capture_image_without_making_settings(self, camera_settings_link_id:int, imageSettings: ImageSettings, context: PhotoContext):
+        try:
+            print("\n\n\n\n\n I will try to check the directory")
+            file_path = self.check_image_directory_exists(context)
+            print("\n\n\n\n\n Directory checked")
+        except Exception as e:
+            raise e    
+        # Should there be timestamping code in here?
+        print("\n\n\n\n\n I will try to generate the file name")
+
+        filename = self.generate_filename(camera_settings_link_id, context, imageSettings.format, filename=imageSettings.filename) # TODO maybe dont need filename as key word arg if set in imageSettings class
+        full_file_path = f"{file_path}/{filename}"
+        # TODO need a overwrite confirmation here for duplicate filename not sure how to do this frontend wise (or increment the filename)
+        print("\n\n\n\n\n I have generated the file name")
+        
+        try:
+            print("\n\n\n\n\n I will try to create the file")
+            
+            # raw = "--raw" #raw = "" #changed for testing
+            raw = ""
+            if imageSettings.format == "raw":
+                raw = "--raw"
+            command = f"libcamera-still -o {full_file_path}.{imageSettings.format} -t {imageSettings.timeDelay} --gain {imageSettings.gain} -n {raw}"#TODO changed for testing without camera
+            timeout=30 #TODO temporary
+            stdin, stdout, stderr = self.ssh_client.exec_command(command, timeout=timeout)
+            
+            output = stdout.read().decode().strip()
+            error = stderr.read().decode().strip() # TODO maybe the warnings here can be logged
+            stdin.close()
+            
+            exit_status = stdout.channel.recv_exit_status()
+            if exit_status != 0:  # Only raise an error if the command failed
+                raise Exception(f"Command '{command}' failed with exit status {exit_status}:\n{error}")
+            
+            print("\n\n\n\n\n I created the file")
+            print(camera_settings_link_id)
+            print(full_file_path)
+            return full_file_path
+        except Exception as e:
+            raise Exception(f"Error capturing image: {e}")
+
+
+  def transfer_image_overwrite(self, imageSettings: ImageSettings, camera_settings_link_id: int, full_file_path: str):
+    """
+    Returns the image bytes and metadata instead of copying the file locally.
+    Provides detailed error handling.
+    """
+    print("\n\n\n\n\n The transfer has begun")
+    remote_image_path = f"{full_file_path}.{imageSettings.format}"
+    print(f"Remote image path: {remote_image_path}")
+    remote_photo_meta_data_path = f"{full_file_path}.{imageSettings.meta_data_format}"
+    try:
+        self.open_sftp()
+
+    except paramiko.SSHException as e:
+        print("f")
+        raise Exception(f"SSH error while opening SFTP connection: {e}")
+    except paramiko.AuthenticationException:
+        print("g")
+        raise Exception("Authentication failed, please verify your credentials.")
+    except paramiko.SFTPError as e:
+        print("h")
+        raise Exception(f"SFTP error: {e}")
+    except Exception as e:
+        print("i")
+        raise Exception(f"Unexpected error while establishing SFTP connection: {e}")
+    
+    try:
+        with self.sftp_client.file(remote_image_path, "rb") as remote_file1:#, \
+            #  self.sftp_client.file(remote_photo_meta_data_path, "rb") as remote_file2:
+            photo_bytes = remote_file1.read()
+            if not photo_bytes:
+                raise ValueError(f"Failed to read image data from {remote_image_path}, photo_bytes is empty")
+    
+            # photo_meta_data_bytes = remote_file2.read()
+            added_photo = cdi.update_photo(camera_settings_link_id=camera_settings_link_id, photo=photo_bytes)#, photo_metadata=photo_meta_data_bytes)
+            # added_photo = cdi.add_photo_for_testing(camera_settings_link_id=camera_settings_link_id, photo=photo_bytes)
+            added_photo_id = added_photo["id"]
+            print("\n\n\n\n\n I have finished this try alright")
+        return added_photo_id
+    
+    except FileNotFoundError as e:
+        print("a")
+        raise Exception(f"Error: One or more files not found on the remote server at path: {e}")
+    except PermissionError as e:
+        print("b")
+        raise Exception(f"Error: Permission denied while accessing one or more files: {e}")
+    except paramiko.SSHException as e:
+        print("c")
+        raise Exception(f"SSH error while transferring the image: {e}")
+    except IOError as e:
+        print("d")
+        raise Exception(f"IO error occurred while reading one or more of the files: {e}")
+    except Exception as e:
+        print("e")
+        raise Exception(f"Unexpected error while reading the image: {e}")
+
+    finally:
+        try:
+            self.close_sftp()
+        except Exception as e:
+            raise Exception(f"Error while closing SFTP connection: {e}")
+
 
 
   def transfer_image(self, imageSettings: ImageSettings, camera_settings_link_id: int, full_file_path: str):

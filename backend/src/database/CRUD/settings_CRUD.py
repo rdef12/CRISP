@@ -1,6 +1,8 @@
 from src.database.database import engine
 from sqlmodel import Session, select
-from src.database.models import Settings
+from src.database.models import CameraSettingsLink, CameraSetupLink, Settings
+
+from src.database.CRUD import CRISP_database_interaction as cdi
 
 # Create
 
@@ -41,6 +43,26 @@ def get_settings_by_id(settings_id: int):
     with Session(engine) as session:
         settings = session.get(Settings, settings_id)
         return settings
+
+def get_settings_by_setup_camera_id_scintillator_edges(setup_camera_id: int):
+    with Session(engine) as session:
+        setup_camera = cdi.get_setup_camera_by_id(setup_camera_id)
+        print(f"\n\n\ A: {setup_camera} \n\n")
+        scintillator_edges_camera_settings_id = setup_camera.scintillator_edges_photo_camera_settings_id
+        print(f"\n\n\ B: {scintillator_edges_camera_settings_id} \n\n")
+        settings_id = cdi.get_settings_id_by_camera_settings_id(scintillator_edges_camera_settings_id)
+        settings = get_settings_by_id(settings_id)
+        print(f"\n\n\ C: {settings} \n\n")
+        
+        return settings
+        # statement = select(CameraSetupLink).where(Settings.setup_camera_id == setup_camera_id)
+        # result = session.exec(statement).first()
+        # return result
+
+# def get_settings_by_camera_settings_id(camera_settings_id: int):
+    # with Session(engine) as session:
+        # camera_settings = session.get(CameraSettingsLink, camera_settings_id)
+
 # Update
 
 # Delete
