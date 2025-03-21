@@ -19,6 +19,7 @@ import {
   TextInput,
   DateInput,
   useEditController,
+  useListController,
 } from 'react-admin';
 import { Link, useParams } from 'react-router-dom';
 import DistortionPage from './DistortionCalibration';
@@ -60,14 +61,17 @@ export const AddSetupCameraDropDown = () => {
 
 export const SetupCameraList = () => {
   const { setupId } = useParams();
+  const { resource, data, isPending } = useListController({ resource:`setup-camera/${setupId}`, queryOptions: {meta: { camera: "camera"}}})
   const cameraSetupRowClick = (id: Identifier, resource: string, record: RaRecord) =>
     `/setup/${record.setup_id}/setup-camera/${record.id}`
+  console.log("DATAAA: ", data)
+  if (isPending) return null;
   return (
-    <List resource={`setup-camera/${setupId}`}>
-      <Datagrid rowClick={cameraSetupRowClick} >
-        <TextField source="id" />
-        <TextField source="camera_id" />
-        <TextField source="setup_id" />
+    <List resource={resource}>
+      <Datagrid data={data} rowClick={cameraSetupRowClick} bulkActionButtons={false} >
+        {/* <TextField source="camera.id" /> */}
+        <TextField source="camera.username" />
+        {/* <TextField source="setup_id" /> */}
       </Datagrid>
     </List>
   );
