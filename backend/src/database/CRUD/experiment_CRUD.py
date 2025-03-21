@@ -52,7 +52,7 @@ def get_setup_id_from_experiment_id(experiment_id: int) -> int:
 
 def get_camera_ids_from_experiment_id(experiment_id: int) -> int:
     with Session(engine) as session:
-        statement = select(CameraSetupLink).where(Experiment.id == experiment_id)
+        statement = select(CameraSetupLink).join(Experiment).where(Experiment.id == experiment_id)
         results = session.exec(statement).all()
         camera_ids = []
         for result in results:

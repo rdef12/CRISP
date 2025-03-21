@@ -19,13 +19,18 @@ router = APIRouter(
 )
 
 @router.get("/{setup_id}")
-def get_camera_setups(setup_id: int, response: Response) -> list[CameraSetupLink]:
-    with Session(engine) as session:
-        statement = select(CameraSetupLink).where(CameraSetupLink.setup_id == setup_id)
-        results = session.exec(statement).all()
-        results = results if results else []
-        response.headers["Content-Range"] = str(len(results))
-        return results
+def get_camera_setups(setup_id: int, response: Response) -> list[rb.SetupCameraGetRequest]:
+    camera_setups = cdi.get_setup_cameras_by_setup_id(setup_id)
+    response_body = []
+    for camera_setup in camera_setups:
+        camera = cdi.get_camera_by_id(camera_setup.camera_id)
+        response_body_element = rb.SetupCameraGetRequest(id=camera_setup.id,
+                                                         camera_id=camera_setup.camera_id,
+                                                         setup_id=camera_setup.setup_id,
+                                                         camera=camera)
+        response_body += [response_body_element]
+    response.headers["Content-Range"] = str(len(response_body))
+    return response_body
 
 # @router.get("/{setup_camera_id}")
 # async def read_setup_camera(setup_camera_id: int) -> CameraSetupLink:
@@ -102,10 +107,13 @@ async def patch_setup_camera(setup_camera_id: int, patch_request: rb.SetupCamera
     return
 
 
-@router.patch("/calibration/{setup_camera_id}")
+@router.put("/calibration/{setup_camera_id}")
 async def patch_setup_camera(setup_camera_id: int, patch_request: rb.SetupCameraPatchRequest):
+    print(f"\n\n PATCH REQUEST {patch_request} \n SETUP CAMERA ID {setup_camera_id} \n\n")
     cdi.patch_setup_camera(setup_camera_id, patch_request)
-    return
+    print("\n\n I DONE A PATCH \n\n")
+    return {"message": "Successfully added calibration parameters",
+            "id": setup_camera_id}
 
     
 

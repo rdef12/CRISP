@@ -25,6 +25,12 @@ def add_camera_to_setup(setup_id: int, camera_id:int):
 
 # Read
 
+def get_setup_cameras_by_setup_id(setup_id: int) -> list[CameraSetupLink]:
+    with Session(engine) as session:
+        statement = select(CameraSetupLink).where(CameraSetupLink.setup_id == setup_id)
+        camera_setups = session.exec(statement).all()
+        return camera_setups if camera_setups else []
+
 def get_setup_camera_by_id(id: int) -> CameraSetupLink:
     with Session(engine) as session:
         setup_camera = session.get(CameraSetupLink, id)
@@ -33,14 +39,14 @@ def get_setup_camera_by_id(id: int) -> CameraSetupLink:
 
 def get_cameras_in_setup(setup_id: int) -> list[Camera]:
     with Session(engine) as session:
-        statement = select(Camera).where(Setup.id == setup_id)
+        statement = select(Camera).join(Setup).where(Setup.id == setup_id)
         cameras = session.exec(statement).all()
         return cameras if cameras else []
 
 
 def get_cameras_in_experiment(experiment_id: int) -> list[Camera]:
     with Session(engine) as session:
-        statement = select(Camera).where(Experiment.id == experiment_id)
+        statement = select(Camera).join(Experiment).where(Experiment.id == experiment_id)
         cameras = session.exec(statement).all()
         return cameras if cameras else []
 
@@ -427,10 +433,11 @@ def update_vertical_scintillator_scintillator_end(setup_camera_id: int, vertical
     
 def patch_setup_camera(setup_camera_id: int, patch: rb.SetupCameraPatchRequest):
     try:
+        print(f"\n\n\nPATCH: {patch} \n\n\n")
         with Session(engine) as session:
-            statement = select(CameraSetupLink).where(CameraSetupLink.id == setup_camera_id)
-            result = session.exec(statement).one()
-            
+            # statement = select(CameraSetupLink).where(CameraSetupLink.id == setup_camera_id)
+            # result = session.exec(statement).one()
+            result = session.get(CameraSetupLink, setup_camera_id)
         # Far Face
             if patch.far_face_calibration_pattern_size is not None:
                 result.far_face_calibration_pattern_size = patch.far_face_calibration_pattern_size
@@ -444,7 +451,6 @@ def patch_setup_camera(setup_camera_id: int, patch: rb.SetupCameraPatchRequest):
                 result.far_face_calibration_photo_camera_settings_id = patch.far_face_calibration_photo_camera_settings_id
             
             if patch.far_x_offset is not None:
-                print("\n\n\n\n\n\n\n ABOUT TO PATCH THE FAR X OFFSET \n\n\n\n\n")
                 result.far_x_offset = patch.far_x_offset
             if patch.far_y_offset is not None:
                 result.far_y_offset = patch.far_y_offset
@@ -484,6 +490,7 @@ def patch_setup_camera(setup_camera_id: int, patch: rb.SetupCameraPatchRequest):
             if patch.scintillator_edges_photo_camera_settings_id is not None:
                 result.scintillator_edges_photo_camera_settings_id = patch.scintillator_edges_photo_camera_settings_id
             if patch.horizontal_scintillator_start is not None:
+                print("\n\n\n\n\n\n\n Horizontal start being added \n\n\n\n\n")
                 result.horizontal_scintillator_start = patch.horizontal_scintillator_start
             if patch.horizontal_scintillator_end is not None:
                 result.horizontal_scintillator_end = patch.horizontal_scintillator_end
@@ -491,8 +498,11 @@ def patch_setup_camera(setup_camera_id: int, patch: rb.SetupCameraPatchRequest):
                 result.vertical_scintillator_start = patch.vertical_scintillator_start
             if patch.vertical_scintillator_end is not None:
                 result.vertical_scintillator_end = patch.vertical_scintillator_end
-            setup_statement = select(Setup).where(CameraSetupLink.id == setup_camera_id)
-            setup_result = session.exec(setup_statement).one()
+            setup_statement = select(Setup).join(CameraSetupLink).where(CameraSetupLink.id == setup_camera_id)
+            print(f"STATEMENTTTTTT {setup_statement}")
+            print(f"DONEEEEEEE")
+            setup_result = session.exec(setup_statement).one() #from .one()
+            print(f"\n\n\n\n\n SETUPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP RESULT \n {setup_result} \n\n\n\n\n")
             setup_result.date_last_edited = datetime.now(pytz.utc)
             session.commit()
             return f"Successfully patched parameters of setup camera with id: {setup_camera_id}"

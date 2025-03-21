@@ -37,10 +37,12 @@ def add_photo_for_testing(camera_settings_link_id: int, photo: bytes): # TODO ad
 def get_photo_from_camera_settings_link_id(camera_settings_link_id: int): # This may need changing so that the photos are read in differently.
     with Session(engine) as session:
         statement = select(Photo).where(Photo.camera_settings_link_id == camera_settings_link_id)
-        results = session.exec(statement).all()
-        if results:
-            for result in results:
-                return result.photo
+        photos = session.exec(statement).all()
+        return_photos = []
+        if photos:
+            for photo in photos:
+                return_photos += [photo]
+            return return_photos
         else:
             raise ValueError(f"Photo with camera_settings_link_id: {camera_settings_link_id} cannot be a found.")
 
@@ -80,3 +82,10 @@ def update_photo(camera_settings_link_id: int, photo: bytes):  # , photo_metadat
         raise ValueError(f"ValueError: {e}") from e
 
 # Delete
+
+def delete_photo_by_id(photo_id: int):
+    with Session(engine) as session:
+        photo = session.get(Photo, photo_id)
+        session.delete(photo)
+        session.commit()
+    return {"message": f"Photo with id {photo_id} successfully deleted."}

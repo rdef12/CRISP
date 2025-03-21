@@ -1,11 +1,16 @@
 from pydantic import BaseModel
 from typing import Optional, List
 
-from src.database.models import Settings
+from src.database.models import Camera, Settings
 
 class SetupCameraCreateRequest(BaseModel):
     camera_id: int
 
+class SetupCameraGetRequest(BaseModel):
+    id: int
+    camera_id: int
+    setup_id: int
+    camera: Camera
 
 class SetupCameraScintillatorEdgeRequest(BaseModel):
     id: int

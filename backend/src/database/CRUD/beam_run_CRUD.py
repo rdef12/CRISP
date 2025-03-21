@@ -47,7 +47,7 @@ def get_beam_run_id_from_experiment_id_and_beam_run_number(experiment_id: int, b
         
 def get_beam_run_id_from_camera_settings_link_id(camera_settings_link_id: int) -> int:
     with Session(engine) as session:
-        statement = select(BeamRun).where(CameraSettingsLink.id == camera_settings_link_id)
+        statement = select(BeamRun).join(CameraSettingsLink).where(CameraSettingsLink.id == camera_settings_link_id)
         result = session.exec(statement).one()
         if result:
             return result.id

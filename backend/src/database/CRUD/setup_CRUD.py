@@ -33,7 +33,7 @@ def get_setup_by_id(id: int) -> Setup:
     
 def get_setup_by_experiment_id(experiment_id: int) -> Setup:
     with Session(engine) as session:
-        statement = select(Setup).where(Experiment.id == experiment_id)
+        statement = select(Setup).join(Experiment).where(Experiment.id == experiment_id)
         setup = session.exec(statement).one()
         return setup
         
