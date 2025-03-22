@@ -9,6 +9,7 @@ from datetime import datetime
 import pytz # affected by daylight saving?
 import base64
 from typing import List
+from src.classes.Pi import Pi
 
 
 from src.viewing_functions import *
@@ -68,6 +69,12 @@ app.include_router(photo_router.router)
 app.include_router(video_router.router)
 app.include_router(experiment_router.router)
 app.include_router(beam_run_router.router)
+
+@app.get("/get_pi_disk_space/{username}")
+def get_pi_disk_space_api(username: str):
+    if connected_pi := Pi.get_pi_with_username(username): 
+        return {"used space / total space": connected_pi.get_pi_disk_space()}
+    return {"Error": "No Pi connected with that username"}
 
 @app.post("/add_pi")
 async def add_pi(pi_config: PiConfig):

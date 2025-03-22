@@ -1,7 +1,14 @@
-import { ListCamerasInExperiment } from "./ListCamerasInExperimentTest";
+// import { ListCamerasInExperiment } from "./ListCamerasInExperimentTest";
 
-export const ShowRealBeamRun = () => {
+// export const ShowRealBeamRun = () => {
+//   return (
+//     <ListCamerasInExperiment/>
+//   );
+// }
+
+
+export default function Test() {
   return (
-    <ListCamerasInExperiment/>
+    <>Test</>
   );
 }
