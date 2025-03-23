@@ -262,7 +262,7 @@ export default function Home() {
           />
           <Input
             placeholder="Password"
-            type="password"
+            // type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required

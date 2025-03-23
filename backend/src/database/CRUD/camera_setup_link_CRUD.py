@@ -431,6 +431,19 @@ def update_near_face_homography_covariance_matrix(camera_id:int, setup_id:int, n
         raise RuntimeError(f"An error occurred: {str(e)}")
 
 
+def update_distortion_calibration_camera_settings_id(setup_camera_id: int, distortion_calibration_photo_camera_settings_id: int):
+    try:
+        with Session(engine) as session:
+            statement = select(CameraSetupLink).where(CameraSetupLink.id == setup_camera_id)
+            camera_setup_link = session.exec(statement).one()
+            camera_setup_link.distortion_calibration_camera_settings_link = distortion_calibration_photo_camera_settings_id
+            session.commit()
+            return {"message": f"Camera settings link updated for setup camera link with id {setup_camera_id}."}
+    except NoResultFound:
+        raise ValueError(f"No camera setup link found for setup camera link with id {setup_camera_id}.")
+    except Exception as e:
+        raise RuntimeError(f"An error occurred: {str(e)}")
+
 def update_scintillator_edges_camera_settings_id(setup_camera_id: int, scintillator_edges_photo_camera_settings_id: int):
     try:
         with Session(engine) as session:
@@ -574,7 +587,6 @@ def patch_setup_camera(setup_camera_id: int, patch: rb.SetupCameraPatchRequest):
             if patch.scintillator_edges_photo_camera_settings_id is not None:
                 result.scintillator_edges_photo_camera_settings_id = patch.scintillator_edges_photo_camera_settings_id
             if patch.horizontal_scintillator_start is not None:
-                print("\n\n\n\n\n\n\n Horizontal start being added \n\n\n\n\n")
                 result.horizontal_scintillator_start = patch.horizontal_scintillator_start
             if patch.horizontal_scintillator_end is not None:
                 result.horizontal_scintillator_end = patch.horizontal_scintillator_end
@@ -582,11 +594,25 @@ def patch_setup_camera(setup_camera_id: int, patch: rb.SetupCameraPatchRequest):
                 result.vertical_scintillator_start = patch.vertical_scintillator_start
             if patch.vertical_scintillator_end is not None:
                 result.vertical_scintillator_end = patch.vertical_scintillator_end
+        # Distortion calibration
+            if patch.do_distortion_calibration is not None:
+                result.do_distortion_calibration = patch.do_distortion_calibration
+            if patch.distortion_calibration_camera_settings_link is not None:
+                result.distortion_calibration_camera_settings_link = patch.distortion_calibration_camera_settings_link
+            if patch.distortion_calibration_pattern_size_z_dim is not None:
+                result.distortion_calibration_pattern_size_z_dim = patch.distortion_calibration_pattern_size_z_dim
+            if patch.distortion_calibration_pattern_size_non_z_dim is not None:
+                result.distortion_calibration_pattern_size_non_z_dim = patch.distortion_calibration_pattern_size_non_z_dim
+            if patch.distortion_calibration_pattern_spacing is not None:
+                result.distortion_calibration_pattern_spacing = patch.distortion_calibration_pattern_spacing
+            if patch.distortion_calibration_pattern_type is not None:
+                result.distortion_calibration_pattern_type = patch.distortion_calibration_pattern_type
+        # Others
+            if patch.lens_position is not None:
+                result.lens_position = patch.lens_position
+
             setup_statement = select(Setup).join(CameraSetupLink).where(CameraSetupLink.id == setup_camera_id)
-            print(f"STATEMENTTTTTT {setup_statement}")
-            print(f"DONEEEEEEE")
             setup_result = session.exec(setup_statement).one() #from .one()
-            print(f"\n\n\n\n\n SETUPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP RESULT \n {setup_result} \n\n\n\n\n")
             setup_result.date_last_edited = datetime.now(pytz.utc)
             session.commit()
             return f"Successfully patched parameters of setup camera with id: {setup_camera_id}"
@@ -621,42 +647,73 @@ def update_distortion_coefficients(camera_id:int, setup_id:int, distortion_coeff
     except Exception as e:
         raise RuntimeError(f"An error occurred: {str(e)}")
     
-def update_distortion_calibration_pattern_size(camera_id:int, setup_id:int, distortion_calibration_pattern_size: List[int]|None):
-    try:
-        with Session(engine) as session:
-            statement = select(CameraSetupLink).where(CameraSetupLink.camera_id == camera_id).where(CameraSetupLink.setup_id == setup_id)
-            result = session.exec(statement).one()
-            result.distortion_calibration_pattern_size = distortion_calibration_pattern_size
-            session.commit()
-            return {"message": f"Distortion calibration pattern size updated for camera with id {camera_id} and setup with id {setup_id}."}
-    except NoResultFound:
-        raise ValueError(f"No camera setup link found for camera_id={camera_id} and setup_id={setup_id}.")
-    except Exception as e:
-        raise RuntimeError(f"An error occurred: {str(e)}")
+# def update_distortion_calibration_pattern_size(camera_id:int, setup_id:int, distortion_calibration_pattern_size: List[int]|None):
+#     try:
+#         with Session(engine) as session:
+#             statement = select(CameraSetupLink).where(CameraSetupLink.camera_id == camera_id).where(CameraSetupLink.setup_id == setup_id)
+#             result = session.exec(statement).one()
+#             result.distortion_calibration_pattern_size = distortion_calibration_pattern_size
+#             session.commit()
+#             return {"message": f"Distortion calibration pattern size updated for camera with id {camera_id} and setup with id {setup_id}."}
+#     except NoResultFound:
+#         raise ValueError(f"No camera setup link found for camera_id={camera_id} and setup_id={setup_id}.")
+#     except Exception as e:
+#         raise RuntimeError(f"An error occurred: {str(e)}")
 
-def update_distortion_calibration_pattern_type(camera_id:int, setup_id:int, distortion_calibration_pattern_type: str|None):
+def update_distortion_calibration_pattern_size_z_dim(setup_camera_id: int, distortion_calibration_pattern_size_z_dim: int):
     try:
         with Session(engine) as session:
-            statement = select(CameraSetupLink).where(CameraSetupLink.camera_id == camera_id).where(CameraSetupLink.setup_id == setup_id)
-            result = session.exec(statement).one()
-            result.distortion_calibration_pattern_type = distortion_calibration_pattern_type
+            # statement = select(CameraSetupLink).where(CameraSetupLink.camera_id == camera_id).where(CameraSetupLink.setup_id == setup_id)
+            # result = session.exec(statement).one()
+            setup_camera = session.get(CameraSetupLink, setup_camera_id)
+            setup_camera.distortion_calibration_pattern_size_z_dim = distortion_calibration_pattern_size_z_dim
             session.commit()
-            return {"message": f"Distortion calibration pattern type updated for camera with id {camera_id} and setup with id {setup_id}."}
+            return {"message": f"Distortion calibration pattern size updated for setup camera id {setup_camera_id}."}
     except NoResultFound:
-        raise ValueError(f"No camera setup link found for camera_id={camera_id} and setup_id={setup_id}.")
+        raise ValueError(f"No camera setup link found for setup camera id {setup_camera_id}.")
     except Exception as e:
         raise RuntimeError(f"An error occurred: {str(e)}")
     
-def update_distortion_calibration_pattern_spacing(camera_id:int, setup_id:int, distortion_calibration_pattern_spacing: float|None):
+
+def update_distortion_calibration_pattern_size_non_z_dim(setup_camera_id: int, distortion_calibration_pattern_size_non_z_dim: int):
     try:
         with Session(engine) as session:
-            statement = select(CameraSetupLink).where(CameraSetupLink.camera_id == camera_id).where(CameraSetupLink.setup_id == setup_id)
-            result = session.exec(statement).one()
-            result.distortion_calibration_pattern_spacing = distortion_calibration_pattern_spacing
+            # statement = select(CameraSetupLink).where(CameraSetupLink.camera_id == camera_id).where(CameraSetupLink.setup_id == setup_id)
+            # result = session.exec(statement).one()
+            setup_camera = session.get(CameraSetupLink, setup_camera_id)
+            setup_camera.distortion_calibration_pattern_size_non_z_dim = distortion_calibration_pattern_size_non_z_dim
             session.commit()
-            return {"message": f"Distortion calibration pattern spacing updated for camera with id {camera_id} and setup with id {setup_id}."}
+            return {"message": f"Distortion calibration pattern size updated for setup camera id {setup_camera_id}."}
     except NoResultFound:
-        raise ValueError(f"No camera setup link found for camera_id={camera_id} and setup_id={setup_id}.")
+        raise ValueError(f"No camera setup link found for setup camera id {setup_camera_id}.")
+    except Exception as e:
+        raise RuntimeError(f"An error occurred: {str(e)}")
+
+def update_distortion_calibration_pattern_type(setup_camera_id: int, distortion_calibration_pattern_type: str):
+    try:
+        with Session(engine) as session:
+            # statement = select(CameraSetupLink).where(CameraSetupLink.camera_id == camera_id).where(CameraSetupLink.setup_id == setup_id)
+            # result = session.exec(statement).one()
+            setup_camera = session.get(CameraSetupLink, setup_camera_id)
+            setup_camera.distortion_calibration_pattern_type = distortion_calibration_pattern_type
+            session.commit()
+            return {"message": f"Distortion calibration pattern type updated for setup camera id {setup_camera_id}."}
+    except NoResultFound:
+        raise ValueError(f"No camera setup link found for setup camera id {setup_camera_id}.")
+    except Exception as e:
+        raise RuntimeError(f"An error occurred: {str(e)}")
+    
+def update_distortion_calibration_pattern_spacing(setup_camera_id: int, distortion_calibration_pattern_spacing: float):
+    try:
+        with Session(engine) as session:
+            # statement = select(CameraSetupLink).where(CameraSetupLink.camera_id == camera_id).where(CameraSetupLink.setup_id == setup_id)
+            # result = session.exec(statement).one()
+            setup_camera = session.get(CameraSetupLink, setup_camera_id)
+            setup_camera.distortion_calibration_pattern_spacing = distortion_calibration_pattern_spacing
+            session.commit()
+            return {"message": f"Distortion calibration pattern spacing updated for setup camera id {setup_camera_id}."}
+    except NoResultFound:
+        raise ValueError(f"No camera setup link found for setup camera id {setup_camera_id}.")
     except Exception as e:
         raise RuntimeError(f"An error occurred: {str(e)}")
     

@@ -70,7 +70,7 @@ class CameraSetupLink(SQLModel, table=True):
     near_y_offset_unc: Optional[float] = Field(default=None)
     near_z_offset: Optional[float] = Field(default=None)
     near_z_offset_unc: Optional[float] = Field(default=None)
-# Others
+# Scintillator edges
     scintillator_edges_photo_camera_settings_id: Optional[int] = Field(default=None, foreign_key="camerasettingslink.id")
     # horizontal_scintillator_limits: Optional[List[float]] = Field(default=None, sa_column=Column(ARRAY(Integer))) # How do you show 2d shape? (4x1 of 2x2 array)
     horizontal_scintillator_start: Optional[int]
@@ -78,14 +78,20 @@ class CameraSetupLink(SQLModel, table=True):
     vertical_scintillator_start: Optional[int]
     vertical_scintillator_end: Optional[int]
     # vertical_scintillator_limits: Optional[List[float]] = Field(default=None, sa_column=Column(ARRAY(Integer))) # How do you show 2d shape? (4x1 of 2x2 array)#TODO these should be int type surely
-    # e_log_entry: #How is this going to be stored, surely theres a better way than just a string?
 # Distortion calibration
-    distortion_calibration_pattern_size: Optional[List[int]] = Field(default=None, sa_column=Column(ARRAY(Integer)))
+    do_distortion_calibration: Optional[bool] = Field(default=None)
+    # distortion_calibration_pattern_size: Optional[List[int]] = Field(default=None, sa_column=Column(ARRAY(Integer))) # Removed by Robin for ease
+    distortion_calibration_pattern_size_z_dim: Optional[int] = Field(default=None)
+    distortion_calibration_pattern_size_non_z_dim: Optional[int] = Field(default=None)
     distortion_calibration_pattern_type: Optional[str] = Field(default=None)
     distortion_calibration_pattern_spacing: Optional[float] = Field(default=None) # in mm
     camera_matrix: Optional[bytes] = Field(default=None, sa_column=PickleType)
     distortion_coefficients: Optional[bytes] = Field(default=None, sa_column=PickleType)
     distortion_calibration_camera_settings_link: Optional[int] = Field(default=None, foreign_key="camerasettingslink.id")
+# Others
+    lens_position: Optional[float] = Field(default=None)
+    # e_log_entry: #How is this going to be stored, surely theres a better way than just a string?
+
 
 
 class Experiment(SQLModel, table=True):

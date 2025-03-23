@@ -40,6 +40,7 @@ def get_camera_setups(setup_id: int, response: Response) -> list[rb.SetupCameraG
 @router.get("/calibration/{setup_camera_id}")
 async def read_setup_camera(setup_camera_id: int) -> CameraSetupLink:
     setup_camera = cdi.get_setup_camera_by_id(setup_camera_id)
+    print(f"\n\n\n\n\nHELLLLLLLLLLLOOOOOOO: {setup_camera} \n\n\n\n\n")
     return setup_camera
 
 
@@ -60,7 +61,7 @@ async def read_setup_camera(setup_camera_id: int) -> rb.SetupCameraScintillatorE
                                                               vertical_end=setup_camera.vertical_scintillator_end)
     return setup_camera_body
 
-@router.put("/scintillator-edges/{setup_camera_id}")
+@router.put("/scintillator-edges/{setup_camera_id}") #TODO why am i not using the standard put here?
 async def read_setup_camera(setup_camera_id: int, settings_body: rb.SetupCameraScintillatorEdgeRequest):
     if settings_body.settings is not None:
         result = cdi.add_settings(settings_body.settings.frame_rate, settings_body.settings.lens_position, settings_body.settings.gain)
@@ -93,6 +94,47 @@ async def read_setup_camera(setup_camera_id: int, settings_body: rb.SetupCameraS
     #                                                           horizontal_scintillator_limits=setup_camera.horizontal_scintillator_limits,
     #                                                           vertical_scintillator_limits=setup_camera.vertical_scintillator_limits)
     # return setup_camera_body
+
+
+@router.get("/distortion-calibration/{setup_camera_id}")
+async def read_setup_camera(setup_camera_id: int) -> rb.SetupCameraDistortionCalibrationGetRequest:
+    setup_camera = cdi.get_setup_camera_by_id(setup_camera_id)
+    settings = cdi.get_settings_by_setup_camera_id_distortion_calibration(setup_camera_id)
+    print(f"\n\n Settings: {settings} \n\n")
+
+    setup_camera_body = rb.SetupCameraDistortionCalibrationGetRequest(id=setup_camera.id,
+                                                                   camera_id=setup_camera.id,
+                                                                   setup_id=setup_camera.setup_id,
+                                                                   distortion_calibration_camera_settings_link=setup_camera.distortion_calibration_camera_settings_link,
+                                                                   settings=settings,
+                                                                   do_distortion_calibration=setup_camera.do_distortion_calibration,
+                                                                   distortion_calibration_pattern_size_z_dim=setup_camera.distortion_calibration_pattern_size_z_dim,
+                                                                   distortion_calibration_pattern_size_non_z_dim=setup_camera.distortion_calibration_pattern_size_non_z_dim,
+                                                                   distortion_calibration_pattern_type=setup_camera.distortion_calibration_pattern_type,
+                                                                   distortion_calibration_pattern_spacing=setup_camera.distortion_calibration_pattern_spacing)
+    return setup_camera_body #TODO maybe matrices and internals need to be able to be returned here
+
+@router.post("/distortion-calibration/{setup_camera_id}")
+async def add_distortion_calibration_settings(setup_camera_id: int, distortion_settings_body: rb.SetupCameraDistortionCalibrationPostRequest) -> rb.SetupCameraDistortionCalibrationGetRequest:
+    setup_camera = cdi.get_setup_camera_by_id(setup_camera_id)
+    lens_position = setup_camera.lens_position
+    frame_rate = 30 #FIXED ARBITRARILY AT 30
+    
+    settings_id = cdi.add_settings(frame_rate, lens_position, distortion_settings_body.gain)["id"]
+    camera_id = setup_camera.camera_id
+
+    camera_settings_link = cdi.add_camera_settings_link(camera_id, settings_id)
+    camera_settings_id = camera_settings_link["id"]
+
+    cdi.update_distortion_calibration_camera_settings_id(setup_camera_id, camera_settings_id)
+
+    cdi.update_distortion_calibration_pattern_size_z_dim(setup_camera_id, distortion_settings_body.distortion_calibration_pattern_size_z_dim)
+    cdi.update_distortion_calibration_pattern_size_non_z_dim(setup_camera_id, distortion_settings_body.distortion_calibration_pattern_size_non_z_dim)
+    cdi.update_distortion_calibration_pattern_type(setup_camera_id, distortion_settings_body.distortion_calibration_pattern_type)
+    cdi.update_distortion_calibration_pattern_spacing(setup_camera_id, distortion_settings_body.distortion_calibration_pattern_spacing)
+    print(f"\n\n\n\n I am here and am the setup camera id {setup_camera_id} \n\n\n")
+    response = rb.SetupCameraDistortionCalibrationGetRequest(id=setup_camera_id, camera_id=camera_id)
+    return response
 
 
 # @router.get("/{setup_camera_id}")

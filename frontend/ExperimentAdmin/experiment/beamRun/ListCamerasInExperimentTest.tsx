@@ -1,8 +1,7 @@
-import { Datagrid, Identifier, List, RaRecord, TextField, useShowController } from "react-admin";
+import { Datagrid, List, TextField, useShowController } from "react-admin";
 import { useParams } from "react-router-dom";
-import { CreateTestSettings } from "./CreateTestSettings";
 import { useState } from "react";
-import { Dialog, DialogTrigger } from "@radix-ui/react-dialog";
+import { DialogTrigger } from "@radix-ui/react-dialog";
 import { Button } from "@/components/ui/button";
 
 export const ListCamerasInExperimentTest = () => {

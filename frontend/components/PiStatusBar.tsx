@@ -132,7 +132,6 @@ export function PiStatusBar() {
   return (
     <div className="bg-gray-100 p-4 border-b">
       <div className="max-w-7xl mx-auto">
-        <h3 className="text-sm font-semibold mb-2">Connected Pis:</h3>
         <div className="flex flex-wrap gap-4">
           {piStatuses.map((pi, index) => (
             <div key={index} className="flex items-center space-x-2 bg-white px-3 py-2 rounded-md shadow-sm">

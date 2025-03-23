@@ -28,7 +28,7 @@ def add_settings(settings_body: rb.SettingsCreateRequest):
     return {"id": settings_id}
 
 @router.post("/scintillator-edges/{setup_camera_id}")
-def add_settings(setup_camera_id: int, settings_body: rb.SettingsCreateRequest):
+def add_scintillator_edge_settings(setup_camera_id: int, settings_body: rb.SettingsCreateRequest):
     settings = cdi.add_settings(settings_body.frame_rate, settings_body.lens_position, settings_body.gain)
     settings_id = settings["id"]
 
@@ -39,17 +39,40 @@ def add_settings(setup_camera_id: int, settings_body: rb.SettingsCreateRequest):
     camera_settings_id = camera_settings_link["id"]
 
     cdi.update_scintillator_edges_camera_settings_id(setup_camera_id, camera_settings_id)
-    return {"id": camera_settings_id} #TODO Maybe this should be settings_id?
+    return {"id": camera_settings_id}
 
 
 @router.get("/scintillator-edges/{setup_camera_id}")
 def get_scintillator_edge_settings(setup_camera_id: int, response: Response):
     settings = cdi.get_settings_by_setup_camera_id_scintillator_edges(setup_camera_id)
     print(f"\n\n\n\n\n {settings} \n\n\n\n\n")
-
     return settings
 
 @router.put("/scintillator-edges/{setup_camera_id}")
+def update_scintillator_edges_camera_settings(setup_camera_id: int, settings_body: rb.SettingsCreateRequest):
+    settings_id = cdi.add_settings(settings_body.frame_rate, settings_body.lens_position, settings_body.gain)
+    return {"id": settings_id}
+
+@router.post("/distortion-calibration/{setup_camera_id}")
+def add_distortion_calibration_settings(setup_camera_id: int, settings_body: rb.SettingsCreateRequest):
+    settings = cdi.add_settings(settings_body.frame_rate, settings_body.lens_position, settings_body.gain)
+    settings_id = settings["id"]
+
+    setup_camera = cdi.get_setup_camera_by_id(setup_camera_id)
+    camera_id = setup_camera.camera_id
+
+    camera_settings_link = cdi.add_camera_settings_link(camera_id, settings_id)
+    camera_settings_id = camera_settings_link["id"]
+
+    cdi.update_distortion_calibration_camera_settings_id(setup_camera_id, camera_settings_id)
+    return {"id": camera_settings_id}
+
+@router.get("/distortion-calibration/{setup_camera_id}")
+def get_distortion_calibration_settings(setup_camera_id: int, response: Response):
+    settings = cdi.get_settings_by_setup_camera_id_distortion_calibration(setup_camera_id)
+    return settings
+
+@router.put("/scintillator-edges/{setup_camera_id}") #TODO Is function this right??
 def update_scintillator_edges_camera_settings(setup_camera_id: int, settings_body: rb.SettingsCreateRequest):
     settings_id = cdi.add_settings(settings_body.frame_rate, settings_body.lens_position, settings_body.gain)
     return {"id": settings_id}

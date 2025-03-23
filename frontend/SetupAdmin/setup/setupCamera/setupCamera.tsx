@@ -20,13 +20,15 @@ import {
   DateInput,
   useEditController,
   useListController,
+  useShowController,
+  BooleanInput,
 } from 'react-admin';
 import { Link, useParams } from 'react-router-dom';
-import DistortionPage from './distortionCalibration/DistortionCalibration';
 import HomograpyCalibration from './HomographyCalibration';
 // import ManualROI from './scintillator_edges/ScintillatorEdges';
 import { DialogContent, DialogHeader } from '@/components/ui/dialog';
 import { Dialog, DialogDescription, DialogTitle, DialogTrigger } from '@radix-ui/react-dialog';
+import { CalibrationRouting } from './CalibrationRouting';
 
 
 export const AddSetupCameraDropDown = () => {
@@ -165,15 +167,17 @@ export const NearFaceCalibrationButton = () => (
   </Button>
 )
 
+
 export const FarFaceCalibrationButton = () => (
   <Button>
     <Link to="far-face">Far Face Calibration</Link>
   </Button>
 )
 
+
 export const DistortionCalibrationButton = () => (
   <Button>
-    <Link to="distortion">Distortion Calibration</Link>
+    <Link to="distortion-calibration">Distortion Calibration</Link>
   </Button>
 )
 
@@ -191,16 +195,42 @@ export const NearFaceTestContent = () => (
 export const FarFaceTestContent = () => (
   <HomograpyCalibration plane={"far"} />
 )
-export const DistortionTestContent = () => (
-  <DistortionPage />
-)
+// export const DistortionTestContent = () => (
+//   <DistortionPage />
+// )
+
+export const EditSetupCamera = () => {
+  const { setupCameraId } = useParams();
+  const { record, save, isPending } = useEditController({ resource: "setup-camera/calibration", id: setupCameraId, redirect: false })
+  if (isPending) return null;
+  console.log("RECORD.lens pos: ", record?.lens_position)
+  return (
+    <Card>
+      <SimpleForm record={record} onSubmit={save}>
+        <NumberInput source="lens_position" required />
+        <BooleanInput source="do_distortion_calibration" />
+      </SimpleForm>
+    </Card>
+  )
+}
 
 
-export const SetupCameraShow = () => (
-  <div>
-    <FarFaceCalibrationButton/>
-    <NearFaceCalibrationButton/>
-    <DistortionCalibrationButton/>
-    <ScintillatorEdgeSelectionButton/>
-  </div>
-);
+// export const SetupCameraShow = () => (
+//   <div>
+//     <FarFaceCalibrationButton/>
+//     <NearFaceCalibrationButton/>
+//     <DistortionCalibrationButton/>
+//     <ScintillatorEdgeSelectionButton/>
+//   </div>
+// );
+
+export const SetupCameraShow = () => {
+  const { setupCameraId } = useParams();
+  const {record, isPending} = useShowController({ resource: "setup-camera/calibration", id: setupCameraId });  
+  if (isPending) return null;
+
+  if (record?.do_distortion_calibration === null) return (<EditSetupCamera/>)
+  if (record?.do_distortion_calibration) return (<CalibrationRouting record={record} />)
+  //   else return (<HomographyCalibration />)
+    // else return (<CalibrationRoutingPage />)
+}
