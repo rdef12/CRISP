@@ -1,14 +1,5 @@
 # -*- coding: utf-8 -*-
 """
-The origin shifts are hardcoded in too! Could have an apparatus metadata CSV/JSON which is
-used to define these attributes in the different subclasses.
-
-TODO: make the shift between external origin and callbration origin a class attribute
-
-TODO:
-- Get the homography matrix uncertainties out of build_homography_matrix method
-- Then get the convert_to_real_position function to return uncertainty in physical position (uses homography uncertainty)
-
 TODO: Need to propagate uncertainty in calibration board thickness at the physical position uncertainty stage.
 (Already done in the unc_tangent_of_angle functions)
 
@@ -86,7 +77,7 @@ class AbstractCamera(ABC):
         self.back_homography_covariance = cdi.get_far_face_homography_covariance_matrix(camera_id, setup_id)
         
         self.seen_scintillator_depth = SCINTILLATOR_DEPTH.get(CAM_OPTICAL_AXIS.get(camera_id))
-        self.scintillator_depth_uncertainty = SCINTILLATOR_DEPTH_UNC.get(CAM_OPTICAL_AXIS.get(camera_id))
+        self.seen_scintillator_depth_uncertainty = SCINTILLATOR_DEPTH_UNC.get(CAM_OPTICAL_AXIS.get(camera_id))
         
         self.origin_shift = ORIGIN_SHIFT.get(camera_id) # shift from origin of calibration pattern to the nearest corner of the calibration board (for shifting coordinate systems)
         self.origin_shift_uncertainty = ORIGIN_SHIFT_UNC.get(camera_id)
@@ -117,44 +108,80 @@ class AbstractCamera(ABC):
         return np.array([three_dimenisional_coords['x'], three_dimenisional_coords['y'], three_dimenisional_coords['z']])
     
     
-    def _transform_to_box_coords(self, physical_position_on_calibration_plane: tuple[float, float], plane_type: Literal["far", "near"]) -> np.ndarray:
-        """
-        Should edit to also return the uncertainty on this transformed point!
-        Note, different unceratinies depending on whether depth needed includes scintillator dimensions/calibration board thickness or not.
-        """
-        # 4 cases for appropriate depth depending on plane_type and depth_direction
-        match (plane_type, self.axes_mapping.depth_direction):
-            case ("far", 1):
-                depth = 0
-            case ("far", -1):
-                depth = self.seen_scintillator_depth # no calibration board shift
-            case ("near", 1):
-                depth = self.seen_scintillator_depth + self.calibration_board_thickness
-            case ("near", -1):
-                depth = -1 * self.calibration_board_thickness 
-
-        # Below is the origin transformation! For this to work, the user-inputted origin shifts need to be signed correctly (although should always be positive)?
-        two_dimensional_position_relative_to_calibration_board_corner = np.array(physical_position_on_calibration_plane) + np.array(self.origin_shift) # mm units
-        
-        physical_position_in_box_coords = self.map_to_3d_point(two_dimensional_position_relative_to_calibration_board_corner[0],
-                                                                two_dimensional_position_relative_to_calibration_board_corner[1], depth)
-        
-        return physical_position_in_box_coords
-    
-    
-    def _calculate_uncertainty_on_homography(self, pixel_coords: tuple[float, float], unc_pixel_coords: tuple[float, float]):
+    def _calculate_two_dimensional_homography_errors(self, pixel_coords: tuple[float, float], unc_pixel_coords: tuple[float, float]):
         """
         Pixel coords given type float because we believe sub pixel uncertainty is feasible for the scintillation light analysis
         """
-        near_physical_position_homography_error = generate_world_point_uncertainty([[pixel_coords]], unc_pixel_coords[0], unc_pixel_coords[1], self.front_homography_matrix, self.front_homography_covariance)
-        far_physical_position_homography_error = generate_world_point_uncertainty([[pixel_coords]], unc_pixel_coords[0], unc_pixel_coords[1], self.back_homography_matrix, self.back_homography_covariance)
+        near_plane_two_dimensional_homography_error = generate_world_point_uncertainty([[pixel_coords]], unc_pixel_coords[0], unc_pixel_coords[1], self.front_homography_matrix, self.front_homography_covariance)
+        far_plane_two_dimensional_position_homography_error = generate_world_point_uncertainty([[pixel_coords]], unc_pixel_coords[0], unc_pixel_coords[1], self.back_homography_matrix, self.back_homography_covariance)
+        return near_plane_two_dimensional_homography_error, far_plane_two_dimensional_position_homography_error
         
-        transformed_near_physical_position_homography_error = self.map_to_3d_point(near_physical_position_homography_error[0], near_physical_position_homography_error[1], 0) # depth of zero because in plane
-        transformed_far_physical_position_homography_error = self.map_to_3d_point(far_physical_position_homography_error[0], far_physical_position_homography_error[1], 0) # depth of zero because in plane
-        return transformed_near_physical_position_homography_error, transformed_far_physical_position_homography_error
+    def _calculate_calibration_plane_physical_position_error(two_dimensional_homography_errors: List[float], two_dimensional_origin_shift_errors: List[float]):
+        """
+        Includes error introduced by homography and origin shift. Does not include the depth uncertainty due to scintillator dimensions/calibration board thickness.
+        """
+        horizontal_errror = normal_addition_in_quadrature([two_dimensional_homography_errors[0], two_dimensional_origin_shift_errors[0]])
+        vertical_error = normal_addition_in_quadrature([two_dimensional_homography_errors[1], two_dimensional_origin_shift_errors[1]])
+        return [horizontal_errror, vertical_error]
+    
+    # TODO
+    def calculate_uncertainty_in_tangent_of_angles(self, in_plane_displacement: float, uncertainty_on_front_plane_position: float, uncertainty_on_back_plane_position: float,
+                                                  tan_phi: float, tan_theta: float):
+        """
+        Note: the origin shift translation cancels out when taking the difference between the two planes. Therefore, it is not included in the position
+        uncertainties when propagating in quadrature because it does not influence the calculated in-plane displacement.
+        """
+
+        uncertainty_in_horizontal_position_difference = normal_addition_in_quadrature([uncertainty_on_front_plane_position[2],
+                                                                                       uncertainty_on_back_plane_position[2]])
+        uncertainty_in_vertical_position_difference = normal_addition_in_quadrature([uncertainty_on_front_plane_position[0],
+                                                                                     uncertainty_on_back_plane_position[0]])
+        
+        denominator = self.seen_scintillator_depth + self.calibration_board_thickness
+        unc_denominator = normal_addition_in_quadrature([self.scintillator_depth_uncertainty, self.calibration_board_thickness_unc])
+        
+        # Looking at horizontal displacement
+        unc_tan_phi = fractional_addition_in_quadrature([in_plane_displacement[0], denominator], 
+                                                        [uncertainty_in_horizontal_position_difference, unc_denominator],
+                                                        tan_phi)
+        # Looing at vertical displacement
+        unc_tan_theta = fractional_addition_in_quadrature([in_plane_displacement[1], denominator], 
+                                                          [uncertainty_in_vertical_position_difference, unc_denominator],
+                                                          tan_theta)
+        return unc_tan_phi, unc_tan_theta
+     
+       
+    def _transform_to_box_coords(self, physical_position_on_calibration_plane: tuple[float, float], two_dimensional_homography_errors: List[float], plane_type: Literal["far", "near"]) -> np.ndarray:
+
+        # 4 cases for appropriate depths depending on plane_type and depth_direction
+        match (plane_type, self.axes_mapping.depth_direction):
+            case ("far", 1):
+                depth = 0
+                unc_depth = 0
+            case ("far", -1):
+                depth = self.seen_scintillator_depth # no calibration board shift
+                unc_depth = self.seen_scintillator_depth_uncertainty
+            case ("near", 1):
+                depth = self.seen_scintillator_depth + self.calibration_board_thickness
+                unc_depth = normal_addition_in_quadrature([self.seen_scintillator_depth_uncertainty, self.calibration_board_thickness_unc])
+            case ("near", -1):
+                depth = -1 * self.calibration_board_thickness 
+                unc_depth = self.calibration_board_thickness_unc
+
+        # Below is the origin transformation! For this to work, the user-inputted origin shifts need to be signed correctly (although should always be positive)?
+        two_dimensional_position_relative_to_calibration_board_corner = np.array(physical_position_on_calibration_plane) + np.array(self.origin_shift) # mm units
+        two_dimensional_position_relative_to_calibration_board_corner_unc = self._calculate_calibration_plane_physical_position_error(two_dimensional_homography_errors, self.origin_shift_uncertainty)
+        
+        physical_position_in_box_coords = self.map_to_3d_point(two_dimensional_position_relative_to_calibration_board_corner[0],
+                                                                two_dimensional_position_relative_to_calibration_board_corner[1], depth)
+        physical_position_in_box_coords_uncertainty = self.map_to_3d_point(two_dimensional_position_relative_to_calibration_board_corner_unc[0],
+                                                                           two_dimensional_position_relative_to_calibration_board_corner_unc[1],
+                                                                           unc_depth)
+        
+        return physical_position_in_box_coords, physical_position_in_box_coords_uncertainty
     
     
-    def determine_in_plane_positions_and_angles_of_event(self, pixel_coords: tuple[float, float]):
+    def determine_in_plane_positions_and_angles_of_event(self, pixel_coords: tuple[float, float], unc_pixel_coords: tuple[float, float]):
         """
         phi: horizontal angle as seen through image looking down optical axis.
         theta: vertical angle as seen through image looking down optical axis.
@@ -164,24 +191,21 @@ class AbstractCamera(ABC):
         physical_position_on_far_calibration_plane = get_projected_position_of_pixel(self.back_homography_matrix,
                                                                                   pixel_coords=pixel_coords)
         
-        # These are not actually needed for the angle calc! - could move into separate function!
-        near_physical_position_in_box_coords = self._transform_to_box_coords(physical_position_on_near_calibration_plane.copy(), "near")
-        far_physical_position_in_box_coords = self._transform_to_box_coords(physical_position_on_far_calibration_plane.copy(), "far")
+        near_plane_two_dimensional_homography_error, far_plane_two_dimensional_position_homography_error = self._calculate_two_dimensional_homography_errors(pixel_coords, unc_pixel_coords)
         
-        tan_phi, tan_theta = (physical_position_on_near_calibration_plane - physical_position_on_far_calibration_plane) / (self.seen_scintillator_depth + self.calibration_board_thickness)
+        near_physical_position_in_box_coords, unc_near_physical_position_in_box_coords = self._transform_to_box_coords(physical_position_on_near_calibration_plane.copy(), 
+                                                                                                                       near_plane_two_dimensional_homography_error, "near")
+        far_physical_position_in_box_coords, unc_far_physical_position_in_box_coords = self._transform_to_box_coords(physical_position_on_far_calibration_plane.copy(), 
+                                                                                                                     far_plane_two_dimensional_position_homography_error, "far")
+        
+        physical_displacement_in_plane_coords = physical_position_on_near_calibration_plane - physical_position_on_far_calibration_plane
+        tan_phi, tan_theta = physical_displacement_in_plane_coords / (self.seen_scintillator_depth + self.calibration_board_thickness)
 
-        return tan_phi, tan_theta, near_physical_position_in_box_coords, far_physical_position_in_box_coords
+        return [tan_phi, tan_theta], [near_physical_position_in_box_coords, far_physical_position_in_box_coords], [unc_near_physical_position_in_box_coords, unc_far_physical_position_in_box_coords]
     
     
     @abstractmethod
     def _map_axes(self, depth_direction: int):
-        """Virtual function which must be implemented by subclasses."""
-        pass
-    
-    @abstractmethod
-    def calculate_uncertainty_in_tangent_of_angles(self, front_plane_position: float, back_plane_position: float, 
-                                                  uncertainty_on_front_plane_position: float, uncertainty_on_back_plane_position: float,
-                                                  tan_phi: float, tan_theta: float):
         """Virtual function which must be implemented by subclasses."""
         pass
     
@@ -218,29 +242,6 @@ class TopCamera(AbstractCamera):
         
         directional_vector = np.array([tan_theta, -1, tan_phi])
         return [physical_position_on_back_calibration_plane, directional_vector]
-    
-    def calculate_uncertainty_in_tangent_of_angles(self, front_plane_position: float, back_plane_position: float, 
-                                                  uncertainty_on_front_plane_position: float, uncertainty_on_back_plane_position: float,
-                                                  tan_phi: float, tan_theta: float):
-
-        position_difference = back_plane_position - front_plane_position
-        horizontal_position_difference = position_difference[2]
-        vertical_position_difference = position_difference[0]
-        uncertainty_in_horizontal_position_difference = normal_addition_in_quadrature([uncertainty_on_front_plane_position[2],
-                                                                                       uncertainty_on_back_plane_position[2]])
-        uncertainty_in_vertical_position_difference = normal_addition_in_quadrature([uncertainty_on_front_plane_position[0],
-                                                                                     uncertainty_on_back_plane_position[0]])
-        
-        denominator = self.seen_scintillator_depth
-        unc_denominator = self.scintillator_depth_uncertainty
-        
-        unc_tan_phi = fractional_addition_in_quadrature([horizontal_position_difference, denominator], 
-                                                        [uncertainty_in_horizontal_position_difference, unc_denominator],
-                                                        tan_phi)
-        unc_tan_theta = fractional_addition_in_quadrature([vertical_position_difference, denominator], 
-                                                          [uncertainty_in_vertical_position_difference, unc_denominator],
-                                                          tan_theta)
-        return unc_tan_phi, unc_tan_theta
     
     def build_uncertainty_in_directional_vector(self, unc_tan_phi: float, unc_tan_theta: float):
         return np.array([unc_tan_theta, 0, unc_tan_phi])
@@ -281,30 +282,6 @@ class SideCamera(AbstractCamera):
         
         directional_vector = np.array([-1, tan_theta, tan_phi])
         return [physical_position_on_back_calibration_plane, directional_vector]
-    
-    def calculate_uncertainty_in_tangent_of_angles(self, front_plane_position: float, back_plane_position: float, 
-                                                  uncertainty_on_front_plane_position: float, uncertainty_on_back_plane_position: float,
-                                                  tan_phi: float, tan_theta: float):
-
-        position_difference = back_plane_position - front_plane_position
-        horizontal_position_difference = position_difference[2]
-        vertical_position_difference = position_difference[1]
-        uncertainty_in_horizontal_position_difference = normal_addition_in_quadrature([uncertainty_on_front_plane_position[2],
-                                                                                       uncertainty_on_back_plane_position[2]])
-        uncertainty_in_vertical_position_difference = normal_addition_in_quadrature([uncertainty_on_front_plane_position[1],
-                                                                                     uncertainty_on_back_plane_position[1]])
-        
-                
-        denominator = self.seen_scintillator_depth
-        unc_denominator = self.scintillator_depth_uncertainty
-        
-        unc_tan_phi = fractional_addition_in_quadrature([horizontal_position_difference, denominator], 
-                                                        [uncertainty_in_horizontal_position_difference, unc_denominator],
-                                                        tan_phi)
-        unc_tan_theta = fractional_addition_in_quadrature([vertical_position_difference, denominator], 
-                                                          [uncertainty_in_vertical_position_difference, unc_denominator],
-                                                          tan_theta)
-        return unc_tan_phi, unc_tan_theta
     
     def build_uncertainty_in_directional_vector(self, unc_tan_phi: float, unc_tan_theta: float):
         return np.array([0, unc_tan_theta, unc_tan_phi])
@@ -356,14 +333,6 @@ def general_vector_line_equation(t: float, initial_position_vector: np.ndarray[f
                                  directional_vector: np.ndarray[float]) -> np.ndarray[float]:
   """ Vector line equation parameterised by t."""
   return initial_position_vector + t * directional_vector
-
-
-def calculate_uncertainty_in_physical_position(homography_uncertainty_vector: List[float], vector_uncertainty_due_to_origin_shift: List[float]):
-        
-        position_uncertainty_vector = np.zeros(len(homography_uncertainty_vector))
-        for i in range(len(homography_uncertainty_vector)):
-            position_uncertainty_vector[i] = normal_addition_in_quadrature([homography_uncertainty_vector[i], vector_uncertainty_due_to_origin_shift[i]])
-        return position_uncertainty_vector
     
 
 def calculate_uncertainty_on_tangent_of_refracted_angle_component(tan_angle: float, unc_tan_angle: float, n: float=SCINTILLATOR_REFRACTIVE_INDEX, unc_n: float=UNC_SCINTILLATOR_REFRACTIVE_INDEX):

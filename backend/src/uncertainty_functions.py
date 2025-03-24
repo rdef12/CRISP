@@ -3,21 +3,17 @@ from typing import List
 
 
 def normal_addition_in_quadrature(contributing_quantity_uncertainties: List[float]):
-  
   squared_sum = 0
   for count in range(len(contributing_quantity_uncertainties)):
     squared_sum += contributing_quantity_uncertainties[count]**2
-  
   return np.sqrt(squared_sum)
 
 
 def fractional_addition_in_quadrature(contributing_quantity_values: List[float], contributing_quantity_uncertainties: List[float],
                                       final_quantity_value: float):
-  
   squared_sum = 0
   for count in range(len(contributing_quantity_uncertainties)):
     squared_sum += (contributing_quantity_uncertainties[count] / contributing_quantity_values[count])**2
-  
   return final_quantity_value * np.sqrt(squared_sum)
 
 
