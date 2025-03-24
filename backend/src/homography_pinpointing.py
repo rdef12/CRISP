@@ -15,6 +15,7 @@ from src.database.CRUD import CRISP_database_interaction as cdi
 from typing import List, Literal
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+from enum import Enum
 import itertools
 
 SCINTILLATOR_REFRACTIVE_INDEX = 1.66
@@ -37,6 +38,11 @@ CALIBRATION_BOARD_THICKNESS_UNC  = {"A": 0.1, "B": 0.1} # mm
 
 DEPTH_DIRECTION = {"A": 1, "B": 1}
 
+class BoxCoordinate(Enum):
+    X = 0
+    Y = 1
+    Z = 2
+
 @dataclass
 class AxesMapping:
     horizontal_img_axis: Literal["x", "y", "z"]
@@ -54,7 +60,7 @@ class AxesMapping:
 
 # Abstract base class
 class AbstractCamera(ABC):
-
+    # Factory for producing cameras
     @staticmethod
     def setup(camera_id, setup_id):
             camera_optical_axis = CAM_OPTICAL_AXIS.get(camera_id)
@@ -87,7 +93,7 @@ class AbstractCamera(ABC):
         # New private method implemented in the subclasses
         self.axes_mapping = self._map_axes(DEPTH_DIRECTION.get(camera_id))
         
-    def map_to_3d_point(self, horizontal_in_calibration_plane: float, 
+    def map_image_coord_to_3d_point(self, horizontal_in_calibration_plane: float, 
                         vertical_in_calibration_plane: float, 
                         depth: float) -> np.ndarray:
         """
@@ -124,18 +130,18 @@ class AbstractCamera(ABC):
         vertical_error = normal_addition_in_quadrature([two_dimensional_homography_errors[1], two_dimensional_origin_shift_errors[1]])
         return [horizontal_errror, vertical_error]
     
-    # TODO
-    def calculate_uncertainty_in_tangent_of_angles(self, in_plane_displacement: float, uncertainty_on_front_plane_position: float, uncertainty_on_back_plane_position: float,
+    
+    def _calculate_uncertainty_in_tangent_of_angles(self, in_plane_displacement: float, near_plane_position_unc: float, far_plane_position_unc: float,
                                                   tan_phi: float, tan_theta: float):
         """
         Note: the origin shift translation cancels out when taking the difference between the two planes. Therefore, it is not included in the position
         uncertainties when propagating in quadrature because it does not influence the calculated in-plane displacement.
         """
 
-        uncertainty_in_horizontal_position_difference = normal_addition_in_quadrature([uncertainty_on_front_plane_position[2],
-                                                                                       uncertainty_on_back_plane_position[2]])
-        uncertainty_in_vertical_position_difference = normal_addition_in_quadrature([uncertainty_on_front_plane_position[0],
-                                                                                     uncertainty_on_back_plane_position[0]])
+        uncertainty_in_horizontal_position_difference = normal_addition_in_quadrature([near_plane_position_unc[0],
+                                                                                       far_plane_position_unc[0]])
+        uncertainty_in_vertical_position_difference = normal_addition_in_quadrature([near_plane_position_unc[1],
+                                                                                     far_plane_position_unc[1]])
         
         denominator = self.seen_scintillator_depth + self.calibration_board_thickness
         unc_denominator = normal_addition_in_quadrature([self.scintillator_depth_uncertainty, self.calibration_board_thickness_unc])
@@ -172,9 +178,9 @@ class AbstractCamera(ABC):
         two_dimensional_position_relative_to_calibration_board_corner = np.array(physical_position_on_calibration_plane) + np.array(self.origin_shift) # mm units
         two_dimensional_position_relative_to_calibration_board_corner_unc = self._calculate_calibration_plane_physical_position_error(two_dimensional_homography_errors, self.origin_shift_uncertainty)
         
-        physical_position_in_box_coords = self.map_to_3d_point(two_dimensional_position_relative_to_calibration_board_corner[0],
+        physical_position_in_box_coords = self.map_image_coord_to_3d_point(two_dimensional_position_relative_to_calibration_board_corner[0],
                                                                 two_dimensional_position_relative_to_calibration_board_corner[1], depth)
-        physical_position_in_box_coords_uncertainty = self.map_to_3d_point(two_dimensional_position_relative_to_calibration_board_corner_unc[0],
+        physical_position_in_box_coords_uncertainty = self.map_image_coord_to_3d_point(two_dimensional_position_relative_to_calibration_board_corner_unc[0],
                                                                            two_dimensional_position_relative_to_calibration_board_corner_unc[1],
                                                                            unc_depth)
         
@@ -193,16 +199,21 @@ class AbstractCamera(ABC):
         
         near_plane_two_dimensional_homography_error, far_plane_two_dimensional_position_homography_error = self._calculate_two_dimensional_homography_errors(pixel_coords, unc_pixel_coords)
         
+        physical_displacement_in_plane_coords = physical_position_on_far_calibration_plane - physical_position_on_near_calibration_plane
+        tan_phi, tan_theta = physical_displacement_in_plane_coords / (self.seen_scintillator_depth + self.calibration_board_thickness)
+        unc_tan_phi, unc_tan_theta = self._calculate_uncertainty_in_tangent_of_angles(physical_displacement_in_plane_coords, near_plane_two_dimensional_homography_error,
+                                                                                     far_plane_two_dimensional_position_homography_error, tan_phi, tan_theta)
+        
         near_physical_position_in_box_coords, unc_near_physical_position_in_box_coords = self._transform_to_box_coords(physical_position_on_near_calibration_plane.copy(), 
                                                                                                                        near_plane_two_dimensional_homography_error, "near")
         far_physical_position_in_box_coords, unc_far_physical_position_in_box_coords = self._transform_to_box_coords(physical_position_on_far_calibration_plane.copy(), 
                                                                                                                      far_plane_two_dimensional_position_homography_error, "far")
-        
-        physical_displacement_in_plane_coords = physical_position_on_near_calibration_plane - physical_position_on_far_calibration_plane
-        tan_phi, tan_theta = physical_displacement_in_plane_coords / (self.seen_scintillator_depth + self.calibration_board_thickness)
 
-        return [tan_phi, tan_theta], [near_physical_position_in_box_coords, far_physical_position_in_box_coords], [unc_near_physical_position_in_box_coords, unc_far_physical_position_in_box_coords]
-    
+        return ([tan_phi, tan_theta], 
+                [unc_tan_phi, unc_tan_theta], 
+                [near_physical_position_in_box_coords, far_physical_position_in_box_coords], 
+                [unc_near_physical_position_in_box_coords, unc_far_physical_position_in_box_coords]
+            )
     
     @abstractmethod
     def _map_axes(self, depth_direction: int):
@@ -215,16 +226,13 @@ class AbstractCamera(ABC):
         pass
     
     @abstractmethod
-    def build_uncertainty_in_directional_vector(unc_tan_phi: float, unc_tan_theta: float):
-        """Virtual function which must be implemented by subclasses."""
-        pass
-    
-    @abstractmethod
-    def add_shift_to_front_position_due_to_refraction(self, physical_position_on_front_plane: float, unrefracted_tan_phi: float, unrefracted_tan_theta: float):
+    def add_shift_in_parameterising_position_due_to_refraction(self, physical_position_on_front_plane: float, physical_position_on_front_plane_uncertainty: float,
+                                                                unrefracted_tan_phi: float, unrefracted_tan_theta: float,
+                                                                unc_unrefracted_tan_phi: float, unc_unrefracted_tan_theta: float):
         """Virtual function which must be implemented by subclasses."""
         pass
 
-    
+
 class TopCamera(AbstractCamera):
     
     def __init__(self, camera_id, setup_id):
@@ -235,38 +243,48 @@ class TopCamera(AbstractCamera):
                                         vertical_img_axis="x",
                                         optical_axis="y",
                                         depth_direction=depth_direction)
-        
-    #     return [transformed_front_plane_position, transformed_back_plane_position], physical_displacement_in_image_coords
     
-    def build_line_vectors(self, physical_position_on_back_calibration_plane: float, tan_phi: float, tan_theta: float):
+    def build_line_vectors(self, physical_position_on_back_calibration_plane: float, tan_phi: float, tan_theta: float,
+                           unc_tan_phi: float, unc_tan_theta: float):
         
         directional_vector = np.array([tan_theta, -1, tan_phi])
-        return [physical_position_on_back_calibration_plane, directional_vector]
+        direction_vector_uncertainty = np.array([unc_tan_theta, 0, unc_tan_phi])
+        return [physical_position_on_back_calibration_plane, directional_vector], direction_vector_uncertainty # returning the initial position too!
     
-    def build_uncertainty_in_directional_vector(self, unc_tan_phi: float, unc_tan_theta: float):
-        return np.array([unc_tan_theta, 0, unc_tan_phi])
+        
+    def add_shift_in_parameterising_position_due_to_refraction(self, physical_position_on_front_plane: float, physical_position_on_front_plane_uncertainty: float,
+                                                                unrefracted_tan_phi: float, unrefracted_tan_theta: float,
+                                                                unc_unrefracted_tan_phi: float, unc_unrefracted_tan_theta: float):
+        
+        shifted_box_coord_for_horizontal_image_coord = physical_position_on_front_plane[BoxCoordinate.Z] + (self.calibration_board_thickness * unrefracted_tan_phi)
+        shifted_box_coord_for_vertical_image_coord = physical_position_on_front_plane[BoxCoordinate.X] + (self.calibration_board_thickness * unrefracted_tan_theta)
+        
+        unc_added_horizontal_term = fractional_addition_in_quadrature([self.calibration_board_thickness, unrefracted_tan_phi],
+                                                                      [self.calibration_board_thickness_unc, unc_unrefracted_tan_phi], 
+                                                                       self.calibration_board_thickness * unrefracted_tan_phi)
+        unc_added_vertical_term = fractional_addition_in_quadrature([self.calibration_board_thickness, unrefracted_tan_theta],
+                                                                      [self.calibration_board_thickness_unc, unc_unrefracted_tan_theta], 
+                                                                       self.calibration_board_thickness * unrefracted_tan_theta)
+        
+        # +/- calibration board thickness shift depending on which side of the optical axis the camera is relative to the box's coord system origin
+        match self.axes_mapping.depth_direction:
+            case 1:
+                shifted_box_coord_for_optical_axis_coord = self.seen_scintillator_depth
+                unc_shifted_box_coord_for_optical_axis_coord = self.seen_scintillator_depth_uncertainty
+            case -1:
+                shifted_box_coord_for_optical_axis_coord = 0
+                unc_shifted_box_coord_for_optical_axis_coord = 0
+        
+        # Z Horizontal, X Vertical, Y Optical 
+        # Point on near plane being returned now (point on back plane would parameterise the line if no refraction present)
+        shifted_near_plane_position = np.array([shifted_box_coord_for_vertical_image_coord, shifted_box_coord_for_optical_axis_coord, shifted_box_coord_for_horizontal_image_coord])
+        
+        original_x_unc, original_y_unc, original_z_unc = physical_position_on_front_plane_uncertainty 
+        shifted_near_plane_position_uncertainty = np.array([normal_addition_in_quadrature([original_x_unc, unc_added_vertical_term]),
+                                                            normal_addition_in_quadrature([original_y_unc, unc_shifted_box_coord_for_optical_axis_coord]),
+                                                            normal_addition_in_quadrature([original_z_unc, unc_added_horizontal_term])])
     
-    
-    def add_shift_to_front_position_due_to_refraction(self, physical_position_on_front_plane: float, physical_position_on_front_plane_uncertainty: float,
-                                                      unrefracted_tan_phi: float, unrefracted_tan_theta: float,
-                                                      unc_unrefracted_tan_phi: float, unc_unrefracted_tan_theta: float):
-        
-        x_coord = physical_position_on_front_plane[0] + self.calibration_board_thickness * unrefracted_tan_theta
-        y_coord = physical_position_on_front_plane[1] - self.calibration_board_thickness
-        z_coord = physical_position_on_front_plane[2] + self.calibration_board_thickness * unrefracted_tan_phi
-        
-        unc_x_added_term = fractional_addition_in_quadrature([self.calibration_board_thickness, unrefracted_tan_theta],
-                                                             [self.calibration_board_thickness_unc, unc_unrefracted_tan_theta], self.calibration_board_thickness * unrefracted_tan_theta)
-        unc_z_added_term = fractional_addition_in_quadrature([self.calibration_board_thickness, unrefracted_tan_phi],
-                                                             [self.calibration_board_thickness_unc, unc_unrefracted_tan_phi], self.calibration_board_thickness * unrefracted_tan_phi)
-        
-        original_x_unc, original_y_unc, original_z_unc = physical_position_on_front_plane_uncertainty
-        shifted_physical_position_on_front_plane_uncertainty = np.array([normal_addition_in_quadrature([original_x_unc, unc_x_added_term]),
-                                                                         normal_addition_in_quadrature([original_y_unc, self.calibration_board_thickness_unc]),
-                                                                         normal_addition_in_quadrature([original_z_unc, unc_z_added_term])])
-        
-        return np.array([x_coord, y_coord, z_coord]), shifted_physical_position_on_front_plane_uncertainty
-
+        return shifted_near_plane_position, shifted_near_plane_position_uncertainty
 
 class SideCamera(AbstractCamera):
     def __init__(self, camera_id, setup_id):
@@ -277,35 +295,47 @@ class SideCamera(AbstractCamera):
                                         vertical_img_axis="y",
                                         optical_axis="x",
                                         depth_direction=depth_direction)
-    
-    def build_line_vectors(self, physical_position_on_back_calibration_plane: float, tan_phi: float, tan_theta: float):
+        
+    def build_line_vectors(self, physical_position_on_back_calibration_plane: float, tan_phi: float, tan_theta: float,
+                           unc_tan_phi: float, unc_tan_theta: float):
         
         directional_vector = np.array([-1, tan_theta, tan_phi])
-        return [physical_position_on_back_calibration_plane, directional_vector]
+        directional_vector_uncertainty = np.array([0, unc_tan_theta, unc_tan_phi])
+        return [physical_position_on_back_calibration_plane, directional_vector], directional_vector_uncertainty
     
-    def build_uncertainty_in_directional_vector(self, unc_tan_phi: float, unc_tan_theta: float):
-        return np.array([0, unc_tan_theta, unc_tan_phi])
-    
-    
-    def add_shift_to_front_position_due_to_refraction(self, physical_position_on_front_plane: float, physical_position_on_front_plane_uncertainty: float,
-                                                        unrefracted_tan_phi: float, unrefracted_tan_theta: float,
-                                                        unc_unrefracted_tan_phi: float, unc_unrefracted_tan_theta: float):
-    
-        x_coord = physical_position_on_front_plane[0] - self.calibration_board_thickness
-        y_coord = physical_position_on_front_plane[1] + self.calibration_board_thickness * unrefracted_tan_theta
-        z_coord = physical_position_on_front_plane[2] + self.calibration_board_thickness * unrefracted_tan_phi
+    def add_shift_in_parameterising_position_due_to_refraction(self, physical_position_on_front_plane: float, physical_position_on_front_plane_uncertainty: float,
+                                                                unrefracted_tan_phi: float, unrefracted_tan_theta: float,
+                                                                unc_unrefracted_tan_phi: float, unc_unrefracted_tan_theta: float):
         
-        unc_z_added_term = fractional_addition_in_quadrature([self.calibration_board_thickness, unrefracted_tan_phi],
-                                                                [self.calibration_board_thickness_unc, unc_unrefracted_tan_phi], self.calibration_board_thickness * unrefracted_tan_phi)
-        unc_y_added_term = fractional_addition_in_quadrature([self.calibration_board_thickness, unrefracted_tan_theta],
-                                                                [self.calibration_board_thickness_unc, unc_unrefracted_tan_theta], self.calibration_board_thickness * unrefracted_tan_theta)
+        shifted_box_coord_for_horizontal_image_coord = physical_position_on_front_plane[BoxCoordinate.Z] + (self.calibration_board_thickness * unrefracted_tan_phi)
+        shifted_box_coord_for_vertical_image_coord = physical_position_on_front_plane[BoxCoordinate.Y] + (self.calibration_board_thickness * unrefracted_tan_theta)
         
-        original_x_unc, original_y_unc, original_z_unc = physical_position_on_front_plane_uncertainty
-        shifted_physical_position_on_front_plane_uncertainty = np.array([normal_addition_in_quadrature([original_x_unc, self.calibration_board_thickness_unc]),
-                                                                            normal_addition_in_quadrature([original_y_unc, unc_y_added_term]),
-                                                                            normal_addition_in_quadrature([original_z_unc, unc_z_added_term])])
         
-        return np.array([x_coord, y_coord, z_coord]), shifted_physical_position_on_front_plane_uncertainty
+        unc_added_horizontal_term = fractional_addition_in_quadrature([self.calibration_board_thickness, unrefracted_tan_phi],
+                                                                      [self.calibration_board_thickness_unc, unc_unrefracted_tan_phi], 
+                                                                       self.calibration_board_thickness * unrefracted_tan_phi)
+        unc_added_vertical_term = fractional_addition_in_quadrature([self.calibration_board_thickness, unrefracted_tan_theta],
+                                                                      [self.calibration_board_thickness_unc, unc_unrefracted_tan_theta], 
+                                                                       self.calibration_board_thickness * unrefracted_tan_theta)
+        
+        match self.axes_mapping.depth_direction:
+            case 1:
+                shifted_box_coord_for_optical_axis_coord = self.seen_scintillator_depth
+                unc_shifted_box_coord_for_optical_axis_coord = self.seen_scintillator_depth_uncertainty
+            case -1:
+                shifted_box_coord_for_optical_axis_coord = 0
+                unc_shifted_box_coord_for_optical_axis_coord = 0
+                
+        # Z Horizontal, Y Vertical, X Optical 
+        # Point on near plane being returned now (point on back plane would parameterise the line if no refraction present)
+        shifted_near_plane_position = np.array([shifted_box_coord_for_optical_axis_coord, shifted_box_coord_for_vertical_image_coord, shifted_box_coord_for_horizontal_image_coord])
+                
+        original_x_unc, original_y_unc, original_z_unc = physical_position_on_front_plane_uncertainty 
+        shifted_near_plane_position_uncertainty = np.array([normal_addition_in_quadrature([original_x_unc, unc_shifted_box_coord_for_optical_axis_coord]),
+                                                            normal_addition_in_quadrature([original_y_unc, unc_added_vertical_term]),
+                                                            normal_addition_in_quadrature([original_z_unc, unc_added_horizontal_term])])
+        
+        return shifted_near_plane_position, shifted_near_plane_position_uncertainty
 
 
 def get_projected_position_of_pixel(homography_matrix, pixel_coords: tuple[float, float]=None, 
@@ -488,59 +518,45 @@ def extract_3d_physical_position(first_camera: AbstractCamera, occupied_pixel_on
                                  unc_pixel_on_first_camera: tuple[int, int], unc_pixel_on_second_camera: tuple[int, int],
                                  scintillator_present=False):
     
-    first_tan_phi, first_tan_theta, first_physical_position_on_front_calibration_plane, first_physical_position_on_back_calibration_plane = first_camera.determine_angles_of_event(occupied_pixel_on_first_camera)
-    second_tan_phi, second_tan_theta, second_physical_position_on_front_calibration_plane, second_physical_position_on_back_calibration_plane = second_camera.determine_angles_of_event(occupied_pixel_on_second_camera)
+    ([first_tan_phi, first_tan_theta], 
+     [unc_first_tan_phi, unc_first_tan_theta], 
+     [first_near_physical_position_in_box_coords, first_far_physical_position_in_box_coords], 
+     [first_unc_near_physical_position_in_box_coords, first_unc_far_physical_position_in_box_coords],
+    ) = first_camera.determine_in_plane_positions_and_angles_of_event(occupied_pixel_on_first_camera, unc_pixel_on_first_camera)
     
-    first_front_physical_position_homography_error, first_back_physical_position_homography_error = first_camera.calculate_uncertainty_on_homography(occupied_pixel_on_first_camera, unc_pixel_on_first_camera)
-    second_front_physical_position_homography_error, second_back_physical_position_homography_error = second_camera.calculate_uncertainty_on_homography(occupied_pixel_on_second_camera, unc_pixel_on_second_camera)
-    
-    # NOTE: homography uncertainties would need converting to external coord system too!
-    first_physical_position_on_front_plane_uncertainty = calculate_uncertainty_in_physical_position(first_front_physical_position_homography_error, first_camera.origin_shift_uncertainty)
-    first_physical_position_on_back_plane_uncertainty = calculate_uncertainty_in_physical_position(first_back_physical_position_homography_error, first_camera.origin_shift_uncertainty) # initial position of first camera line unc
-    second_physical_position_on_front_plane_uncertainty = calculate_uncertainty_in_physical_position(second_front_physical_position_homography_error, second_camera.origin_shift_uncertainty)
-    second_physical_position_on_back_plane_uncertainty = calculate_uncertainty_in_physical_position(second_back_physical_position_homography_error, second_camera.origin_shift_uncertainty) # initial position of second camera line unc
-    
-    unc_first_tan_phi, unc_first_tan_theta = first_camera.calculate_uncertainty_in_tangent_of_angles(first_physical_position_on_front_calibration_plane, first_physical_position_on_back_calibration_plane,
-                                                                                                    first_physical_position_on_front_plane_uncertainty, first_physical_position_on_back_plane_uncertainty,
-                                                                                                    first_tan_phi, first_tan_theta)
-    unc_second_tan_phi, unc_second_tan_theta = second_camera.calculate_uncertainty_in_tangent_of_angles(second_physical_position_on_front_calibration_plane, second_physical_position_on_back_calibration_plane,
-                                                                                                        second_physical_position_on_front_plane_uncertainty, second_physical_position_on_back_plane_uncertainty,
-                                                                                                        second_tan_phi, second_tan_theta)
+    ([second_tan_phi, second_tan_theta], 
+     [unc_second_tan_phi, unc_second_tan_theta], 
+     [second_near_physical_position_in_box_coords, second_far_physical_position_in_box_coords], 
+     [second_unc_near_physical_position_in_box_coords, second_unc_far_physical_position_in_box_coords],
+    ) = second_camera.determine_in_plane_positions_and_angles_of_event(occupied_pixel_on_second_camera, unc_pixel_on_second_camera)
     
     # General terminology so they can be overwritten if the scintillator logic needs calling
-    first_camera_initial_position = first_physical_position_on_back_calibration_plane
-    second_camera_initial_position = second_physical_position_on_back_calibration_plane
-    unc_first_camera_intitial_position = first_physical_position_on_back_plane_uncertainty
-    unc_second_camera_intitial_position = second_physical_position_on_back_plane_uncertainty
+    first_camera_initial_position = first_far_physical_position_in_box_coords
+    second_camera_initial_position = second_far_physical_position_in_box_coords
+    unc_first_camera_intitial_position = first_unc_far_physical_position_in_box_coords
+    unc_second_camera_intitial_position = second_unc_far_physical_position_in_box_coords
     
     if scintillator_present:
-        
-        # Initial position normally used is on the back plane. Here, the initial position is the front plane position shifted by an appropriate amount due to refraction
-        # These must be defined before further logic because the original value of the tangent_angles will be overwritten within this if statement.
-        
-        # Does the shift simply get added on, or does it sometimes need subtracting, based on the external coord system that is set up?
-        # Also need to track how this propagates through the uncertainties at some point.
-        first_camera_initial_position, unc_first_camera_intitial_position = first_camera.add_shift_to_front_position_due_to_refraction(first_physical_position_on_front_calibration_plane, first_physical_position_on_front_plane_uncertainty,
+        first_camera_initial_position, unc_first_camera_intitial_position = first_camera.add_shift_to_front_position_due_to_refraction(first_near_physical_position_in_box_coords,
+                                                                                                                                       first_unc_near_physical_position_in_box_coords,
                                                                                                                                        first_tan_phi, first_tan_theta, unc_first_tan_phi, unc_first_tan_theta)
-        second_camera_initial_position, unc_second_camera_intitial_position = second_camera.add_shift_to_front_position_due_to_refraction(second_physical_position_on_front_calibration_plane, second_physical_position_on_front_plane_uncertainty,
+        second_camera_initial_position, unc_second_camera_intitial_position = second_camera.add_shift_to_front_position_due_to_refraction(second_near_physical_position_in_box_coords,
+                                                                                                                                          second_unc_near_physical_position_in_box_coords,
                                                                                                                                           second_tan_phi, second_tan_theta, unc_second_tan_phi, unc_second_tan_theta)
     
         first_phi, first_theta = np.arctan(first_tan_phi), np.arctan(first_tan_theta)
         second_phi, second_theta = np.arctan(second_tan_phi), np.arctan(second_tan_theta)
-
-        # Refractive indices set as default arguments in the Snell's law functions below
         first_refracted_phi, first_refracted_theta = calculate_refracted_angles([first_phi, first_theta])
         second_refracted_phi, second_refracted_theta = calculate_refracted_angles([second_phi, second_theta])
         
         # original variables simply renamed with the refracted ones.
-        first_tan_phi, first_tan_theta = np.tan(first_refracted_phi), np.tan(first_refracted_theta) 
-        second_tan_phi, second_tan_theta = np.tan(second_refracted_phi), np.tan(second_refracted_theta)
-        # original variables simply renamed with the refracted ones.
-        
         unc_first_tan_phi, unc_first_tan_theta = build_uncertainty_in_tangent_of_refracted_angles(first_tan_phi, first_tan_theta, unc_first_tan_phi, unc_first_tan_theta)
         unc_second_tan_phi, unc_second_tan_theta = build_uncertainty_in_tangent_of_refracted_angles(second_tan_phi, second_tan_theta, unc_second_tan_phi, unc_second_tan_theta)
-    
-    
+        
+        # original variables simply renamed with the refracted ones.
+        first_tan_phi, first_tan_theta = np.tan(first_refracted_phi), np.tan(first_refracted_theta) 
+        second_tan_phi, second_tan_theta = np.tan(second_refracted_phi), np.tan(second_refracted_theta)
+        
     first_camera_line_vectors = first_camera.build_line_vectors(first_camera_initial_position, first_tan_phi, first_tan_theta)
     second_camera_line_vectors = second_camera.build_line_vectors(second_camera_initial_position, second_tan_phi, second_tan_theta)
     
@@ -550,15 +566,16 @@ def extract_3d_physical_position(first_camera: AbstractCamera, occupied_pixel_on
         first_camera_line_vectors[1] *= -1
         second_camera_line_vectors[1] *= -1
     
-    unc_first_camera_directional_vector = first_camera.build_uncertainty_in_directional_vector(unc_first_tan_phi, unc_first_tan_theta)
-    unc_second_camera_directional_vector = second_camera.build_uncertainty_in_directional_vector(unc_second_tan_phi, unc_second_tan_theta)
+    # unc_first_camera_directional_vector = first_camera.build_uncertainty_in_directional_vector(unc_first_tan_phi, unc_first_tan_theta)
+    # unc_second_camera_directional_vector = second_camera.build_uncertainty_in_directional_vector(unc_second_tan_phi, unc_second_tan_theta)
+    # NOW RETURNED FROM BUILD_LINE_VECTORS!
     
     distance_of_closest_approach = calculate_distance_of_closest_approach(first_camera_line_vectors, second_camera_line_vectors)
     print("Distance of closest approach is {}".format(distance_of_closest_approach))
     
     return calculate_intersection_point(first_camera_line_vectors, second_camera_line_vectors,
-                                        [unc_first_camera_intitial_position, unc_first_camera_directional_vector],
-                                        [unc_second_camera_intitial_position, unc_second_camera_directional_vector]) 
+                                        unc_first_camera_intitial_position, unc_first_camera_directional_vector,
+                                        unc_second_camera_intitial_position, unc_second_camera_directional_vector) 
     
 
 # Beam vector line vectors should be a 2D np array, containing the initial position vector and the directional vector.
