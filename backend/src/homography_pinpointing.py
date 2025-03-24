@@ -1,11 +1,5 @@
 # -*- coding: utf-8 -*-
 """
-Module:       new_determine_event_position
-Author:       Lewis Dean and Robin de Freitas
-Date:         2024-11-14
-
-Description: 
-
 The origin shifts are hardcoded in too! Could have an apparatus metadata CSV/JSON which is
 used to define these attributes in the different subclasses.
 
@@ -20,19 +14,16 @@ TODO: Need to propagate uncertainty in calibration board thickness at the physic
 
 TODO: Instead of just using the mid point of closest points as the intersection point, could this be a
 weighted average of the two closest points?
-
-Check it is never the origin which is moved due to the failure in full grid recognition
  """
 from src.calibration_functions import *
 from src.uncertainty_functions import *
 from src.viewing_functions import *
-from src.create_homographies import load_homography_data
 from src.homography_errors import generate_world_point_uncertainty
 from src.database.CRUD import CRISP_database_interaction as cdi
 
-
-from typing import List
+from typing import List, Literal
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
 import itertools
 
 SCINTILLATOR_REFRACTIVE_INDEX = 1.66
@@ -42,16 +33,36 @@ TOP_CAM_ID = "A"
 SIDE_CAM_ID = "B"
 
 CAM_OPTICAL_AXIS = {"A": "y", "B": "x"}
+
 SCINTILLATOR_DEPTH = {"x": 38.8, "y": 99.8} # mm
 SCINTILLATOR_DEPTH_UNC = {"x": 0.1, "y": 0.1} # mm
 
-ORIGIN_SHIFT_UNC = {"A": [0.5, 0, 0.5], "B": [0, 0.1, 0.1]} # mm
+# These start out as 2D pixel coordinates, but are converted to 3D physical positions in Camera class
+ORIGIN_SHIFT = {"A": [1, 1], "B": [1, 1]} # mm # NEED TO EDIT
+ORIGIN_SHIFT_UNC = {"A": [0.5, 0.5], "B": [0.1, 0.1]} # mm
+
 CALIBRATION_BOARD_THICKNESS = {"A": 0.8, "B": 2.8} # mm
 CALIBRATION_BOARD_THICKNESS_UNC  = {"A": 0.1, "B": 0.1} # mm
 
+DEPTH_DIRECTION = {"A": 1, "B": 1}
+
+@dataclass
+class AxesMapping:
+    horizontal_img_axis: Literal["x", "y", "z"]
+    vertical_img_axis: Literal["x", "y", "z"]
+    optical_axis: Literal["x", "y", "z"]
+    depth_direction: Literal[-1, 1]  # Specifies which side of optical axis the camera is
+    
+    # Called automatically after AxesMapping object is created
+    def __post_init__(self):
+        # Check if the axes are unique
+        axes = [self.horizontal_img_axis, self.vertical_img_axis, self.optical_axis]
+        if len(set(axes)) != len(axes):
+            raise ValueError("Axes values must be unique: no two axes can have the same direction.")
+
 
 # Abstract base class
-class Camera(ABC):
+class AbstractCamera(ABC):
 
     @staticmethod
     def setup(camera_id, setup_id):
@@ -66,8 +77,8 @@ class Camera(ABC):
             
     def __init__(self, camera_id, setup_id):
         
-        if type(self) is Camera:
-            raise NotImplementedError("Camera class is abstract")
+        if type(self) is AbstractCamera:
+            raise NotImplementedError("AbstractCamera class is abstract, use AbstractCamera.setup(camera_id, setup_id) to intialise a camera object.")
         
         self.front_homography_matrix= cdi.get_near_face_homography_matrix(camera_id, setup_id)
         self.front_homography_covariance = cdi.get_near_face_homography_covariance_matrix(camera_id, setup_id)
@@ -76,48 +87,101 @@ class Camera(ABC):
         
         self.seen_scintillator_depth = SCINTILLATOR_DEPTH.get(CAM_OPTICAL_AXIS.get(camera_id))
         self.scintillator_depth_uncertainty = SCINTILLATOR_DEPTH_UNC.get(CAM_OPTICAL_AXIS.get(camera_id))
+        
+        self.origin_shift = ORIGIN_SHIFT.get(camera_id) # shift from origin of calibration pattern to the nearest corner of the calibration board (for shifting coordinate systems)
         self.origin_shift_uncertainty = ORIGIN_SHIFT_UNC.get(camera_id)
         self.calibration_board_thickness = CALIBRATION_BOARD_THICKNESS.get(camera_id)
         self.calibration_board_thickness_unc = CALIBRATION_BOARD_THICKNESS_UNC.get(camera_id)
-    
-
-    def determine_angles_of_event(self, pixel_coords: tuple[float, float]):
-        """
-        Pixel coords are in the form (horizontal coord, vertical coord), with the (0,0) pixel being
-        that in the top left corner of the frame.
         
+        # New private method implemented in the subclasses
+        self.axes_mapping = self._map_axes(DEPTH_DIRECTION.get(camera_id))
+        
+    def map_to_3d_point(self, horizontal_in_calibration_plane: float, 
+                        vertical_in_calibration_plane: float, 
+                        depth: float) -> np.ndarray:
+        """
+        depth is inputted and depends on which plane the user is looking at (far or near)
+        """
+        # Create a dictionary to map the axes to corresponding values
+        three_dimenisional_coords = {'x': None, 'y': None, 'z': None}
+        
+        # Map horizontal, vertical, and optical axes to their respective values
+        three_dimenisional_coords[self.axes_mapping.horizontal_img_axis] = horizontal_in_calibration_plane
+        three_dimenisional_coords[self.axes_mapping.vertical_img_axis] = vertical_in_calibration_plane
+        three_dimenisional_coords[self.axes_mapping.optical_axis] = depth
+
+        # Check if any axis is None
+        if None in three_dimenisional_coords.values():
+            raise ValueError("Mapping is incomplete, one or more axes are missing.")
+    
+        return np.array([three_dimenisional_coords['x'], three_dimenisional_coords['y'], three_dimenisional_coords['z']])
+    
+    
+    def _transform_to_box_coords(self, physical_position_on_calibration_plane: tuple[float, float], plane_type: Literal["far", "near"]) -> np.ndarray:
+        """
+        Should edit to also return the uncertainty on this transformed point!
+        Note, different unceratinies depending on whether depth needed includes scintillator dimensions/calibration board thickness or not.
+        """
+        # 4 cases for appropriate depth depending on plane_type and depth_direction
+        match (plane_type, self.axes_mapping.depth_direction):
+            case ("far", 1):
+                depth = 0
+            case ("far", -1):
+                depth = self.seen_scintillator_depth # no calibration board shift
+            case ("near", 1):
+                depth = self.seen_scintillator_depth + self.calibration_board_thickness
+            case ("near", -1):
+                depth = -1 * self.calibration_board_thickness 
+
+        # Below is the origin transformation! For this to work, the user-inputted origin shifts need to be signed correctly (although should always be positive)?
+        two_dimensional_position_relative_to_calibration_board_corner = np.array(physical_position_on_calibration_plane) + np.array(self.origin_shift) # mm units
+        
+        physical_position_in_box_coords = self.map_to_3d_point(two_dimensional_position_relative_to_calibration_board_corner[0],
+                                                                two_dimensional_position_relative_to_calibration_board_corner[1], depth)
+        
+        return physical_position_in_box_coords
+    
+    
+    def _calculate_uncertainty_on_homography(self, pixel_coords: tuple[float, float], unc_pixel_coords: tuple[float, float]):
+        """
+        Pixel coords given type float because we believe sub pixel uncertainty is feasible for the scintillation light analysis
+        """
+        near_physical_position_homography_error = generate_world_point_uncertainty([[pixel_coords]], unc_pixel_coords[0], unc_pixel_coords[1], self.front_homography_matrix, self.front_homography_covariance)
+        far_physical_position_homography_error = generate_world_point_uncertainty([[pixel_coords]], unc_pixel_coords[0], unc_pixel_coords[1], self.back_homography_matrix, self.back_homography_covariance)
+        
+        transformed_near_physical_position_homography_error = self.map_to_3d_point(near_physical_position_homography_error[0], near_physical_position_homography_error[1], 0) # depth of zero because in plane
+        transformed_far_physical_position_homography_error = self.map_to_3d_point(far_physical_position_homography_error[0], far_physical_position_homography_error[1], 0) # depth of zero because in plane
+        return transformed_near_physical_position_homography_error, transformed_far_physical_position_homography_error
+    
+    
+    def determine_in_plane_positions_and_angles_of_event(self, pixel_coords: tuple[float, float]):
+        """
         phi: horizontal angle as seen through image looking down optical axis.
         theta: vertical angle as seen through image looking down optical axis.
         """
-        
-        physical_position_on_front_calibration_plane = get_projected_position_of_pixel(self.front_homography_matrix,
+        physical_position_on_near_calibration_plane = get_projected_position_of_pixel(self.front_homography_matrix,
                                                                                   pixel_coords=pixel_coords)
-        physical_position_on_back_calibration_plane = get_projected_position_of_pixel(self.back_homography_matrix,
+        physical_position_on_far_calibration_plane = get_projected_position_of_pixel(self.back_homography_matrix,
                                                                                   pixel_coords=pixel_coords)
         
-        transformed_physical_positions, physical_displacement_in_image_coords = self.transform_to_external_coords(physical_position_on_front_calibration_plane.copy(),
-                                                                                                                  physical_position_on_back_calibration_plane.copy())
+        # These are not actually needed for the angle calc! - could move into separate function!
+        near_physical_position_in_box_coords = self._transform_to_box_coords(physical_position_on_near_calibration_plane.copy(), "near")
+        far_physical_position_in_box_coords = self._transform_to_box_coords(physical_position_on_far_calibration_plane.copy(), "far")
         
-        tan_phi, tan_theta = physical_displacement_in_image_coords / self.seen_scintillator_depth
-        transformed_physical_position_on_front_calibration_plane, transformed_physical_position_on_back_calibration_plane = transformed_physical_positions
+        tan_phi, tan_theta = (physical_position_on_near_calibration_plane - physical_position_on_far_calibration_plane) / (self.seen_scintillator_depth + self.calibration_board_thickness)
 
-        return tan_phi, tan_theta, transformed_physical_position_on_front_calibration_plane, transformed_physical_position_on_back_calibration_plane
-     
+        return tan_phi, tan_theta, near_physical_position_in_box_coords, far_physical_position_in_box_coords
+    
+    
     @abstractmethod
-    def calculate_uncertainty_on_homography(self, pixel_coords: tuple[int, int], unc_pixel_coords: tuple[int, int]):
+    def _map_axes(self, depth_direction: int):
         """Virtual function which must be implemented by subclasses."""
         pass
-    
     
     @abstractmethod
     def calculate_uncertainty_in_tangent_of_angles(self, front_plane_position: float, back_plane_position: float, 
                                                   uncertainty_on_front_plane_position: float, uncertainty_on_back_plane_position: float,
                                                   tan_phi: float, tan_theta: float):
-        """Virtual function which must be implemented by subclasses."""
-        pass
-    
-    @abstractmethod
-    def transform_to_external_coords(self, physical_position_on_calibration_grid):
         """Virtual function which must be implemented by subclasses."""
         pass
     
@@ -137,31 +201,18 @@ class Camera(ABC):
         pass
 
     
-class TopCamera(Camera):
+class TopCamera(AbstractCamera):
     
-    def __init__(self, camera_id):
-        super().__init__(camera_id)
-    
-    def transform_to_external_coords(self, physical_position_on_front_calibration_plane: np.ndarray[float],
-                                     physical_position_on_back_calibration_plane: np.ndarray[float]):
+    def __init__(self, camera_id, setup_id):
+        super().__init__(camera_id, setup_id)
         
-        # Need to add extra y shift!!
-        shift_from_calibration_board_corner_to_calibration_pattern_origin = np.array([10.5, 44])
+    def _map_axes(self, depth_direction: int):
+        self.axes_mapping = AxesMapping(horizontal_img_axis="z",
+                                        vertical_img_axis="x",
+                                        optical_axis="y",
+                                        depth_direction=depth_direction)
         
-        physical_position_on_front_calibration_plane[0] += shift_from_calibration_board_corner_to_calibration_pattern_origin[0] # Horzintal for top cam is z direction
-        physical_position_on_front_calibration_plane[1] = shift_from_calibration_board_corner_to_calibration_pattern_origin[1] - physical_position_on_front_calibration_plane[1] # vertical in image of top cam is in x direction
-        
-        physical_position_on_back_calibration_plane[0] += shift_from_calibration_board_corner_to_calibration_pattern_origin[0] # Horzintal for top cam is z direction
-        physical_position_on_back_calibration_plane[1] = shift_from_calibration_board_corner_to_calibration_pattern_origin[1] - physical_position_on_back_calibration_plane[1] # vertical in image of top cam is in x direction
-
-        physical_displacement_in_image_coords = physical_position_on_back_calibration_plane - physical_position_on_front_calibration_plane
-        
-        front_plane_depth_coord = self.seen_scintillator_depth + self.calibration_board_thickness
-        back_plane_depth_coord = self.calibration_board_thickness
-        transformed_front_plane_position = np.array([physical_position_on_front_calibration_plane[1], front_plane_depth_coord, physical_position_on_front_calibration_plane[0]])
-        transformed_back_plane_position = np.array([physical_position_on_back_calibration_plane[1], back_plane_depth_coord, physical_position_on_back_calibration_plane[0]])
-        
-        return [transformed_front_plane_position, transformed_back_plane_position], physical_displacement_in_image_coords
+    #     return [transformed_front_plane_position, transformed_back_plane_position], physical_displacement_in_image_coords
     
     def build_line_vectors(self, physical_position_on_back_calibration_plane: float, tan_phi: float, tan_theta: float):
         
@@ -195,19 +246,6 @@ class TopCamera(Camera):
         return np.array([unc_tan_theta, 0, unc_tan_phi])
     
     
-    def calculate_uncertainty_on_homography(self, pixel_coords: tuple[int, int], unc_pixel_coords: tuple[int, int]):
-        
-        front_physical_position_homography_error = generate_world_point_uncertainty([[pixel_coords]], unc_pixel_coords[0], unc_pixel_coords[1], self.front_homography_matrix, self.front_homography_covariance)
-        back_physical_position_homography_error = generate_world_point_uncertainty([[pixel_coords]], unc_pixel_coords[0], unc_pixel_coords[1], self.back_homography_matrix, self.back_homography_covariance)
-        
-        # Horzintal for top cam is z direction
-        # Vertical in image of top cam is in x direction
-        transformed_front_physical_position_homography_error = np.array([front_physical_position_homography_error[1], 0, front_physical_position_homography_error[0]])
-        transformed_back_physical_position_homography_error = np.array([back_physical_position_homography_error[1], 0, back_physical_position_homography_error[0]])
-        
-        return transformed_front_physical_position_homography_error, transformed_back_physical_position_homography_error
-    
-    
     def add_shift_to_front_position_due_to_refraction(self, physical_position_on_front_plane: float, physical_position_on_front_plane_uncertainty: float,
                                                       unrefracted_tan_phi: float, unrefracted_tan_theta: float,
                                                       unc_unrefracted_tan_phi: float, unc_unrefracted_tan_theta: float):
@@ -229,30 +267,15 @@ class TopCamera(Camera):
         return np.array([x_coord, y_coord, z_coord]), shifted_physical_position_on_front_plane_uncertainty
 
 
-class SideCamera(Camera):
-    def __init__(self, camera_id):
-        super().__init__(camera_id)
+class SideCamera(AbstractCamera):
+    def __init__(self, camera_id, setup_id):
+        super().__init__(camera_id, setup_id)
     
-    def transform_to_external_coords(self, physical_position_on_front_calibration_plane: np.ndarray[float],
-                                     physical_position_on_back_calibration_plane: np.ndarray[float]):
-        
-        # horizontal image coord is in the z direction for the side cam.
-        # vertical image coord is in the y direction for the side cam.
-        
-        shift_from_calibration_board_corner_to_calibration_pattern_origin = np.array([10.5, 5.8]) # mm [10.5 right, 5.8 down]
-        # shift_from_calibration_board_corner_to_calibration_pattern_origin = np.array([6.6, 5.5]) # NEWER CALIBRATION IMAGES
-
-        physical_position_on_front_calibration_plane += shift_from_calibration_board_corner_to_calibration_pattern_origin
-        physical_position_on_back_calibration_plane += shift_from_calibration_board_corner_to_calibration_pattern_origin
-        
-        physical_displacement_in_image_coords = physical_position_on_back_calibration_plane - physical_position_on_front_calibration_plane
-
-        front_plane_depth_coord = self.seen_scintillator_depth + self.calibration_board_thickness
-        back_plane_depth_coord = self.calibration_board_thickness
-        transformed_front_plane_position = np.array([front_plane_depth_coord, physical_position_on_front_calibration_plane[1], physical_position_on_front_calibration_plane[0]])
-        transformed_back_plane_position = np.array([back_plane_depth_coord, physical_position_on_back_calibration_plane[1], physical_position_on_back_calibration_plane[0]])
-        
-        return  [transformed_front_plane_position, transformed_back_plane_position], physical_displacement_in_image_coords
+    def _map_axes(self, depth_direction: int):
+        self.axes_mapping = AxesMapping(horizontal_img_axis="z",
+                                        vertical_img_axis="y",
+                                        optical_axis="x",
+                                        depth_direction=depth_direction)
     
     def build_line_vectors(self, physical_position_on_back_calibration_plane: float, tan_phi: float, tan_theta: float):
         
@@ -286,18 +309,6 @@ class SideCamera(Camera):
     def build_uncertainty_in_directional_vector(self, unc_tan_phi: float, unc_tan_theta: float):
         return np.array([0, unc_tan_theta, unc_tan_phi])
     
-    def calculate_uncertainty_on_homography(self, pixel_coords: tuple[int, int], unc_pixel_coords: tuple[int, int]):
-        
-        front_physical_position_homography_error= generate_world_point_uncertainty([[pixel_coords]], unc_pixel_coords[0], unc_pixel_coords[1], self.front_homography_matrix, self.front_homography_covariance)
-        back_physical_position_homography_error= generate_world_point_uncertainty([[pixel_coords]], unc_pixel_coords[0], unc_pixel_coords[1], self.back_homography_matrix, self.back_homography_covariance)
-        
-        # Horzintal for side cam is z direction
-        # Vertical in image of side cam is in y direction
-        transformed_front_physical_position_homography_error = np.array([0, front_physical_position_homography_error[1], front_physical_position_homography_error[0]])
-        transformed_back_physical_position_homography_error = np.array([0, back_physical_position_homography_error[1], back_physical_position_homography_error[0]])
-        
-        return transformed_front_physical_position_homography_error, transformed_back_physical_position_homography_error
-    
     
     def add_shift_to_front_position_due_to_refraction(self, physical_position_on_front_plane: float, physical_position_on_front_plane_uncertainty: float,
                                                         unrefracted_tan_phi: float, unrefracted_tan_theta: float,
@@ -326,8 +337,6 @@ def get_projected_position_of_pixel(homography_matrix, pixel_coords: tuple[float
     # Performs conversion to OpenCV form
     if pixel_coords:
         opencv_pixel = convert_iterable_to_opencv_format(pixel_coords)
-    
-    # NOTE: We consider calibration pattern origin as the top left valid feature point (for now)
     associated_real_position = convert_image_position_to_real_position(pixel=opencv_pixel, homography_matrix_input=homography_matrix)[0, 0]
     return associated_real_position
 
@@ -505,8 +514,8 @@ def calculate_intersection_point(first_equation_line_vectors, second_equation_li
     print("Error: {}".format(e))
 
 
-def extract_3d_physical_position(first_camera: Camera, occupied_pixel_on_first_camera: tuple[int, int], 
-                                 second_camera: Camera, occupied_pixel_on_second_camera: tuple[int, int],
+def extract_3d_physical_position(first_camera: AbstractCamera, occupied_pixel_on_first_camera: tuple[int, int], 
+                                 second_camera: AbstractCamera, occupied_pixel_on_second_camera: tuple[int, int],
                                  unc_pixel_on_first_camera: tuple[int, int], unc_pixel_on_second_camera: tuple[int, int],
                                  scintillator_present=False):
     
@@ -584,7 +593,7 @@ def extract_3d_physical_position(first_camera: Camera, occupied_pixel_on_first_c
     
 
 # Beam vector line vectors should be a 2D np array, containing the initial position vector and the directional vector.
-def extract_beam_center_position(camera: Camera, occupied_pixel_on_camera: tuple[int, int], unc_pixel_on_camera: tuple[int, int],
+def extract_beam_center_position(camera: AbstractCamera, occupied_pixel_on_camera: tuple[int, int], unc_pixel_on_camera: tuple[int, int],
                                  beam_center_line_vectors, unc_beam_center_initial_position: np.ndarray[float],
                                  unc_beam_center_directional_vector: np.ndarray[float]):
     
@@ -674,7 +683,7 @@ def extract_weighted_average_3d_physical_position(list_of_camera_objects, list_o
     return weighted_mean_intersection_point, unc_weighted_mean_intersection_point
 
 
-def build_pixel_line_vectors_inside_scintillator(camera: Camera, occupied_pixel_on_camera: tuple[int, int], unc_pixel_on_camera: tuple[int, int]):
+def build_pixel_line_vectors_inside_scintillator(camera: AbstractCamera, occupied_pixel_on_camera: tuple[int, int], unc_pixel_on_camera: tuple[int, int]):
     
     tan_phi, tan_theta, physical_position_on_front_calibration_plane, physical_position_on_back_calibration_plane = camera.determine_angles_of_event(occupied_pixel_on_camera)
     front_physical_position_homography_error, back_physical_position_homography_error = camera.calculate_uncertainty_on_homography(occupied_pixel_on_camera, unc_pixel_on_camera)
@@ -714,8 +723,8 @@ def build_pixel_line_vectors_inside_scintillator(camera: Camera, occupied_pixel_
 def main():
     
     try:
-        top_cam = Camera.setup(TOP_CAM_ID, 1)
-        side_cam = Camera.setup(SIDE_CAM_ID, 1)
+        top_cam = AbstractCamera.setup(TOP_CAM_ID, 1)
+        side_cam = AbstractCamera.setup(SIDE_CAM_ID, 1)
         
         red_brick_corner_top_cam_pixel = (1837, 2204)
         unc_red_brick_corner_top_cam_pixel = (4,4)
@@ -732,7 +741,7 @@ def main():
         return 0
     
     except Exception as e:
-        print("Error: {}".format(e))
+        print("Error in homography pinpointing algorithm: {}".format(e))
         return 1
     
 if __name__ == "__main__":
