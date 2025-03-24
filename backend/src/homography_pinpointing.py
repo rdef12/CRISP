@@ -556,9 +556,9 @@ def extract_3d_physical_position(first_camera: AbstractCamera, occupied_pixel_on
         # original variables simply renamed with the refracted ones.
         first_tan_phi, first_tan_theta = np.tan(first_refracted_phi), np.tan(first_refracted_theta) 
         second_tan_phi, second_tan_theta = np.tan(second_refracted_phi), np.tan(second_refracted_theta)
-        
-    first_camera_line_vectors = first_camera.build_line_vectors(first_camera_initial_position, first_tan_phi, first_tan_theta)
-    second_camera_line_vectors = second_camera.build_line_vectors(second_camera_initial_position, second_tan_phi, second_tan_theta)
+    
+    first_camera_line_vectors, unc_first_camera_directional_vector = first_camera.build_line_vectors(first_camera_initial_position, first_tan_phi, first_tan_theta)
+    second_camera_line_vectors, unc_second_camera_directional_vector = second_camera.build_line_vectors(second_camera_initial_position, second_tan_phi, second_tan_theta)
     
     # Reversing directional vector if scintillator present, because initial position used in that case begins on the shifted_front_plane_position.
     # Shouldn't change things, but this is useful if we want to use the general_line_equation function.
@@ -566,148 +566,142 @@ def extract_3d_physical_position(first_camera: AbstractCamera, occupied_pixel_on
         first_camera_line_vectors[1] *= -1
         second_camera_line_vectors[1] *= -1
     
-    # unc_first_camera_directional_vector = first_camera.build_uncertainty_in_directional_vector(unc_first_tan_phi, unc_first_tan_theta)
-    # unc_second_camera_directional_vector = second_camera.build_uncertainty_in_directional_vector(unc_second_tan_phi, unc_second_tan_theta)
-    # NOW RETURNED FROM BUILD_LINE_VECTORS!
-    
     distance_of_closest_approach = calculate_distance_of_closest_approach(first_camera_line_vectors, second_camera_line_vectors)
     print("Distance of closest approach is {}".format(distance_of_closest_approach))
     
     return calculate_intersection_point(first_camera_line_vectors, second_camera_line_vectors,
-                                        unc_first_camera_intitial_position, unc_first_camera_directional_vector,
-                                        unc_second_camera_intitial_position, unc_second_camera_directional_vector) 
+                                        [unc_first_camera_intitial_position, unc_first_camera_directional_vector],
+                                        [unc_second_camera_intitial_position, unc_second_camera_directional_vector])
     
 
-# Beam vector line vectors should be a 2D np array, containing the initial position vector and the directional vector.
-def extract_beam_center_position(camera: AbstractCamera, occupied_pixel_on_camera: tuple[int, int], unc_pixel_on_camera: tuple[int, int],
-                                 beam_center_line_vectors, unc_beam_center_initial_position: np.ndarray[float],
-                                 unc_beam_center_directional_vector: np.ndarray[float]):
+# # Beam vector line vectors should be a 2D np array, containing the initial position vector and the directional vector.
+# def extract_beam_center_position(camera: AbstractCamera, occupied_pixel_on_camera: tuple[int, int], unc_pixel_on_camera: tuple[int, int],
+#                                  beam_center_line_vectors, unc_beam_center_initial_position: np.ndarray[float],
+#                                  unc_beam_center_directional_vector: np.ndarray[float]):
     
-    tan_phi, tan_theta, physical_position_on_front_calibration_plane, physical_position_on_back_calibration_plane = camera.determine_angles_of_event(occupied_pixel_on_camera)
+#     tan_phi, tan_theta, physical_position_on_front_calibration_plane, physical_position_on_back_calibration_plane = camera.determine_angles_of_event(occupied_pixel_on_camera)
     
     
-    front_physical_position_homography_error, back_physical_position_homography_error = camera.calculate_uncertainty_on_homography(occupied_pixel_on_camera, unc_pixel_on_camera)
+#     front_physical_position_homography_error, back_physical_position_homography_error = camera.calculate_uncertainty_on_homography(occupied_pixel_on_camera, unc_pixel_on_camera)
     
-    print("front homo/shift error: {0}/{1}".format(front_physical_position_homography_error, camera.origin_shift_uncertainty))
-    print("back homo/shift error: {0}/{1}".format(back_physical_position_homography_error, camera.origin_shift_uncertainty))
+#     print("front homo/shift error: {0}/{1}".format(front_physical_position_homography_error, camera.origin_shift_uncertainty))
+#     print("back homo/shift error: {0}/{1}".format(back_physical_position_homography_error, camera.origin_shift_uncertainty))
     
-    # HACK: setting NaNS to 0.2 - the round about size of homography uncertainties, needs addressing properly.
-    # front_physical_position_homography_error = np.nan_to_num(front_physical_position_homography_error, nan=0.2)
-    # back_physical_position_homography_error = np.nan_to_num(back_physical_position_homography_error, nan=0.2)
+#     # HACK: setting NaNS to 0.2 - the round about size of homography uncertainties, needs addressing properly.
+#     # front_physical_position_homography_error = np.nan_to_num(front_physical_position_homography_error, nan=0.2)
+#     # back_physical_position_homography_error = np.nan_to_num(back_physical_position_homography_error, nan=0.2)
     
-    # NOTE: homography uncertainties would need converting to external coord system too!
-    physical_position_on_front_plane_uncertainty = calculate_uncertainty_in_physical_position(front_physical_position_homography_error, camera.origin_shift_uncertainty)
-    physical_position_on_back_plane_uncertainty = calculate_uncertainty_in_physical_position(back_physical_position_homography_error, camera.origin_shift_uncertainty)
+#     # NOTE: homography uncertainties would need converting to external coord system too!
+#     physical_position_on_front_plane_uncertainty = calculate_uncertainty_in_physical_position(front_physical_position_homography_error, camera.origin_shift_uncertainty)
+#     physical_position_on_back_plane_uncertainty = calculate_uncertainty_in_physical_position(back_physical_position_homography_error, camera.origin_shift_uncertainty)
     
-    unc_tan_phi, unc_tan_theta = camera.calculate_uncertainty_in_tangent_of_angles(physical_position_on_front_calibration_plane, physical_position_on_back_calibration_plane,
-                                                                                                    physical_position_on_front_plane_uncertainty, physical_position_on_back_plane_uncertainty,
-                                                                                                    tan_phi, tan_theta)
+#     unc_tan_phi, unc_tan_theta = camera.calculate_uncertainty_in_tangent_of_angles(physical_position_on_front_calibration_plane, physical_position_on_back_calibration_plane,
+#                                                                                                     physical_position_on_front_plane_uncertainty, physical_position_on_back_plane_uncertainty,
+#                                                                                                     tan_phi, tan_theta)
     
-    ####################### Modification to camera line because refraction is present ##################################################
-    camera_initial_position, unc_camera_intitial_position = camera.add_shift_to_front_position_due_to_refraction(physical_position_on_front_calibration_plane, physical_position_on_front_plane_uncertainty,
-                                                                                                                             tan_phi, tan_theta, unc_tan_phi, unc_tan_theta)
-    phi, theta = np.arctan(tan_phi), np.arctan(tan_theta)
+#     ####################### Modification to camera line because refraction is present ##################################################
+#     camera_initial_position, unc_camera_intitial_position = camera.add_shift_to_front_position_due_to_refraction(physical_position_on_front_calibration_plane, physical_position_on_front_plane_uncertainty,
+#                                                                                                                              tan_phi, tan_theta, unc_tan_phi, unc_tan_theta)
+#     phi, theta = np.arctan(tan_phi), np.arctan(tan_theta)
 
-    # Refractive indices set as default arguments in the Snell's law functions below
-    refracted_phi, refracted_theta = calculate_refracted_angles([phi, theta])
-    # original variables simply renamed with the refracted ones.
-    tan_phi, tan_theta = np.tan(refracted_phi), np.tan(refracted_theta) 
-    # original variables simply renamed with the refracted ones.
-    unc_tan_phi, unc_tan_theta = build_uncertainty_in_tangent_of_refracted_angles(tan_phi, tan_theta, unc_tan_phi, unc_tan_theta)
-    ############################ End of refraction corrections ##############################################################
+#     # Refractive indices set as default arguments in the Snell's law functions below
+#     refracted_phi, refracted_theta = calculate_refracted_angles([phi, theta])
+#     # original variables simply renamed with the refracted ones.
+#     tan_phi, tan_theta = np.tan(refracted_phi), np.tan(refracted_theta) 
+#     # original variables simply renamed with the refracted ones.
+#     unc_tan_phi, unc_tan_theta = build_uncertainty_in_tangent_of_refracted_angles(tan_phi, tan_theta, unc_tan_phi, unc_tan_theta)
+#     ############################ End of refraction corrections ##############################################################
     
-    camera_line_vectors = camera.build_line_vectors(camera_initial_position, tan_phi, tan_theta) # Builds refracted line equation, starting at position on scintillator face (not calibration board)
-    camera_line_vectors[1] *= -1 # Symbolic of the change in parameterisation of the refracted line (initial position parameterising line now on front plane, not back plane, so direction change)
-    unc_camera_directional_vector = camera.build_uncertainty_in_directional_vector(unc_tan_phi, unc_tan_theta)
+#     camera_line_vectors = camera.build_line_vectors(camera_initial_position, tan_phi, tan_theta) # Builds refracted line equation, starting at position on scintillator face (not calibration board)
+#     camera_line_vectors[1] *= -1 # Symbolic of the change in parameterisation of the refracted line (initial position parameterising line now on front plane, not back plane, so direction change)
+#     unc_camera_directional_vector = camera.build_uncertainty_in_directional_vector(unc_tan_phi, unc_tan_theta)
     
-    distance_of_closest_approach = calculate_distance_of_closest_approach(camera_line_vectors, beam_center_line_vectors)
-    print("Distance of closest approach between beamline and interpolated ray = {}".format(distance_of_closest_approach))
+#     distance_of_closest_approach = calculate_distance_of_closest_approach(camera_line_vectors, beam_center_line_vectors)
+#     print("Distance of closest approach between beamline and interpolated ray = {}".format(distance_of_closest_approach))
 
-    return calculate_intersection_point(camera_line_vectors, beam_center_line_vectors,
-                                        [unc_camera_intitial_position, unc_camera_directional_vector],
-                                        [unc_beam_center_initial_position, unc_beam_center_directional_vector]) 
+#     return calculate_intersection_point(camera_line_vectors, beam_center_line_vectors,
+#                                         [unc_camera_intitial_position, unc_camera_directional_vector],
+#                                         [unc_beam_center_initial_position, unc_beam_center_directional_vector]) 
     
 
-def extract_weighted_average_3d_physical_position(list_of_camera_objects, list_of_pixels_containing_point, 
-                                         list_of_pixel_uncertainties, scintillator_present: bool=False):
-    """
-    Using the weighted average stuff from the Year 1 data analysis course, find the average 3d position
-    using multiple camera perspective pairings.
-    """
+# def extract_weighted_average_3d_physical_position(list_of_camera_objects, list_of_pixels_containing_point, 
+#                                          list_of_pixel_uncertainties, scintillator_present: bool=False):
+#     """
+#     Using the weighted average stuff from the Year 1 data analysis course, find the average 3d position
+#     using multiple camera perspective pairings.
+#     """
     
-    possible_camera_combinations = list(itertools.combinations(list_of_camera_objects, 2))
-    possible_pixel_combinations = list(itertools.combinations(list_of_pixels_containing_point, 2))
-    possible_pixel_unc_combinations = list(itertools.combinations(list_of_pixel_uncertainties, 2))
-    num_of_combinations = len(possible_camera_combinations)
+#     possible_camera_combinations = list(itertools.combinations(list_of_camera_objects, 2))
+#     possible_pixel_combinations = list(itertools.combinations(list_of_pixels_containing_point, 2))
+#     possible_pixel_unc_combinations = list(itertools.combinations(list_of_pixel_uncertainties, 2))
+#     num_of_combinations = len(possible_camera_combinations)
     
-    intersection_point_array = []
-    unc_intersection_point_array = []
+#     intersection_point_array = []
+#     unc_intersection_point_array = []
     
-    for camera_combination, pixel_combination, unc_pixel_combination in zip(possible_camera_combinations, possible_pixel_combinations, possible_pixel_unc_combinations):
+#     for camera_combination, pixel_combination, unc_pixel_combination in zip(possible_camera_combinations, possible_pixel_combinations, possible_pixel_unc_combinations):
         
-        camera_1, camera_2 = camera_combination
-        pixel_coords_1, pixel_coords_2 = pixel_combination
-        unc_pixel_coords_1, unc_pixel_coords_2 = unc_pixel_combination
+#         camera_1, camera_2 = camera_combination
+#         pixel_coords_1, pixel_coords_2 = pixel_combination
+#         unc_pixel_coords_1, unc_pixel_coords_2 = unc_pixel_combination
         
-        line_intersection_point, unc_line_intersection_point = extract_3d_physical_position(camera_1, pixel_coords_1, camera_2, pixel_coords_2,
-                                                                                            unc_pixel_coords_1, unc_pixel_coords_2, scintillator_present=scintillator_present)
-        intersection_point_array.append(line_intersection_point)
-        unc_intersection_point_array.append(unc_line_intersection_point)
+#         line_intersection_point, unc_line_intersection_point = extract_3d_physical_position(camera_1, pixel_coords_1, camera_2, pixel_coords_2,
+#                                                                                             unc_pixel_coords_1, unc_pixel_coords_2, scintillator_present=scintillator_present)
+#         intersection_point_array.append(line_intersection_point)
+#         unc_intersection_point_array.append(unc_line_intersection_point)
     
-    if num_of_combinations == 1:
-        return line_intersection_point, unc_line_intersection_point
+#     if num_of_combinations == 1:
+#         return line_intersection_point, unc_line_intersection_point
     
-    intersection_point_array = np.array(intersection_point_array)
-    unc_intersection_point_array = np.array(unc_intersection_point_array)
+#     intersection_point_array = np.array(intersection_point_array)
+#     unc_intersection_point_array = np.array(unc_intersection_point_array)
     
-    numerator_array = np.sum(intersection_point_array / unc_intersection_point_array**2, axis=0)
-    denominator_array = np.sum(1 / unc_intersection_point_array**2, axis=0)
+#     numerator_array = np.sum(intersection_point_array / unc_intersection_point_array**2, axis=0)
+#     denominator_array = np.sum(1 / unc_intersection_point_array**2, axis=0)
     
-    weighted_mean_intersection_point = numerator_array / denominator_array
-    unc_weighted_mean_intersection_point = np.sqrt(1 /denominator_array)
+#     weighted_mean_intersection_point = numerator_array / denominator_array
+#     unc_weighted_mean_intersection_point = np.sqrt(1 /denominator_array)
     
-    return weighted_mean_intersection_point, unc_weighted_mean_intersection_point
+#     return weighted_mean_intersection_point, unc_weighted_mean_intersection_point
 
 
-def build_pixel_line_vectors_inside_scintillator(camera: AbstractCamera, occupied_pixel_on_camera: tuple[int, int], unc_pixel_on_camera: tuple[int, int]):
+# def build_pixel_line_vectors_inside_scintillator(camera: AbstractCamera, occupied_pixel_on_camera: tuple[int, int], unc_pixel_on_camera: tuple[int, int]):
     
-    tan_phi, tan_theta, physical_position_on_front_calibration_plane, physical_position_on_back_calibration_plane = camera.determine_angles_of_event(occupied_pixel_on_camera)
-    front_physical_position_homography_error, back_physical_position_homography_error = camera.calculate_uncertainty_on_homography(occupied_pixel_on_camera, unc_pixel_on_camera)
+#     tan_phi, tan_theta, physical_position_on_front_calibration_plane, physical_position_on_back_calibration_plane = camera.determine_angles_of_event(occupied_pixel_on_camera)
+#     front_physical_position_homography_error, back_physical_position_homography_error = camera.calculate_uncertainty_on_homography(occupied_pixel_on_camera, unc_pixel_on_camera)
     
-    # HACK: setting NaNS to 0.2 - the round about size of homography uncertainties, needs addressing properly.
-    front_physical_position_homography_error = np.nan_to_num(front_physical_position_homography_error, nan=0.2)
-    back_physical_position_homography_error = np.nan_to_num(back_physical_position_homography_error, nan=0.2)
+#     # HACK: setting NaNS to 0.2 - the round about size of homography uncertainties, needs addressing properly.
+#     front_physical_position_homography_error = np.nan_to_num(front_physical_position_homography_error, nan=0.2)
+#     back_physical_position_homography_error = np.nan_to_num(back_physical_position_homography_error, nan=0.2)
     
-    # NOTE: homography uncertainties would need converting to external coord system too!
-    physical_position_on_front_plane_uncertainty = calculate_uncertainty_in_physical_position(front_physical_position_homography_error, camera.origin_shift_uncertainty)
-    physical_position_on_back_plane_uncertainty = calculate_uncertainty_in_physical_position(back_physical_position_homography_error, camera.origin_shift_uncertainty)
+#     # NOTE: homography uncertainties would need converting to external coord system too!
+#     physical_position_on_front_plane_uncertainty = calculate_uncertainty_in_physical_position(front_physical_position_homography_error, camera.origin_shift_uncertainty)
+#     physical_position_on_back_plane_uncertainty = calculate_uncertainty_in_physical_position(back_physical_position_homography_error, camera.origin_shift_uncertainty)
     
-    unc_tan_phi, unc_tan_theta = camera.calculate_uncertainty_in_tangent_of_angles(physical_position_on_front_calibration_plane, physical_position_on_back_calibration_plane,
-                                                                                                    physical_position_on_front_plane_uncertainty, physical_position_on_back_plane_uncertainty,
-                                                                                                    tan_phi, tan_theta)
+#     unc_tan_phi, unc_tan_theta = camera.calculate_uncertainty_in_tangent_of_angles(physical_position_on_front_calibration_plane, physical_position_on_back_calibration_plane,
+#                                                                                                     physical_position_on_front_plane_uncertainty, physical_position_on_back_plane_uncertainty,
+#                                                                                                     tan_phi, tan_theta)
     
-    ####################### Modification to camera line because refraction is present ##################################################
-    camera_initial_position, unc_camera_intitial_position = camera.add_shift_to_front_position_due_to_refraction(physical_position_on_front_calibration_plane, physical_position_on_front_plane_uncertainty,
-                                                                                                                             tan_phi, tan_theta, unc_tan_phi, unc_tan_theta)
-    phi, theta = np.arctan(tan_phi), np.arctan(tan_theta)
+#     ####################### Modification to camera line because refraction is present ##################################################
+#     camera_initial_position, unc_camera_intitial_position = camera.add_shift_to_front_position_due_to_refraction(physical_position_on_front_calibration_plane, physical_position_on_front_plane_uncertainty,
+#                                                                                                                              tan_phi, tan_theta, unc_tan_phi, unc_tan_theta)
+#     phi, theta = np.arctan(tan_phi), np.arctan(tan_theta)
 
-    # Refractive indices set as default arguments in the Snell's law functions below
-    refracted_phi, refracted_theta = calculate_refracted_angles([phi, theta])
-    # original variables simply renamed with the refracted ones.
-    tan_phi, tan_theta = np.tan(refracted_phi), np.tan(refracted_theta) 
-    # original variables simply renamed with the refracted ones.
-    unc_tan_phi, unc_tan_theta = build_uncertainty_in_tangent_of_refracted_angles(tan_phi, tan_theta, unc_tan_phi, unc_tan_theta)
-    ############################ End of refraction corrections ##############################################################
+#     # Refractive indices set as default arguments in the Snell's law functions below
+#     refracted_phi, refracted_theta = calculate_refracted_angles([phi, theta])
+#     # original variables simply renamed with the refracted ones.
+#     tan_phi, tan_theta = np.tan(refracted_phi), np.tan(refracted_theta) 
+#     # original variables simply renamed with the refracted ones.
+#     unc_tan_phi, unc_tan_theta = build_uncertainty_in_tangent_of_refracted_angles(tan_phi, tan_theta, unc_tan_phi, unc_tan_theta)
+#     ############################ End of refraction corrections ##############################################################
     
-    camera_line_vectors = camera.build_line_vectors(camera_initial_position, tan_phi, tan_theta) # Builds refracted line equation, starting at position on scintillator face (not calibration board)
-    camera_line_vectors[1] *= -1 # Symbolic of the change in parameterisation of the refracted line (initial position parameterising line now on front plane, not back plane, so direction change)
-    unc_camera_directional_vector = camera.build_uncertainty_in_directional_vector(unc_tan_phi, unc_tan_theta)
+#     camera_line_vectors = camera.build_line_vectors(camera_initial_position, tan_phi, tan_theta) # Builds refracted line equation, starting at position on scintillator face (not calibration board)
+#     camera_line_vectors[1] *= -1 # Symbolic of the change in parameterisation of the refracted line (initial position parameterising line now on front plane, not back plane, so direction change)
+#     unc_camera_directional_vector = camera.build_uncertainty_in_directional_vector(unc_tan_phi, unc_tan_theta)
     
-    return camera_line_vectors, [unc_camera_intitial_position, unc_camera_directional_vector]
-
+#     return camera_line_vectors, [unc_camera_intitial_position, unc_camera_directional_vector]
 
 def main():
-    
     try:
         top_cam = AbstractCamera.setup(TOP_CAM_ID, 1)
         side_cam = AbstractCamera.setup(SIDE_CAM_ID, 1)
@@ -717,11 +711,9 @@ def main():
         red_brick_corner_side_cam_pixel = (1752, 881)
         unc_red_brick_corner_side_cam_pixel = (6, 6)
         
-        weighted_intersection_point, unc_weighted_intersection_point = extract_weighted_average_3d_physical_position([top_cam, side_cam], [red_brick_corner_top_cam_pixel,
-                                                                                                                                  red_brick_corner_side_cam_pixel],
-                                                                                                                                    [unc_red_brick_corner_top_cam_pixel,
-                                                                                                                                    unc_red_brick_corner_side_cam_pixel],
-                                                                                                                                    scintillator_present=False)
+        weighted_intersection_point, unc_weighted_intersection_point = extract_3d_physical_position(top_cam, red_brick_corner_top_cam_pixel, side_cam, red_brick_corner_side_cam_pixel,
+                                                                                                    unc_red_brick_corner_top_cam_pixel, unc_red_brick_corner_side_cam_pixel,
+                                                                                                    scintillator_present=False)
         
         print("Weighted Intersection Point of red brick corner is {0} +/- {1}".format(weighted_intersection_point, unc_weighted_intersection_point))
         return 0
