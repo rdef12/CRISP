@@ -1,4 +1,4 @@
-from typing import Optional, List
+from typing import Optional, List, Literal
 from datetime import datetime
 import numpy as np
 
@@ -34,7 +34,10 @@ class CameraSetupLink(SQLModel, table=True):
     setup: "Setup" = Relationship(back_populates="camera_links")
 
     #Calibration parameters
-# Far face
+# General homography
+    optical_axis: Optional[Literal["x", "y", "z"]] = Field(default=None)
+    depth_direction: Optional[Literal[1, -1]] = Field(default=None) # used to specify which side of the origin the cam is along optical axis
+# Far face homography
     #Calibration pattern type here too?
     far_face_calibration_pattern_size: Optional[List[int]] = Field(default=None, sa_column=Column(ARRAY(Integer)))
     far_face_calibration_pattern_type: Optional[str] = Field(default=None)
@@ -53,7 +56,7 @@ class CameraSetupLink(SQLModel, table=True):
     far_y_offset_unc: Optional[float] = Field(default=None)
     far_z_offset: Optional[float] = Field(default=None)
     far_z_offset_unc: Optional[float] = Field(default=None)
-# Near face
+# Near face homography
     near_face_calibration_pattern_size: Optional[List[int]] = Field(default=None, sa_column=Column(ARRAY(Integer)))
     near_face_calibration_pattern_type: Optional[str] = Field(default=None)
     near_face_calibration_spacing: Optional[List[float]] = Field(default=None, sa_column=Column(ARRAY(Integer)))

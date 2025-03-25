@@ -4,7 +4,7 @@ from src.database.database import engine
 from sqlmodel import Session, select, PickleType
 from sqlalchemy.orm.exc import NoResultFound
 import numpy as np
-from typing import List
+from typing import List, Literal
 import pickle
 
 from src.database.models import Camera, CameraSetupLink, Experiment, Setup
@@ -72,6 +72,24 @@ def get_cameras_in_experiment(experiment_id: int) -> list[Camera]:
 #             return result.near_face_calibration_photo
 #         else:
 #             raise ValueError(f"Near face calibration photo not found for camera with id {camera_id} and setup with id {setup_id}.")
+
+def get_camera_depth_direction(camera_id:int, setup_id:int) -> str:
+    with Session(engine) as session:
+        statement = select(CameraSetupLink).where(CameraSetupLink.camera_id == camera_id).where(CameraSetupLink.setup_id == setup_id)
+        result = session.exec(statement).one()
+        if result:
+            return result.depth_direction
+        else:
+            raise ValueError(f"Camera's depth direction not found for camera with id {camera_id} and setup with id {setup_id}.")
+        
+def get_camera_optical_axis(camera_id:int, setup_id:int) -> int:
+    with Session(engine) as session:
+        statement = select(CameraSetupLink).where(CameraSetupLink.camera_id == camera_id).where(CameraSetupLink.setup_id == setup_id)
+        result = session.exec(statement).one()
+        if result:
+            return result.optical_axis
+        else:
+            raise ValueError(f"Optical axis not found for camera with id {camera_id} and setup with id {setup_id}.")
 
 
 def get_far_face_calibration_pattern_size(camera_id:int, setup_id:int) -> tuple[int, int]:
@@ -315,6 +333,32 @@ def update_near_face_camera_settings_link(camera_id:int, setup_id:int, camera_se
 #     except Exception as e:
 #         raise RuntimeError(f"An error occurred: {str(e)}")
 
+def update_camera_optical_axis(camera_id:int, setup_id:int, camera_optical_axis: Literal["x", "y", "z"]):
+    try:
+        with Session(engine) as session:
+            statement = select(CameraSetupLink).where(CameraSetupLink.camera_id == camera_id).where(CameraSetupLink.setup_id == setup_id)
+            result = session.exec(statement).one()
+            result.optical_axis = camera_optical_axis
+            session.commit()
+            return {"message": f"Optical axis updated for camera with id {camera_id} and setup with id {setup_id}."}
+    except NoResultFound:
+        raise ValueError(f"No camera setup link found for camera_id={camera_id} and setup_id={setup_id}.")
+    except Exception as e:
+        raise RuntimeError(f"An error occurred: {str(e)}")
+    
+    
+def update_camera_depth_direction(camera_id:int, setup_id:int, camera_depth_direction: Literal[1, -1]):
+    try:
+        with Session(engine) as session:
+            statement = select(CameraSetupLink).where(CameraSetupLink.camera_id == camera_id).where(CameraSetupLink.setup_id == setup_id)
+            result = session.exec(statement).one()
+            result.depth_direction = camera_depth_direction
+            session.commit()
+            return {"message": f"Depth direction updated for camera with id {camera_id} and setup with id {setup_id}."}
+    except NoResultFound:
+        raise ValueError(f"No camera setup link found for camera_id={camera_id} and setup_id={setup_id}.")
+    except Exception as e:
+        raise RuntimeError(f"An error occurred: {str(e)}")
 
 def update_far_face_calibration_pattern_size(camera_id:int, setup_id:int, far_face_calibration_pattern_size: tuple[int, int]):
     try:
