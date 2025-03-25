@@ -111,7 +111,7 @@ export default function HomograpyCalibration() {
               ]
           };
           
-          const response = await fetch(`${BACKEND_URL}/take_homography_calibration_image/${id}/${username}/${plane}`, {
+          const response = await fetch(`${BACKEND_URL}/homography/take_homography_calibration_image/${id}/${username}/${plane}`, {
             method: "POST",
             body: JSON.stringify(requestBody),
             headers: { "Content-Type": "application/json" }
@@ -154,7 +154,7 @@ export default function HomograpyCalibration() {
             setShowImage(false);
             setIsLoading(true);
             setShowSaveButton(false);
-            const response = await fetch(`${BACKEND_URL}/flip_homography_origin_position/${id}/${username}/${plane}`, {
+            const response = await fetch(`${BACKEND_URL}/homography/flip_homography_origin_position/${id}/${username}/${plane}`, {
                 method: "POST",
                 body: JSON.stringify(transformState),
                 headers: { "Content-Type": "application/json" }
@@ -187,7 +187,7 @@ export default function HomograpyCalibration() {
       };
 
       const saveHomography = async () => {
-        const response = await fetch(`${BACKEND_URL}/perform_homography_calibration/${id}/${username}/${plane}`, {
+        const response = await fetch(`${BACKEND_URL}/homography/perform_homography_calibration/${id}/${username}/${plane}`, {
             method: "POST",
             body: JSON.stringify(transformState), // version before form submission?
             headers: { "Content-Type": "application/json" }

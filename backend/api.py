@@ -29,6 +29,7 @@ from src.routers import photo as photo_router
 from src.routers import video as video_router
 from src.routers import experiment as experiment_router
 from src.routers import beam_run as beam_run_router
+from src.routers import homography as homography_router
 
 from src.classes.JSON_request_bodies import request_bodies as rb
 
@@ -69,6 +70,7 @@ app.include_router(photo_router.router)
 app.include_router(video_router.router)
 app.include_router(experiment_router.router)
 app.include_router(beam_run_router.router)
+app.include_router(homography_router.router)
 
 @app.get("/get_pi_disk_space/{username}")
 def get_pi_disk_space_api(username: str):
@@ -163,78 +165,6 @@ def perform_distortion_calibration_api(setup_id, username):
     
     perform_distortion_calibration_from_database(setup_id, username)
     return {"message": "distortion calibration completed"}
-
-
-@app.post("/take_homography_calibration_image/{setup_id}/{username}/{plane_type}")
-def take_homography_calibration_image_api(setup_id: str, username: str, plane_type: str,
-                                          homographyImageSettings: CalibrationImageSettings):
-    try:
-        context = PhotoContext.GENERAL
-        pattern_type = "chessboard" #TODO - add setting to frontend as an option?
-        camera_id = cdi.get_camera_entry_with_username(username).id
-        
-        photo_bytes, _ = take_single_image(username, homographyImageSettings.to_image_settings(), context)
-        if photo_bytes:
-            match plane_type:
-                case "far":
-                    cdi.update_far_face_calibration_pattern_size(camera_id, setup_id, homographyImageSettings.calibrationGridSize)
-                    cdi.update_far_face_calibration_pattern_type(camera_id, setup_id, pattern_type)
-                    cdi.update_far_face_calibration_spacing(camera_id, setup_id, homographyImageSettings.calibrationTileSpacing)
-                    cdi.update_far_face_calibration_spacing_unc(camera_id, setup_id, homographyImageSettings.calibrationTileSpacingErrors)
-                case "near":
-                    cdi.update_near_face_calibration_pattern_size(camera_id, setup_id, homographyImageSettings.calibrationGridSize)
-                    cdi.update_near_face_calibration_pattern_type(camera_id, setup_id, pattern_type)
-                    cdi.update_near_face_calibration_spacing(camera_id, setup_id, homographyImageSettings.calibrationTileSpacing)
-                    cdi.update_near_face_calibration_spacing_unc(camera_id, setup_id, homographyImageSettings.calibrationTileSpacingErrors)
-            
-            response = test_grid_recognition_for_gui(username, setup_id, plane_type, photo_bytes=photo_bytes)
-        return JSONResponse(content=response)
-    except Exception as e:
-        print(f"Error taking homography calibration image: {e}")
-        
-
-@app.post("/perform_homography_calibration/{setup_id}/{username}/{plane_type}")
-def perform_homography_calibration_image_api(setup_id: str, username: str, plane_type: str,
-                                             transforms: ImagePointTransforms):
-    try:
-        # camera_id = cdi.get_camera_id_from_username(username)
-        # match plane_type:
-        #     case "far":
-        #         photo_bytes = cdi.get_far_face_calibration_photo(camera_id, setup_id)
-        #     case "near":
-        #         photo_bytes = cdi.get_near_face_calibration_photo(camera_id, setup_id)
-                
-        photo_id = 321
-        photo_bytes = cdi.get_photo_from_id(photo_id)
-                
-        status = perform_homography_calibration(username, setup_id, plane_type, transforms, photo_bytes=photo_bytes)
-    except Exception as e:
-        print(f"Error performing homography calibration: {e}")
-        status = False
-    
-    return {"status": status}
-    
-
-
-
-@app.post("/flip_homography_origin_position/{setup_id}/{username}/{plane_type}")
-def flip_homography_origin_position_api(setup_id: str, username: str, plane_type: str, 
-                                        transforms: ImagePointTransforms):
-    """
-    Image need not be taken again in this case
-    """
-    # camera_id = cdi.get_camera_id_from_username(username)
-    # match plane_type:
-    #     case "far":
-    #         photo_bytes = cdi.get_far_face_calibration_photo(camera_id, setup_id)
-    #     case "near":
-    #         photo_bytes = cdi.get_near_face_calibration_photo(camera_id, setup_id)
-    
-    photo_id = 321
-    photo_bytes = cdi.get_photo_from_id(photo_id)
-    
-    response = test_grid_recognition_for_gui(username, setup_id, plane_type, transforms, photo_bytes=photo_bytes)
-    return JSONResponse(content=response)
     
 
 @app.get("/stream/{username}")
