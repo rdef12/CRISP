@@ -132,7 +132,6 @@ async def add_distortion_calibration_settings(setup_camera_id: int, distortion_s
     cdi.update_distortion_calibration_pattern_size_non_z_dim(setup_camera_id, distortion_settings_body.distortion_calibration_pattern_size_non_z_dim)
     cdi.update_distortion_calibration_pattern_type(setup_camera_id, distortion_settings_body.distortion_calibration_pattern_type)
     cdi.update_distortion_calibration_pattern_spacing(setup_camera_id, distortion_settings_body.distortion_calibration_pattern_spacing)
-    print(f"\n\n\n\n I am here and am the setup camera id {setup_camera_id} \n\n\n")
     response = rb.SetupCameraDistortionCalibrationGetRequest(id=setup_camera_id, camera_id=camera_id)
     return response
 

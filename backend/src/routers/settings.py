@@ -12,7 +12,7 @@ from src.connection_functions import *
 from src.classes.JSON_request_bodies import request_bodies as rb
 
 
-from src.database.models import Camera
+from src.database.models import Camera, CameraSettingsLink, Settings
 
 from src.database.CRUD import CRISP_database_interaction as cdi
 
@@ -77,7 +77,23 @@ def update_scintillator_edges_camera_settings(setup_camera_id: int, settings_bod
     settings_id = cdi.add_settings(settings_body.frame_rate, settings_body.lens_position, settings_body.gain)
     return {"id": settings_id}
 
+@router.get("/beam-run/test/{beam_run_id}/camera/{camera_id}")
+def get_test_settings(beam_run_id: int, camera_id: int, response: Response):
+    with Session(engine) as session:
+        camera_settings_statement = (select(CameraSettingsLink)
+                                     .where(CameraSettingsLink.beam_run_id == beam_run_id)
+                                     .where(CameraSettingsLink.camera_id == camera_id))
+        all_camera_settings = session.exec(camera_settings_statement).all()
+        print(f"\n\n\n all camera settings - \n {all_camera_settings} \n\n")
+        all_settings = []
+        for camera_settings in all_camera_settings:
+            settings_id = camera_settings.settings_id
+            settings = session.get(Settings, settings_id)
+            all_settings += [settings]
 
+        response.headers["Content-Range"] = str(len(all_settings))
+
+        return all_settings
 
 
 @router.get("/{settings_id}")

@@ -5,8 +5,8 @@ import CustomAdminLayout from "./CustomLayout";
 import { ExperimentCreate } from "./CreateExperiment";
 import { ExperimentList } from "./ListExperiment";
 import { ShowExperiment } from "./experiment/ShowExperiment";
-import { ShowRealBeamRun } from "./experiment/beamRun/ShowRealBeamRun";
-import { ShowTestBeamRun } from "./experiment/beamRun/ShowTestBeamRun";
+import { ShowRealBeamRun } from "./experiment/beamRun/real/ShowRealBeamRun";
+import { ShowTestBeamRun } from "./experiment/beamRun/test/ShowTestBeamRun";
 
 const dataProvider = simpleRestProvider(`${process.env.NEXT_PUBLIC_BACKEND}`);
 

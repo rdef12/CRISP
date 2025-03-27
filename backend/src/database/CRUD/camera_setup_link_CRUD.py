@@ -42,8 +42,16 @@ def get_setup_camera_by_id(id: int) -> CameraSetupLink:
 
 def get_cameras_in_setup(setup_id: int) -> list[Camera]:
     with Session(engine) as session:
-        statement = select(Camera).join(Setup).where(Setup.id == setup_id)
+        # statement = select(Camera).join(Setup).where(Setup.id == setup_id)
+        # statement = select(Camera).where(Setup.id == setup_id)
+        statement = (
+                     select(Camera)
+                     .join(CameraSetupLink)#, CameraSetupLink.camera_id == Camera.id)
+                     .join(Setup)#, Setup.id == CameraSetupLink.setup_id)
+                     .where(Setup.id == setup_id)
+                    )
         cameras = session.exec(statement).all()
+        print(f"\n\n\n\n Cameras - {cameras} \n\n")
         return cameras if cameras else []
 
 

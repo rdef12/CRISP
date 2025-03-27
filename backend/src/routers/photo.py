@@ -10,6 +10,7 @@ from src.database.database import engine
 from src.network_functions import *
 from src.camera_functions import *
 from src.connection_functions import *
+from src.distortion_correction import distortion_calibration_test_for_gui, perform_distortion_calibration_from_database
 from src.classes.JSON_request_bodies import request_bodies as rb
 
 
@@ -51,6 +52,21 @@ def take_scintillator_edge_image(username: str, camera_settings_id:int, imageSet
     
     except Exception as e:
         raise Exception(f"Error trying to take a picture: {e}")
+    
+
+def take_distortion_calibration_image(username: str, camera_settings_id:int, imageSettings: ImageSettings, context: PhotoContext):
+    
+    try:
+        # Should have already validated the fact that Pis with these usernames are connected via SSH.
+        # Pi with this username will have been deleted after SSH check if it disconnected.
+        if (pi := Pi.get_pi_with_username(username)) is None:
+            raise Exception(f"No pi instantiated with the username {username}")
+        full_file_path = pi.camera.capture_image_without_making_settings(camera_settings_id, imageSettings, context)
+        photo_bytes = pi.camera.transfer_image_without_writing_to_database(imageSettings, camera_settings_id, full_file_path)
+        return photo_bytes
+    
+    except Exception as e:
+        raise Exception(f"Error trying to take a picture: {e}")
 
 def get_camera_and_settings_by_camera_settings_id(camera_settings_id: int) -> tuple[Camera, Settings]:
     with Session(engine) as session:
@@ -80,7 +96,7 @@ def take_picture(setup_camera_id: int):
     image_settings = ImageSettings(filename=filename, gain=gain, timeDelay=timeDelay, format=format)
     photo_id = take_scintillator_edge_image(camera.username, camera_settings_id, image_settings, PhotoContext.GENERAL)
     cdi.update_scintillator_edges_camera_settings_id(setup_camera_id, camera_settings_id)
-    return {"id": photo_id}
+    return {"id": photo_id} #TODO is this id going to cause problems???
 
 
 def get_image_bytestring_frame_size(image_byte_string: str):
@@ -116,24 +132,45 @@ def get_scintillator_edge_photo_data(setup_camera_id: int):
                                                  width=width)
     return photo_response
 
-# @router.get("/scintillator-edges/bytes/{setup_camera_id}")
-# def get_scintillator_edges_photo(setup_camera_id: int):
-#     camera_settings_id = None
-#     with Session(engine) as session:
-#         setup_camera = session.get(CameraSetupLink, setup_camera_id)
-#         camera_settings_id = setup_camera.scintillator_edges_photo_camera_settings_id
-#     try:
-#         photos = cdi.get_photo_from_camera_settings_link_id(camera_settings_id)
-#     except ValueError as e:
-#         print(f"{e}")
-#         null_photo_response = rb.ScintillatorEdgePhotoDataGet(id=None,
-#                                                               camera_settings_id=None,
-#                                                               height=None,
-#                                                               width=None)
-#     if len(photos) > 1:
-#         raise Exception("Multiple Scintillator Edge Pictures have been found")
-#     photo = photos[0]
-#     photo_base64 = base64.b64encode(photo.photo).decode("utf-8")
-#     response = {"id": 3,
-#                 "photo": photo_base64}
-#     return JSONResponse(content=response)
+
+
+@router.post("/distortion-calibration/{setup_camera_id}")
+def take_picture(setup_camera_id: int):
+    camera_settings_id = None
+    grid_size_z_dim = None
+    grid_size_non_z_dim = None
+    with Session(engine) as session:
+        setup_camera = session.get(CameraSetupLink, setup_camera_id)
+        camera_settings_id = setup_camera.distortion_calibration_camera_settings_link
+        grid_size_z_dim = setup_camera.distortion_calibration_pattern_size_z_dim
+        grid_size_non_z_dim = setup_camera.distortion_calibration_pattern_size_non_z_dim
+
+    camera, settings = get_camera_and_settings_by_camera_settings_id(camera_settings_id)
+    
+    photos = cdi.get_photo_from_camera_settings_link_id(camera_settings_id)
+    number_of_photos = len(photos)
+    current_photo_number = number_of_photos + 1
+
+    filename = f"distortion_calibration_{current_photo_number}"
+    gain = settings.gain #TODO Other settings need adding to ImageSettings
+    timeDelay = 1
+    format = "jpeg"
+    image_settings = ImageSettings(filename=filename, gain=gain, timeDelay=timeDelay, format=format)
+    photo_bytes = take_distortion_calibration_image(camera.username, camera_settings_id, image_settings, PhotoContext.GENERAL)
+    
+    if photo_bytes is None:
+        raise Exception
+    image = load_image_byte_string_to_opencv(photo_bytes)
+    calibration_results = distortion_calibration_test_for_gui(image,
+                                                                (grid_size_z_dim, grid_size_non_z_dim),
+                                                                image_count=current_photo_number)
+    photo_base64 = base64.b64encode(photo_bytes).decode("utf-8")
+
+    response = rb.DistortionCalibrationPhotoPost(id=setup_camera_id,
+                                                 photo=photo_base64,
+                                                 calibration_status=calibration_results["status"],
+                                                 message=calibration_results["message"])
+    
+
+    
+    return response
