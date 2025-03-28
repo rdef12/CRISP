@@ -1,16 +1,20 @@
-import { Datagrid, List, TextField, useGetList, useShowController, useRecordContext } from "react-admin";
+import { Datagrid, TextField, useGetList, useShowController, useRecordContext, ListBase, useDataProvider } from "react-admin";
 import { useParams } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { CreateTestSettings } from "./CreateTestSettings";
 import { EditTestSettings } from "./EditTestSettings";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { ListTestSettings } from "./ListTestSettings";
 
 type DialogMode = 'create' | 'edit' | null;
 
-const SettingsButton = () => {
+interface SettingsButtonProps {
+  onSave: () => void;
+}
+
+const SettingsButton = ({ onSave }: SettingsButtonProps) => {
   const record = useRecordContext();
   const [dialogMode, setDialogMode] = useState<DialogMode>(null);
   const [hasSettings, setHasSettings] = useState(false);
@@ -18,7 +22,7 @@ const SettingsButton = () => {
 
   const { data: selectedCameraSettings } = useGetList(
     record ? `settings/beam-run/test/${beamRunId}/camera/${record.id}` : '',
-    { meta: { enabled: !!record } }
+    // { meta: { enabled: !!record } }
   );
 
   useEffect(() => {
@@ -28,11 +32,19 @@ const SettingsButton = () => {
   }, [selectedCameraSettings]);
 
   const handleCloseDialog = () => {
+    console.log('SettingsButton: handleCloseDialog called');
     setDialogMode(null);
   };
 
   const handleSettingsClick = () => {
     setDialogMode(hasSettings ? 'edit' : 'create');
+  };
+
+  const handleSave = () => {
+    console.log('SettingsButton: handleSave called');
+    onSave();
+    handleCloseDialog();
+
   };
 
   return (
@@ -44,51 +56,61 @@ const SettingsButton = () => {
               {dialogMode === 'create' ? 'Create Test Settings' : 'Edit Test Settings'}
             </DialogTitle>
           </DialogHeader>
-          <ScrollArea className="h-[60vh]">
+          {/* <ScrollArea className="h-[60vh]"> */}
             {record && dialogMode === 'create' && (
-              <CreateTestSettings record={record} />
+              <CreateTestSettings record={record} onSave={handleSave} />
             )}
             {record && dialogMode === 'edit' && (
-              <EditTestSettings record={record} />
+              <EditTestSettings record={record} onSave={handleSave} />
             )}
-          </ScrollArea>
+          {/* </ScrollArea> */}
         </DialogContent>
       </Dialog>
 
-      <Button 
-        variant="outline" 
-        onClick={(e) => {
-          e.stopPropagation();
-          handleSettingsClick();
-        }}
-      >
-        {hasSettings ? 'Edit Settings' : 'Create Settings'}
-      </Button>
+      <div className="w-[140px]">
+        <Button 
+          variant="outline" 
+          onClick={(e) => {
+            e.stopPropagation();
+            handleSettingsClick();
+          }}
+          className="w-full"
+        >
+          {hasSettings ? 'Edit Settings' : 'Create Settings'}
+        </Button>
+      </div>
     </>
   );
 };
 
 export const ListCamerasInExperimentTest = () => {
+  // const dataProvider = useDataProvider();
+  const { experimentId } = useParams();
+  const [refreshTrigger, setRefreshTrigger] = useState(false);
   const { isPending, resource, record } = useShowController({ 
     resource: `experiment`, 
-    id: useParams().experimentId, 
+    id: experimentId, 
     queryOptions: { meta: { setup: "setup", cameras: "cameras" }}
   });
 
   if (isPending) return null;
 
+  const handleSave = () => {
+    setRefreshTrigger(!refreshTrigger);
+  };
+
   return (
-    <List resource={resource}>
+    <ListBase resource={resource}>
       <Datagrid 
         data={record.cameras} 
         bulkActionButtons={false}
-        expand={<ListTestSettings />}
+        expand={<ListTestSettings refreshTrigger={refreshTrigger} />}
       >
         <TextField source="username" />
         <TextField source="ip_address" />
-        <SettingsButton />
+        <SettingsButton onSave={handleSave} />
       </Datagrid>
-    </List>
+    </ListBase>
   )
 }
 

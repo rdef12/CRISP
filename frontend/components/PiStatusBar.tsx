@@ -5,6 +5,7 @@ import { useState, useEffect } from "react";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { ClientSidePiStatus, getPiStatuses } from "@/pi_functions/pi-status";
 import { Badge } from "@/components/ui/badge";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND;
 
@@ -16,7 +17,7 @@ export function PiStatusBar() {
   const fetchPiStatuses = async (isAlreadyFetching: boolean) => {
     try {
       const piArray = await getPiStatuses(isAlreadyFetching);
-      console.log("Fetched Pi statuses:", piArray);
+      // console.log("Fetched Pi statuses:", piArray);
       setPiStatuses(piArray);
 
       // Update switch states based on connection status
@@ -25,7 +26,7 @@ export function PiStatusBar() {
         initialSwitchStates[pi.username] = pi.connectionStatus;
       });
       setSwitchStates(initialSwitchStates);
-      console.log("Updated switch states:", initialSwitchStates);
+      // console.log("Updated switch states:", initialSwitchStates);
     } catch (error) {
       console.error("Failed to fetch Pi statuses", error);
     }
@@ -114,11 +115,11 @@ export function PiStatusBar() {
   }
 
   const getStatusBadge = (pi: ClientSidePiStatus, isConnecting: boolean) => {
-    console.log(`Status for ${pi.username}:`, {
-      connectionStatus: pi.connectionStatus,
-      switchState: switchStates[pi.username],
-      isConnecting
-    });
+    // console.log(`Status for ${pi.username}:`, {
+    //   connectionStatus: pi.connectionStatus,
+    //   switchState: switchStates[pi.username],
+    //   isConnecting
+    // });
 
     if (!pi.connectionStatus && isConnecting) {
       return <Badge variant="outline" className="bg-orange-100 text-orange-700 hover:bg-orange-100 border-orange-200">Connecting...</Badge>;
@@ -132,28 +133,31 @@ export function PiStatusBar() {
   return (
     <div className="bg-gray-100 p-4 border-b">
       <div className="max-w-7xl mx-auto">
-        <div className="flex flex-wrap gap-4">
-          {piStatuses.map((pi, index) => (
-            <div key={index} className="flex items-center space-x-2 bg-white px-3 py-2 rounded-md shadow-sm">
-              <HoverCard>
-                <HoverCardTrigger>
-                  <p className="text-sm text-green-500 hover:underline">{pi.username}</p>
-                </HoverCardTrigger>
-                <HoverCardContent>
-                  IP Address - {pi.IPAddress}
-                  <br />
-                  Camera Model - {pi.cameraModel}
-                </HoverCardContent>
-              </HoverCard>
-              <Switch
-                checked={switchStates[pi.username]}
-                onCheckedChange={(checked) => update_ssh(checked, pi)}
-                className="scale-75"
-              />
-              {getStatusBadge(pi, !pi.connectionStatus && switchStates[pi.username])}
-            </div>
-          ))}
-        </div>
+        <ScrollArea type="always" className="w-full whitespace-nowrap">
+          <div className="flex gap-4 p-2 pb-4">
+            {piStatuses.map((pi, index) => (
+              <div key={index} className="flex items-center space-x-2 bg-white px-3 py-2 rounded-md shadow-sm">
+                <HoverCard>
+                  <HoverCardTrigger>
+                    <p className="text-sm text-green-500 hover:underline">{pi.username}</p>
+                  </HoverCardTrigger>
+                  <HoverCardContent>
+                    IP Address - {pi.IPAddress}
+                    <br />
+                    Camera Model - {pi.cameraModel}
+                  </HoverCardContent>
+                </HoverCard>
+                <Switch
+                  checked={switchStates[pi.username]}
+                  onCheckedChange={(checked) => update_ssh(checked, pi)}
+                  className="scale-75"
+                />
+                {getStatusBadge(pi, !pi.connectionStatus && switchStates[pi.username])}
+              </div>
+            ))}
+          </div>
+          <ScrollBar orientation="horizontal" className="h-2 [&_[data-radix-scroll-area-scrollbar]]:!flex" />
+        </ScrollArea>
       </div>
     </div>
   );

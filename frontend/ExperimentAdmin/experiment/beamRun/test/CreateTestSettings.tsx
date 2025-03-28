@@ -8,15 +8,32 @@ interface TestSettingsData {
   gain_increment: number;
 }
 
-export const CreateTestSettings = ({ record }: { record: RaRecord}) => {
+interface CreateTestSettingsProps {
+  record: RaRecord;
+  onSave?: () => void;
+}
+
+export const CreateTestSettings = ({ record, onSave }: CreateTestSettingsProps) => {
   const { beamRunId } = useParams();
-  const { save, isPending } = useCreateController({ resource: `beam-run/test/${beamRunId}/camera/${record.id}`, redirect: false});
+  const { save, isPending } = useCreateController({ 
+    resource: `beam-run/test/${beamRunId}/camera/${record.id}`, 
+    redirect: false
+  });
   
   if (isPending) return null;
 
   const handleSubmit = async (data: Partial<TestSettingsData>) => {
-    if (save) {
-      await save(data);
+    console.log('CreateTestSettings: handleSubmit called');
+    try {
+      if (save) {
+        console.log('CreateTestSettings: save called');
+        const response = await save(data);
+        console.log('CreateTestSettings: save completed with response:', response);
+        onSave?.();
+        console.log('CreateTestSettings: onSave called');
+      }
+    } catch (error) {
+      console.error('Error saving settings:', error);
     }
   };
 

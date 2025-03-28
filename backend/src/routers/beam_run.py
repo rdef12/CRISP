@@ -95,7 +95,7 @@ def add_test_settings(beam_run_id: int, camera_id: int, test_settings_body: rb.C
 
 
 @router.get("/test/{beam_run_id}/camera/{camera_id}")
-def get_test_settings(beam_run_id: int, camera_id: int) -> rb.GetBeamRunSettingsTest:
+def get_test_settings_inputs(beam_run_id: int, camera_id: int) -> rb.GetBeamRunSettingsTest:
     with Session(engine) as session:
         camera_settings_statement = (select(CameraSettingsLink)
                                      .where(CameraSettingsLink.beam_run_id == beam_run_id)
