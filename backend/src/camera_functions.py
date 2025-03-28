@@ -153,7 +153,7 @@ def take_single_video_for_test_run(username: str, video_settings: rb.TestVideoSe
             raise Exception("Video script could not be accessed on pi")
         
         print("\n\n\nScript found!\n\n\n")
-        pi.camera.run_pi_video_script(video_settings)
+        pi.camera.run_test_run_script(video_settings)
         photo_id_array = pi.camera.transfer_video_frames(username, video_settings, camera_settings_link_id)
         return photo_id_array
         
