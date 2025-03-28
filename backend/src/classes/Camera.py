@@ -429,7 +429,7 @@ class Camera():
     # -raw flag added under the assumption that we always wanna save the raw files too
     # when the video script is called - TODO: could make a user option??
     command = (f"python video_script.py -dir {video_settings.directory_name} " +
-               F"-lp {lens_position} -raw" + 
+               f"-lp {lens_position} -raw" + 
               f"-num {video_settings.num_of_images} -c {video_settings.colour} " +
               f"-g {video_settings.gain} -f {video_settings.format} {log} " +
               f"-b {video_settings.bit_depth} -fr {video_settings.frame_rate}")
