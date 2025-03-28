@@ -235,37 +235,31 @@ def populate_camera_setup_table_homography_matrices_api():
     3) top far
     4) top near
     
-    Need to check what transformations are actually needed!
+    TODO - Need to check what transformations are actually needed!
     """
     
     # FAR SIDE CAM
     far_side_photo_bytes = cdi.get_photo_from_id(1)
-    transforms = ImagePointTransforms(horizontal_flip=False,
+    side_transforms = ImagePointTransforms(horizontal_flip=False,
                                       vertical_flip=False,
                                       swap_axes=False)
-    perform_homography_calibration("first_camera", 1, "far", transforms, photo_bytes=far_side_photo_bytes)
+    perform_homography_calibration("first_camera", 1, "far", side_transforms, photo_bytes=far_side_photo_bytes)
     
     # NEAR SIDE CAM
     near_side_photo_bytes = cdi.get_photo_from_id(2)
-    transforms = ImagePointTransforms(horizontal_flip=False,
-                                      vertical_flip=False,
-                                      swap_axes=False)
-    perform_homography_calibration("first_camera", 1, "near", transforms, photo_bytes=near_side_photo_bytes)
+    perform_homography_calibration("first_camera", 1, "near", side_transforms, photo_bytes=near_side_photo_bytes)
     
     
     # FAR TOP CAM
     far_top_photo_bytes = cdi.get_photo_from_id(3)
-    transforms = ImagePointTransforms(horizontal_flip=False,
+    top_transforms = ImagePointTransforms(horizontal_flip=False,
                                       vertical_flip=False,
                                       swap_axes=False)
-    perform_homography_calibration("second_camera", 1, "far", transforms, photo_bytes=far_top_photo_bytes)
+    perform_homography_calibration("second_camera", 1, "far", top_transforms, photo_bytes=far_top_photo_bytes)
     
     # NEAR TOP CAM
     near_top_photo_bytes = cdi.get_photo_from_id(4)
-    transforms = ImagePointTransforms(horizontal_flip=False,
-                                      vertical_flip=False,
-                                      swap_axes=False)
-    perform_homography_calibration("second_camera", 1, "near", transforms, photo_bytes=near_top_photo_bytes)
+    perform_homography_calibration("second_camera", 1, "near", top_transforms, photo_bytes=near_top_photo_bytes)
     return {"message": "done"}
 
 

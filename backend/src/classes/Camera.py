@@ -417,22 +417,22 @@ class Camera():
         self.close_sftp()
     
 
-  def run_pi_video_script(self, video_settings: rb.VideoSettings):
+  def run_main_run_script(self, main_video_settings: rb.MainVideoSettings):
     """
     If script not found on pi, transfer script from here to the pi.
     Then run SSH command with flags from rb.VideoSettings
     """
-    log = "-log" if video_settings.log == True else ""
+    log = "-log" if main_video_settings.log == True else ""
     
     lens_position = 5 # TODO - GET FROM DATABASE IN THE FUTURE
     
     # -raw flag added under the assumption that we always wanna save the raw files too
     # when the video script is called - TODO: could make a user option??
-    command = (f"python video_script.py -dir {video_settings.directory_name} " +
-               f"-lp {lens_position} -raw" + 
-              f"-num {video_settings.num_of_images} -c {video_settings.colour} " +
-              f"-g {video_settings.gain} -f {video_settings.format} {log} " +
-              f"-b {video_settings.bit_depth} -fr {video_settings.frame_rate}")
+    command = (f"python video_script.py -dir {main_video_settings.directory_name} " +
+            f"-lp {lens_position} -raw" + 
+            f"-c {main_video_settings.colour} -fr {main_video_settings.frame_rate} " +
+            f"-f {main_video_settings.format} {log} -b {main_video_settings.bit_depth} " +
+            f"main_run -g {main_video_settings.gain} -num {main_video_settings.num_of_images}")
     
     stdin, stdout, stderr = self.ssh_client.exec_command(command)
     error = stderr.read().decode().strip()
@@ -444,24 +444,54 @@ class Camera():
     else:
         raise Exception(f"Command failed with error:\n{error}")
     stdin.close()
+    return None
 
+  def run_test_run_script(self, test_video_settings: rb.TestVideoSettings):
+    """
+    If script not found on pi, transfer script from here to the pi.
+    Then run SSH command with flags from rb.VideoSettings
+    """
+    log = "-log" if test_video_settings.log == True else ""
+    
+    lens_position = 5 # TODO - GET FROM DATABASE IN THE FUTURE
+    
+    # -raw flag added under the assumption that we always wanna save the raw files too
+    # when the video script is called - TODO: could make a user option??
+    command = (f"python video_script.py -dir {test_video_settings.directory_name} " +
+            f"-lp {lens_position} -raw" + 
+            f"-c {test_video_settings.colour} -fr {test_video_settings.frame_rate} " +
+            f"-f {test_video_settings.format} {log} -b {test_video_settings.bit_depth} " +
+            f"test_run -min {test_video_settings.min_gain} -max {test_video_settings.max_gain} " +
+            f"-step {test_video_settings.gain_step}")
+    
+    stdin, stdout, stderr = self.ssh_client.exec_command(command)
+    error = stderr.read().decode().strip()
+    output_lines = stdout.readlines()
+    last_line = output_lines[-1].strip() if output_lines else "" # Script prints "Image capture complete" when done
+    
+    if "Image capture complete" in last_line:
+        print(f"Image capture finished on {self.username}.")
+    else:
+        raise Exception(f"Command failed with error:\n{error}")
+    stdin.close()
     return None
   
   
-  def create_camera_settings_link_for_video(self, username: str, video_settings: rb.VideoSettings):
+#   def create_camera_settings_link_for_video(self, username: str, video_settings: rb.VideoSettings):
       
-        #TODO obviously these will take variable values once model is fleshed out
-        lens_position = 5 # TODO - GET FROM DATABASE IN THE FUTURE
+#         #TODO obviously these will take variable values once model is fleshed out
+#         lens_position = 5 # TODO - GET FROM DATABASE IN THE FUTURE
         
-        added_settings = cdi.add_settings(frame_rate=5, lens_position=lens_position, gain=video_settings.gain)
-        settings_id = added_settings["id"]
-        camera_id = cdi.get_camera_id_from_username(self.username)
-        added_camera_settings_link = cdi.add_camera_settings_link(camera_id=camera_id, settings_id=settings_id)
-        camera_settings_link_id = added_camera_settings_link["id"]
-        return camera_settings_link_id
+#         added_settings = cdi.add_settings(frame_rate=5, lens_position=lens_position, gain=video_settings.gain)
+#         settings_id = added_settings["id"]
+#         camera_id = cdi.get_camera_id_from_username(self.username)
+#         added_camera_settings_link = cdi.add_camera_settings_link(camera_id=camera_id, settings_id=settings_id)
+#         camera_settings_link_id = added_camera_settings_link["id"]
+#         return camera_settings_link_id
   
   
-  def transfer_video_frames(self, username: str, video_settings: rb.VideoSettings): 
+  def transfer_video_frames(self, username: str, video_settings: rb.MainVideoSettings|rb.TestVideoSettings,
+                            camera_settings_link_id):
     try:
         self.open_sftp()
         # Alternatively, could print tar_archive path from script and extract from stdout
@@ -475,7 +505,6 @@ class Camera():
         remote_tar_path = os.path.join(video_settings.directory_name, tarball_name)
         print(f"\n\n\nFound tarball: {tarball_name}, proceeding with extraction...\n\n\n")
         
-        camera_settings_link_id = self.create_camera_settings_link_for_video(username, video_settings)
         photo_id_array = []
         with self.sftp_client.open(remote_tar_path, "rb") as remote_file:
             # Open the tarball as a stream (without loading the whole file into memory)

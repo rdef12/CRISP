@@ -66,26 +66,44 @@ def lens_position_type(value):
 def parse_arguments():
     """
     Update choices to restrict the valid range of these args entered by a user.
+    
+    NOTE - All parent parser args must go before subparser command!
+    Examples:
+    python video_script.py -dir directory_name main_run -num 2
     """
     parser = argparse.ArgumentParser(description="Control CRISP cameras over SSH with Python script")
 
     parser.add_argument("-lp", "--lens_position", type=lens_position_type, help="Lens position for focussing cam", default=0.0)
-    parser.add_argument("-g", "--gain", type=float, help="Gain Setting", default=1.0)
     parser.add_argument("-f", "--format", type=str, help="Image encoding type", default="jpeg")
-    parser.add_argument("-num", "--num_of_images", type=int, help="Number of images to take") # Using required breaks the -i arg.
     parser.add_argument("-b", "--bit_depth", type=int, choices=[8, 16], help="PNG bit depth", default=8)
-    parser.add_argument("-i", "--print_info", action="store_true", help="Flag for whether to print control information and quit script")
     parser.add_argument("-dir", "--directory_name", type=str, help="Name of the RELATIVE image directory to store images inside", required=True)
     parser.add_argument("-log", "--logging", action="store_true", help="Add logging info to a .log file in the image directory")
     parser.add_argument("-fr", "--frame_rate", type=float, help="Specify frame rate (will be converted to an exposure time)", default=1.0) # in fps
     parser.add_argument("-c", "--colour", type=str, choices=["r", "g", "b", "all"], help="Specify colour channel to save from image (one channel or all) ", default="all")
     parser.add_argument("-raw", "--save_dng", action="store_true", help="Save images in DNG format (in addition to the primary format to be transferred to local device)")
     
+    # Add after python <script_name> to specify the subcommand to run
+    subparsers = parser.add_subparsers(dest="command", help="sub-commands are (main / test)", required=True)
+    
+    # Sub arguments for main beam run
+    main_run_parser = subparsers.add_parser("main_run", help="Perform main beam run imaging")
+    main_run_parser.add_argument("-num", "--num_of_images", type=int, help="Number of images to take") # Using required breaks the -i arg.
+    main_run_parser.add_argument("-g", "--gain", type=float, help="Gain Setting", default=1.0)
+    main_run_parser.add_argument("-i", "--print_info", action="store_true", help="Flag for whether to print control information and quit script")
+    
+    # Sub arguments for test beam run
+    test_run_parser = subparsers.add_parser("test_run", help="Perform test beam run imaging")
+    test_run_parser.add_argument("-min", "--minimum_gain", type=float, required=True)
+    test_run_parser.add_argument("-max", "--maximum_gain", type=float, required=True)
+    test_run_parser.add_argument("-step", "--gain_increment", type=float, required=True)
+    
     args = parser.parse_args()
+    
     if (args.bit_depth == 16) and args.colour == "all":
             raise ValueError("Can only use bit depths higher than 8 when a single colour channel is inputted with -c flag.")
-    if not args.print_info and args.num_of_images is None:
-            raise ValueError("-num/--num_of_images is required if not using the -i flag.")
+    if args.command == "main_run":
+        if not args.print_info and args.num_of_images is None:
+                raise ValueError("-num/--num_of_images is required if not using the -i flag.")
     return args
 
 def convert_framerate_to_frame_duration(framerate):
@@ -172,7 +190,7 @@ def update_controls(picam2, args, frame_duration):
     return 1
 
 
-def take_images(picam2, args, directory_path, frame_duration):
+def take_main_run_images(picam2, args, directory_path, frame_duration):
     num_digits = len(str(args.num_of_images))
     
     if not update_controls(picam2, args, frame_duration):
@@ -244,15 +262,15 @@ def package_images_for_transfer(directory_path):
     logging.info(f"Tar archive created for {hostname}")
     return 0
 
-def main():
+
+def main_run(args):
     try:
-        args = parse_arguments()
         directory_path = check_directory_exists(args.directory_name)
         if args.logging:
             setup_logging(directory_path, args.directory_name)
             
         picam2 = Picamera2()
-        capture_config = picam2.create_still_configuration(raw={}, display=None)  # changed from picam2.preview_configuration
+        capture_config = picam2.create_still_configuration(raw={}, display=None)
         picam2.configure(capture_config)
     
         if args.print_info:
@@ -260,37 +278,116 @@ def main():
             logging.info("Available controls:", picam2.camera_controls)
             return 0
         
-        # Assuming contrast, sharpness, saturation of 1 means effects not applied.
         frame_duration = convert_framerate_to_frame_duration(args.frame_rate)
         picam2.set_controls({"AnalogueGain": args.gain,
-                            #  "AfMode": controls.AfModeEnum.Manual,
-                            #  "LensPosition": args.lens_position, 
-                             "ColourGains": (1.0, 1.0, 1.0),
-                            "NoiseReductionMode": 0,
-                            "Contrast": 1.0,
-                            "Saturation": 1.0,
-                            "Sharpness": 1.0,
-                            # "ColourTemperature": 5778,
-                            "FrameDurationLimits": (frame_duration, frame_duration),
-                            #             "AwbEnable": False,
-                            #             "AeEnable": False,
-                            #             "AeMeteringMode": 1,
-                            #             "AeExposureMode": 0,
-                            "ExposureTime": int(frame_duration/2),}) # Exposure time is a fraction of frame duration to prevent motion blur.
-                            
+                             "ColourGains": (1.0, 1.0),
+                             "NoiseReductionMode": 0,
+                             "Contrast": 1.0,
+                             "Saturation": 1.0,
+                             "Sharpness": 1.0,
+                             "FrameDurationLimits": (frame_duration, frame_duration),
+                             "ExposureTime": int(frame_duration / 2),})
         picam2.start()
-        ret = take_images(picam2, args, directory_path, frame_duration)
+        ret = take_main_run_images(picam2, args, directory_path, frame_duration)
         if ret:
             package_images_for_transfer(directory_path)
         print("Image capture complete")
         return 0
     
     except Exception as e:
-        logging.exception(f"\nError running picamera2 script: {e}\n")
+        logging.exception(f"\nError performing main run: {e}\n")
         return 1
     finally:
         if 'picam2' in locals():
             picam2.stop()
+
+
+def take_test_run_images(picam2, args, directory_path, frame_duration):
+
+    gains = np.linspace(args.minimum_gain, args.maximum_gain, 
+                    num=int(round((args.maximum_gain - args.minimum_gain) / args.gain_increment)) + 1)
+    
+    num_of_images = len(gains)
+    num_digits = len(str(num_of_images))
+
+    frames = [] 
+    for count, gain in enumerate(gains, start=1):
+        print(f"Capturing image {count}")
+        
+        picam2.set_controls({"AnalogueGain": gain})
+        picam2.start()
+
+        # Found this many discards was needed for digital gain to settle towards 1.0
+        for _ in range(10):
+            discarded_frame = picam2.capture_request()
+            discarded_frame.release()
+        
+        logging.info(f"Image {count} Metadata: {picam2.capture_metadata()}")
+        r = picam2.capture_request()
+        if not r:
+            logging.warning(f"Image {count} failed to capture!")
+            continue
+
+        if args.save_dng:
+            raw_path = f"{directory_path}/image_{count:0{num_digits}d}.dng"
+            r.save_dng(raw_path)
+        
+        # Convert the captured raw image data into a frame that can be processed.
+        frame = r.make_image("main")
+        frames.append(frame)
+        r.release()
+        picam2.stop() # ready for controls to be updated again
+    
+    # Images processed after all of the capturing is complete
+    for i, frame in enumerate(frames, 1):
+        image = process_frame(frame, args)
+        filename = f"image_{(i):0{num_digits}d}.{args.format}"  # Dynamically pad the index
+        image.save(f"{directory_path}/{filename}", format=args.format)
+    
+    logging.info(f"{num_of_images} images saved to directory.")
+    
+    return 1
+
+def test_run(args):
+    try:
+        directory_path = check_directory_exists(args.directory_name)
+        if args.logging:
+            setup_logging(directory_path, args.directory_name)
+            
+        picam2 = Picamera2()
+        capture_config = picam2.create_still_configuration(raw={}, display=None)
+        picam2.configure(capture_config)
+        
+        frame_duration = convert_framerate_to_frame_duration(args.frame_rate)
+        # Gain control moved to inside take_test_run_images function
+        picam2.set_controls({
+                            "ColourGains": (1.0, 1.0),
+                            "NoiseReductionMode": 0,
+                            "Contrast": 1.0,
+                            "Saturation": 1.0,
+                            "Sharpness": 1.0,
+                            "FrameDurationLimits": (frame_duration, frame_duration),
+                            "ExposureTime": int(frame_duration / 2)})
+        
+        ret = take_test_run_images(picam2, args, directory_path, frame_duration)
+        if ret:
+            package_images_for_transfer(directory_path)
+        print("Image capture complete")
+        return 0
+    
+    except Exception as e:
+        logging.exception(f"\nError performing test run: {e}\n")
+        return 1
+    finally:
+        if 'picam2' in locals():
+            picam2.stop()
+
+def main():
+    args = parse_arguments()
+    if args.command == 'main_run':
+        main_run(args)
+    if args.command == 'test_run':
+        test_run(args)
 
 if __name__ == "__main__":
     main()
