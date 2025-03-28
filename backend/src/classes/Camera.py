@@ -423,7 +423,13 @@ class Camera():
     Then run SSH command with flags from rb.VideoSettings
     """
     log = "-log" if video_settings.log == True else ""
+    
+    lens_position = 5 # TODO - GET FROM DATABASE IN THE FUTURE
+    
+    # -raw flag added under the assumption that we always wanna save the raw files too
+    # when the video script is called - TODO: could make a user option??
     command = (f"python video_script.py -dir {video_settings.directory_name} " +
+               F"-lp {lens_position} -raw" + 
               f"-num {video_settings.num_of_images} -c {video_settings.colour} " +
               f"-g {video_settings.gain} -f {video_settings.format} {log} " +
               f"-b {video_settings.bit_depth} -fr {video_settings.frame_rate}")
@@ -445,7 +451,9 @@ class Camera():
   def create_camera_settings_link_for_video(self, username: str, video_settings: rb.VideoSettings):
       
         #TODO obviously these will take variable values once model is fleshed out
-        added_settings = cdi.add_settings(frame_rate=5, lens_position=0.5, gain=video_settings.gain)
+        lens_position = 5 # TODO - GET FROM DATABASE IN THE FUTURE
+        
+        added_settings = cdi.add_settings(frame_rate=5, lens_position=lens_position, gain=video_settings.gain)
         settings_id = added_settings["id"]
         camera_id = cdi.get_camera_id_from_username(self.username)
         added_camera_settings_link = cdi.add_camera_settings_link(camera_id=camera_id, settings_id=settings_id)
