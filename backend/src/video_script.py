@@ -6,28 +6,15 @@ All these packages come with Pi5 by default. Ask users to checks Pis for these b
 Things to allow control over:
 - image dimensions (we want it to be max possible - is this default)
 
-Use arg parse to pass GUI inputs over SSH once the file has been installed
-on the Pis.
-
-CHECK THAT FILE EXTENSION ALONE ACTUALLY CHANGES ENCODING OR IF ANOTHER
-ARG IS NEEDED!
-
 NON-INFINTE EXPOSURE TIME - image taking ends early if you set an exposure time too high.
 
 TODO:
 ----
-Still processed images at this stage. Look into getting
-raw DNG or Bayer pattern.
-
-Important info to parse in metadata?
-
-Chromatic Abberation (CA) not accounted for by libcamera/picamera2/raw etc
+Chromatic Abberation (CA) may not accounted for by libcamera/picamera2/raw etc?
 Another bit of post-processing like distortion correction?
 
 If the beam data files are raw, and the homography images are not, we 
 may interfere with the homography validity (if the processing distorts the image in anyway)
-
-NOTE - I am not sure all cameras support 16 bit imaging! Therefore, may need to abandon that idea.
 
 I have a scintillator of known wavelength emission. Can I use Wien's law to work out the 
 effective temp of the scintillator (assuming the camera sensor works under the assumption 
@@ -42,20 +29,18 @@ manually set it in accordance with the wavelength of light.
 
 TODO: ADD A FLAG FOR IN CASE AWB IS NEEDED IN EXPERIMENT
 Setting flag recovers AWB and colour gains are omitted
-
-TODO - Recap noise in the images to see what types of dark frame/bias frames you can take to clean up the images.
-Make separate scripts for these.
 """
 import argparse
 from picamera2 import Picamera2, Metadata
 from PIL import Image
 import numpy as np
 import os
+import time
 import shutil
 import logging
 import tarfile
 import socket # get hostname without passing into SSH command
-import time
+from libcamera import controls
 
 def setup_logging(directory_path, relative_directory_name):
     
@@ -66,6 +51,16 @@ def setup_logging(directory_path, relative_directory_name):
         filemode='a'  # Use 'a' to append to the log file (not overwrite)
     )
     logging.info("Beginning to log...")
+    
+
+def lens_position_type(value):
+    try:
+        fvalue = float(value)
+    except ValueError:
+        raise argparse.ArgumentTypeError("Lens position must be a float.")
+    if not (0.0 <= fvalue <= 10.0):  # Adjust range as needed
+        raise argparse.ArgumentTypeError("Lens position must be between 0.0 and 10.0")
+    return fvalue
 
 
 def parse_arguments():
@@ -74,9 +69,9 @@ def parse_arguments():
     """
     parser = argparse.ArgumentParser(description="Control CRISP cameras over SSH with Python script")
 
-    # parser.add_argument("-l", "--lens_position", type=float, help="Lens position for focussing cam", required=True)
+    parser.add_argument("-lp", "--lens_position", type=lens_position_type, help="Lens position for focussing cam", default=0.0)
     parser.add_argument("-g", "--gain", type=float, help="Gain Setting", default=1.0)
-    parser.add_argument("-f", "--format", type=str, help="Image encoding type", default="png")
+    parser.add_argument("-f", "--format", type=str, help="Image encoding type", default="jpeg")
     parser.add_argument("-num", "--num_of_images", type=int, help="Number of images to take") # Using required breaks the -i arg.
     parser.add_argument("-b", "--bit_depth", type=int, choices=[8, 16], help="PNG bit depth", default=8)
     parser.add_argument("-i", "--print_info", action="store_true", help="Flag for whether to print control information and quit script")
@@ -84,6 +79,7 @@ def parse_arguments():
     parser.add_argument("-log", "--logging", action="store_true", help="Add logging info to a .log file in the image directory")
     parser.add_argument("-fr", "--frame_rate", type=float, help="Specify frame rate (will be converted to an exposure time)", default=1.0) # in fps
     parser.add_argument("-c", "--colour", type=str, choices=["r", "g", "b", "all"], help="Specify colour channel to save from image (one channel or all) ", default="all")
+    parser.add_argument("-raw", "--save_dng", action="store_true", help="Save images in DNG format (in addition to the primary format to be transferred to local device)")
     
     args = parser.parse_args()
     if (args.bit_depth == 16) and args.colour == "all":
@@ -120,9 +116,8 @@ def check_directory_exists(relative_dir):
     return full_directory_path
     
 
-def process_frame(frame, args):
+def process_frame(image, args):
     
-    image = Image.fromarray(frame)  # Convert NumPy array to a PIL image
     if image.mode == "RGBA":
         r, g, b, a = image.split()  # 4 channels: Red, Green, Blue, Alpha
     elif image.mode == "RGB":
@@ -152,7 +147,7 @@ def process_frame(frame, args):
 
 def update_controls(picam2, args, frame_duration):
     """
-    May be better practice and the time module to give
+    May be better practice and could use the time module to give
     an explicit max wait time.
     """
     
@@ -188,21 +183,49 @@ def take_images(picam2, args, directory_path, frame_duration):
     for i in range(1, args.num_of_images + 1):
         print(f"Capturing image {i}")
         logging.info(f"Image {i} Metadata: {picam2.capture_metadata()}")
-        frame = picam2.capture_array()  # Capture frame as NumPy array
+        
+        r = picam2.capture_request()
+        if not r:
+            logging.warning(f"Image {i} failed to capture!")
+            continue
+        
+        # This is a save operation during the capture process
+        # which slows its ability to capture images in accordance with the 
+        # inputted frame rate?
+        
+        # This is annoying but should not mess with "frame rate argument"
+        # The arg is really a misnomer because it is used to set exposure time - set constant in optimisation of gain!
+        # The image capture will use the same Exp time as the frame rate dictates,
+        # although the frame rate in practice will be lower!
+        
+        # Pis have limited memory so storing ~60 raw files in RAM is probably not a good idea...
+        if args.save_dng:
+            raw_path = f"{directory_path}/image_{i:0{num_digits}d}.dng"
+            r.save_dng(raw_path)
+        
+        # Convert the captured raw image data into a frame that can be processed.
+        frame = r.make_image("main")
         frames.append(frame)
+        r.release()
     
+    # Images processed after all of the capturing is complete
     for i, frame in enumerate(frames, 1):
         image = process_frame(frame, args)
         filename = f"image_{(i):0{num_digits}d}.{args.format}"  # Dynamically pad the index
-        image.save(f"{directory_path}/{filename}")
+        image.save(f"{directory_path}/{filename}", format=args.format)
     
     logging.info(f"{args.num_of_images} images saved to directory.")
     return 1
 
-def exclude_log(tarinfo):
-    if tarinfo.name.endswith(".log"):
+def exclude_log_and_raw(tarinfo):
+    """
+    dng files can be chosen to be saved, but will not be transferred to
+    local database over ethernet...
+    """
+    if tarinfo.name.endswith((".log", ".dng")):
         return None
     return tarinfo
+
 
 def package_images_for_transfer(directory_path):
     """
@@ -211,16 +234,13 @@ def package_images_for_transfer(directory_path):
     Log being excluded atm just so I don't have to deal with the logic of 
     considering which file is a .log and which are images in the backend
     """
-    # Can I use tar without gzip? (might not be time efficient to compress again when already PNG)
-    # Replaced "w:gz" with "w"
-    # Also, shouldn't risk compression that is lossy
     hostname = socket.gethostname()
     timestamp = time.strftime("%Y%m%d-%H%M%S") # Needs a unique name to not be overwritten on the backend
     archive_name = f"{hostname}_{timestamp}_video_frames"
     archive_location = f"{directory_path}/{archive_name}.tar"  # Full path to save the tar file
     
     with tarfile.open(archive_location, "w") as tar:
-        tar.add(directory_path, archive_name, filter=exclude_log) 
+        tar.add(directory_path, archive_name, filter=exclude_log_and_raw)
     logging.info(f"Tar archive created for {hostname}")
     return 0
 
@@ -232,21 +252,19 @@ def main():
             setup_logging(directory_path, args.directory_name)
             
         picam2 = Picamera2()
-        picam2.configure(picam2.preview_configuration)
-        
-        # E.g. my home cam cannot have a focus setting
+        capture_config = picam2.create_still_configuration(raw={}, display=None)  # changed from picam2.preview_configuration
+        picam2.configure(capture_config)
+    
         if args.print_info:
-            controls = picam2.camera_controls
-            logging.info("Available controls:", controls)
+            logging.info("Camera properties:", picam2.camera_properties)
+            logging.info("Available controls:", picam2.camera_controls)
             return 0
         
-        # To add in lab - focus
         # Assuming contrast, sharpness, saturation of 1 means effects not applied.
         frame_duration = convert_framerate_to_frame_duration(args.frame_rate)
-        
-        # Q: Is it not possible that I actually want some processing - so we don't have to process it ourselves.
-        # Assuming the processing is intended as a correction.
         picam2.set_controls({"AnalogueGain": args.gain,
+                            #  "AfMode": controls.AfModeEnum.Manual,
+                            #  "LensPosition": args.lens_position, 
                              "ColourGains": (1.0, 1.0, 1.0),
                             "NoiseReductionMode": 0,
                             "Contrast": 1.0,
@@ -259,7 +277,7 @@ def main():
                             #             "AeMeteringMode": 1,
                             #             "AeExposureMode": 0,
                             "ExposureTime": int(frame_duration/2),}) # Exposure time is a fraction of frame duration to prevent motion blur.
-        
+                            
         picam2.start()
         ret = take_images(picam2, args, directory_path, frame_duration)
         if ret:

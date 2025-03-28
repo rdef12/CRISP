@@ -21,22 +21,21 @@ import itertools
 SCINTILLATOR_REFRACTIVE_INDEX = 1.66
 UNC_SCINTILLATOR_REFRACTIVE_INDEX = 0
 
-TOP_CAM_ID = "A"
-SIDE_CAM_ID = "B"
-
 CAM_OPTICAL_AXIS = {"A": "y", "B": "x"}
 
 SCINTILLATOR_DEPTH = {"x": 38.8, "y": 99.8} # mm
 SCINTILLATOR_DEPTH_UNC = {"x": 0.1, "y": 0.1} # mm
 
 # These start out as 2D pixel coordinates, but are converted to 3D physical positions in Camera class
-ORIGIN_SHIFT = {"A": [1, 1], "B": [1, 1]} # mm # NEED TO EDIT
-ORIGIN_SHIFT_UNC = {"A": [0.5, 0.5], "B": [0.1, 0.1]} # mm
+NEAR_ORIGIN_SHIFT = {"A": [1, 1], "B": [1, 1]} # mm # NEED TO EDIT
+NEAR_ORIGIN_SHIFT_UNC = {"A": [0.5, 0.5], "B": [0.1, 0.1]} # mm
+FAR_ORIGIN_SHIFT = {"A": [1, 1], "B": [1, 1]} # mm # NEED TO EDIT
+FAR_ORIGIN_SHIFT_UNC = {"A": [0.5, 0.5], "B": [0.1, 0.1]} # mm
 
-CALIBRATION_BOARD_THICKNESS = {"A": 0.8, "B": 2.8} # mm
-CALIBRATION_BOARD_THICKNESS_UNC  = {"A": 0.1, "B": 0.1} # mm
-
-DEPTH_DIRECTION = {"A": 1, "B": 1}
+NEAR_CALIBRATION_BOARD_THICKNESS = {"A": 0.8, "B": 2.8} # mm
+FAR_CALIBRATION_BOARD_THICKNESS = {"A": 0.8, "B": 2.8} # mm
+NEAR_CALIBRATION_BOARD_THICKNESS_UNC  = {"A": 0.1, "B": 0.1} # mm
+FAR_CALIBRATION_BOARD_THICKNESS_UNC  = {"A": 0.1, "B": 0.1} # mm
 
 class BoxCoordinate(Enum):
     X = 0
@@ -85,13 +84,23 @@ class AbstractCamera(ABC):
         self.seen_scintillator_depth = SCINTILLATOR_DEPTH.get(CAM_OPTICAL_AXIS.get(camera_id))
         self.seen_scintillator_depth_uncertainty = SCINTILLATOR_DEPTH_UNC.get(CAM_OPTICAL_AXIS.get(camera_id))
         
-        self.origin_shift = ORIGIN_SHIFT.get(camera_id) # shift from origin of calibration pattern to the nearest corner of the calibration board (for shifting coordinate systems)
-        self.origin_shift_uncertainty = ORIGIN_SHIFT_UNC.get(camera_id)
-        self.calibration_board_thickness = CALIBRATION_BOARD_THICKNESS.get(camera_id)
-        self.calibration_board_thickness_unc = CALIBRATION_BOARD_THICKNESS_UNC.get(camera_id)
+        # self.origin_shift = ORIGIN_SHIFT.get(camera_id) # shift from origin of calibration pattern to the nearest corner of the calibration board (for shifting coordinate systems)
+        # self.origin_shift_uncertainty = ORIGIN_SHIFT_UNC.get(camera_id)
+        # self.calibration_board_thickness = CALIBRATION_BOARD_THICKNESS.get(camera_id)
+        # self.calibration_board_thickness_unc = CALIBRATION_BOARD_THICKNESS_UNC.get(camera_id)
+        
+        self.near_origin_shift = NEAR_ORIGIN_SHIFT.get(camera_id)
+        self.near_origin_shift_unc = NEAR_ORIGIN_SHIFT_UNC.get(camera_id)
+        self.far_origin_shift = FAR_ORIGIN_SHIFT.get(camera_id)
+        self.far_origin_shift_unc = FAR_ORIGIN_SHIFT_UNC.get(camera_id)
+        
+        self.near_calibration_board_thickness = NEAR_CALIBRATION_BOARD_THICKNESS.get(camera_id)
+        self.near_calibration_board_thickness_unc = NEAR_CALIBRATION_BOARD_THICKNESS_UNC.get(camera_id)
+        self.far_calibration_board_thickness = FAR_CALIBRATION_BOARD_THICKNESS.get(camera_id)
+        self.far_calibration_board_thickness_unc = FAR_CALIBRATION_BOARD_THICKNESS_UNC.get(camera_id)
         
         # New private method implemented in the subclasses
-        self.axes_mapping = self._map_axes(DEPTH_DIRECTION.get(camera_id))
+        self.axes_mapping = self._map_axes(cdi.get_camera_depth_direction(camera_id, setup_id))
         
     def map_image_coord_to_3d_point(self, horizontal_in_calibration_plane: float, 
                         vertical_in_calibration_plane: float, 
@@ -134,8 +143,6 @@ class AbstractCamera(ABC):
     def _calculate_uncertainty_in_tangent_of_angles(self, in_plane_displacement: float, near_plane_position_unc: float, far_plane_position_unc: float,
                                                   tan_phi: float, tan_theta: float):
         """
-        Note: the origin shift translation cancels out when taking the difference between the two planes. Therefore, it is not included in the position
-        uncertainties when propagating in quadrature because it does not influence the calculated in-plane displacement.
         """
 
         uncertainty_in_horizontal_position_difference = normal_addition_in_quadrature([near_plane_position_unc[0],
@@ -143,8 +150,14 @@ class AbstractCamera(ABC):
         uncertainty_in_vertical_position_difference = normal_addition_in_quadrature([near_plane_position_unc[1],
                                                                                      far_plane_position_unc[1]])
         
-        denominator = self.seen_scintillator_depth + self.calibration_board_thickness
-        unc_denominator = normal_addition_in_quadrature([self.scintillator_depth_uncertainty, self.calibration_board_thickness_unc])
+        if self.axes_mapping.depth_direction == -1:
+            denominator = self.seen_scintillator_depth
+            unc_denominator = self.seen_scintillator_depth_uncertainty
+        else:
+            denominator = self.seen_scintillator_depth + self.near_calibration_board_thickness - self.far_calibration_board_thickness
+            unc_denominator = normal_addition_in_quadrature([self.scintillator_depth_uncertainty,
+                                                             self.near_calibration_board_thickness_unc,
+                                                             self.far_calibration_board_thickness_unc])
         
         # Looking at horizontal displacement
         unc_tan_phi = fractional_addition_in_quadrature([in_plane_displacement[0], denominator], 
@@ -162,21 +175,25 @@ class AbstractCamera(ABC):
         # 4 cases for appropriate depths depending on plane_type and depth_direction
         match (plane_type, self.axes_mapping.depth_direction):
             case ("far", 1):
-                depth = 0
-                unc_depth = 0
+                depth = self.far_calibration_board_thickness # originally had said zero but with how the board is lined up, it does contribute!
+                unc_depth = self.far_calibration_board_thickness_unc
             case ("far", -1):
                 depth = self.seen_scintillator_depth # no calibration board shift
                 unc_depth = self.seen_scintillator_depth_uncertainty
             case ("near", 1):
-                depth = self.seen_scintillator_depth + self.calibration_board_thickness
-                unc_depth = normal_addition_in_quadrature([self.seen_scintillator_depth_uncertainty, self.calibration_board_thickness_unc])
+                depth = self.seen_scintillator_depth + self.near_calibration_board_thickness
+                unc_depth = normal_addition_in_quadrature([self.seen_scintillator_depth_uncertainty, self.near_calibration_board_thickness_unc])
             case ("near", -1):
-                depth = -1 * self.calibration_board_thickness 
-                unc_depth = self.calibration_board_thickness_unc
+                depth = 0 # used to be negative calibration board thickness when I did not appreciate the wooden blocks restricting calibration board placement
+                unc_depth = 0
 
-        # Below is the origin transformation! For this to work, the user-inputted origin shifts need to be signed correctly (although should always be positive)?
-        two_dimensional_position_relative_to_calibration_board_corner = np.array(physical_position_on_calibration_plane) + np.array(self.origin_shift) # mm units
-        two_dimensional_position_relative_to_calibration_board_corner_unc = self._calculate_calibration_plane_physical_position_error(two_dimensional_homography_errors, self.origin_shift_uncertainty)
+        if plane_type == "far":
+            # Below is the origin transformation! For this to work, the user-inputted origin shifts need to be signed correctly (although should always be positive)?
+            two_dimensional_position_relative_to_calibration_board_corner = np.array(physical_position_on_calibration_plane) + np.array(self.far_origin_shift) # mm units
+            two_dimensional_position_relative_to_calibration_board_corner_unc = self._calculate_calibration_plane_physical_position_error(two_dimensional_homography_errors, self.far_origin_shift_uncertainty)
+        else: # must be near
+            two_dimensional_position_relative_to_calibration_board_corner = np.array(physical_position_on_calibration_plane) + np.array(self.near_origin_shift) # mm units
+            two_dimensional_position_relative_to_calibration_board_corner_unc = self._calculate_calibration_plane_physical_position_error(two_dimensional_homography_errors, self.near_origin_shift_uncertainty)
         
         physical_position_in_box_coords = self.map_image_coord_to_3d_point(two_dimensional_position_relative_to_calibration_board_corner[0],
                                                                 two_dimensional_position_relative_to_calibration_board_corner[1], depth)
@@ -184,7 +201,11 @@ class AbstractCamera(ABC):
                                                                            two_dimensional_position_relative_to_calibration_board_corner_unc[1],
                                                                            unc_depth)
         
-        return physical_position_in_box_coords, physical_position_in_box_coords_uncertainty
+        return (physical_position_in_box_coords, 
+                physical_position_in_box_coords_uncertainty, 
+                two_dimensional_position_relative_to_calibration_board_corner, 
+                two_dimensional_position_relative_to_calibration_board_corner_unc
+        )
     
     
     def determine_in_plane_positions_and_angles_of_event(self, pixel_coords: tuple[float, float], unc_pixel_coords: tuple[float, float]):
@@ -199,15 +220,23 @@ class AbstractCamera(ABC):
         
         near_plane_two_dimensional_homography_error, far_plane_two_dimensional_position_homography_error = self._calculate_two_dimensional_homography_errors(pixel_coords, unc_pixel_coords)
         
-        physical_displacement_in_plane_coords = physical_position_on_far_calibration_plane - physical_position_on_near_calibration_plane
-        tan_phi, tan_theta = physical_displacement_in_plane_coords / (self.seen_scintillator_depth + self.calibration_board_thickness)
+        near_physical_position_in_box_coords, unc_near_physical_position_in_box_coords, near_2d_position, near_2d_unc = self._transform_to_box_coords(physical_position_on_near_calibration_plane.copy(), 
+                                                                                                                       near_plane_two_dimensional_homography_error, "near")
+        far_physical_position_in_box_coords, unc_far_physical_position_in_box_coords, far_2d_position, far_2d_unc = self._transform_to_box_coords(physical_position_on_far_calibration_plane.copy(), 
+                                                                                                                     far_plane_two_dimensional_position_homography_error, "far")
+        
+        physical_displacement_in_2d = far_2d_position - near_2d_position
+        if self.axes_mapping.depth_direction == -1:
+            tan_phi, tan_theta = physical_displacement_in_2d / self.seen_scintillator_depth
+        elif self.axes_mapping.depth_direction == 1:
+            tan_phi, tan_theta = physical_displacement_in_2d / (self.seen_scintillator_depth + self.near_calibration_board_thickness - self.far_calibration_board_thickness)
+        else:
+            raise ValueError("Somehow the depth direction has not been defined as either +/- 1")
+        
+        
+        physical_displacement_in_plane_coords = far_physical_position_in_box_coords - near_physical_position_in_box_coords
         unc_tan_phi, unc_tan_theta = self._calculate_uncertainty_in_tangent_of_angles(physical_displacement_in_plane_coords, near_plane_two_dimensional_homography_error,
                                                                                      far_plane_two_dimensional_position_homography_error, tan_phi, tan_theta)
-        
-        near_physical_position_in_box_coords, unc_near_physical_position_in_box_coords = self._transform_to_box_coords(physical_position_on_near_calibration_plane.copy(), 
-                                                                                                                       near_plane_two_dimensional_homography_error, "near")
-        far_physical_position_in_box_coords, unc_far_physical_position_in_box_coords = self._transform_to_box_coords(physical_position_on_far_calibration_plane.copy(), 
-                                                                                                                     far_plane_two_dimensional_position_homography_error, "far")
 
         return ([tan_phi, tan_theta], 
                 [unc_tan_phi, unc_tan_theta], 
@@ -256,15 +285,15 @@ class TopCamera(AbstractCamera):
                                                                 unrefracted_tan_phi: float, unrefracted_tan_theta: float,
                                                                 unc_unrefracted_tan_phi: float, unc_unrefracted_tan_theta: float):
         
-        shifted_box_coord_for_horizontal_image_coord = physical_position_on_front_plane[BoxCoordinate.Z] + (self.calibration_board_thickness * unrefracted_tan_phi)
-        shifted_box_coord_for_vertical_image_coord = physical_position_on_front_plane[BoxCoordinate.X] + (self.calibration_board_thickness * unrefracted_tan_theta)
+        shifted_box_coord_for_horizontal_image_coord = physical_position_on_front_plane[BoxCoordinate.Z] + (self.near_calibration_board_thickness * unrefracted_tan_phi)
+        shifted_box_coord_for_vertical_image_coord = physical_position_on_front_plane[BoxCoordinate.X] + (self.near_calibration_board_thickness * unrefracted_tan_theta)
         
-        unc_added_horizontal_term = fractional_addition_in_quadrature([self.calibration_board_thickness, unrefracted_tan_phi],
-                                                                      [self.calibration_board_thickness_unc, unc_unrefracted_tan_phi], 
-                                                                       self.calibration_board_thickness * unrefracted_tan_phi)
-        unc_added_vertical_term = fractional_addition_in_quadrature([self.calibration_board_thickness, unrefracted_tan_theta],
-                                                                      [self.calibration_board_thickness_unc, unc_unrefracted_tan_theta], 
-                                                                       self.calibration_board_thickness * unrefracted_tan_theta)
+        unc_added_horizontal_term = fractional_addition_in_quadrature([self.near_calibration_board_thickness, unrefracted_tan_phi],
+                                                                      [self.near_calibration_board_thickness_unc, unc_unrefracted_tan_phi], 
+                                                                       self.near_calibration_board_thickness * unrefracted_tan_phi)
+        unc_added_vertical_term = fractional_addition_in_quadrature([self.near_calibration_board_thickness, unrefracted_tan_theta],
+                                                                      [self.near_calibration_board_thickness_unc, unc_unrefracted_tan_theta], 
+                                                                       self.near_calibration_board_thickness * unrefracted_tan_theta)
         
         # +/- calibration board thickness shift depending on which side of the optical axis the camera is relative to the box's coord system origin
         match self.axes_mapping.depth_direction:
@@ -307,16 +336,16 @@ class SideCamera(AbstractCamera):
                                                                 unrefracted_tan_phi: float, unrefracted_tan_theta: float,
                                                                 unc_unrefracted_tan_phi: float, unc_unrefracted_tan_theta: float):
         
-        shifted_box_coord_for_horizontal_image_coord = physical_position_on_front_plane[BoxCoordinate.Z] + (self.calibration_board_thickness * unrefracted_tan_phi)
-        shifted_box_coord_for_vertical_image_coord = physical_position_on_front_plane[BoxCoordinate.Y] + (self.calibration_board_thickness * unrefracted_tan_theta)
+        shifted_box_coord_for_horizontal_image_coord = physical_position_on_front_plane[BoxCoordinate.Z] + (self.near_calibration_board_thickness * unrefracted_tan_phi)
+        shifted_box_coord_for_vertical_image_coord = physical_position_on_front_plane[BoxCoordinate.Y] + (self.near_calibration_board_thickness * unrefracted_tan_theta)
         
         
-        unc_added_horizontal_term = fractional_addition_in_quadrature([self.calibration_board_thickness, unrefracted_tan_phi],
-                                                                      [self.calibration_board_thickness_unc, unc_unrefracted_tan_phi], 
-                                                                       self.calibration_board_thickness * unrefracted_tan_phi)
-        unc_added_vertical_term = fractional_addition_in_quadrature([self.calibration_board_thickness, unrefracted_tan_theta],
-                                                                      [self.calibration_board_thickness_unc, unc_unrefracted_tan_theta], 
-                                                                       self.calibration_board_thickness * unrefracted_tan_theta)
+        unc_added_horizontal_term = fractional_addition_in_quadrature([self.near_calibration_board_thickness, unrefracted_tan_phi],
+                                                                      [self.near_calibration_board_thickness_unc, unc_unrefracted_tan_phi], 
+                                                                       self.near_calibration_board_thickness * unrefracted_tan_phi)
+        unc_added_vertical_term = fractional_addition_in_quadrature([self.near_calibration_board_thickness, unrefracted_tan_theta],
+                                                                      [self.near_calibration_board_thickness_unc, unc_unrefracted_tan_theta], 
+                                                                       self.near_calibration_board_thickness * unrefracted_tan_theta)
         
         match self.axes_mapping.depth_direction:
             case 1:
@@ -701,10 +730,11 @@ def extract_3d_physical_position(first_camera: AbstractCamera, occupied_pixel_on
     
 #     return camera_line_vectors, [unc_camera_intitial_position, unc_camera_directional_vector]
 
-def main():
+
+def perform_homography_pinpointing_between_camera_pair_for_GUI(setup_id, first_camera_id, second_camera_id):
     try:
-        top_cam = AbstractCamera.setup(TOP_CAM_ID, 1)
-        side_cam = AbstractCamera.setup(SIDE_CAM_ID, 1)
+        top_cam = AbstractCamera.setup(first_camera_id, setup_id)
+        side_cam = AbstractCamera.setup(second_camera_id, setup_id)
         
         red_brick_corner_top_cam_pixel = (1837, 2204)
         unc_red_brick_corner_top_cam_pixel = (4,4)
@@ -721,6 +751,3 @@ def main():
     except Exception as e:
         print("Error in homography pinpointing algorithm: {}".format(e))
         return 1
-    
-if __name__ == "__main__":
-    main()

@@ -43,8 +43,16 @@ class CalibrationImageSettings(ImageSettings):
     calibrationGridSize: List[int] = Field(..., min_items=2, max_items=2, description="Grid size as (rows, columns).")
     calibrationTileSpacing: List[float] = Field(..., min_items=1, description="Spacing between tiles in mm.")
     calibrationTileSpacingErrors: Optional[List[float]] = Field(None, max_items=2, description="Error in spacing between tiles in mm.")
+    calibrationBoardThickness: Optional[float] = Field(None, ge=0, description="Thickness of calibration board used in homography calibration")
+    calibrationBoardThicknessError: Optional[float] = Field(None, ge=0, description="Error in thickness of calibration board used in homography calibration")
+    # calibrationOriginShift: Optional[List[float]] = Field(None, max_items=2, description="Shift from calibration pattern origin to corner of board used in homography calibration")
+    # calibrationOriginShiftErrors: Optional[List[float]] = Field(None, max_items=2, description="Error in shift from calibration pattern origin to corner of board used in homography calibration")
+    zDirectedShift: Optional[float] = Field(None, description="Z Shift from calibration pattern origin to corner of board used in homography calibration")
+    zDirectedShiftError: Optional[float] = Field(None, description="Error in Z Shift from calibration pattern origin to corner of board used in homography calibration")
+    nonZDirectedShift: Optional[float] = Field(None, description="Non-Z Shift from calibration pattern origin to corner of board used in homography calibration")
+    nonZDirectedShiftError: Optional[float] = Field(None, description="Error in non-Z Shift from calibration pattern origin to corner of board used in homography calibration")
     
-     # Validator to ensure grid dimensions are greater than 0
+    # Validator to ensure grid dimensions are greater than 0
     @validator("calibrationGridSize", each_item=True)
     def check_positive_grid_dimensions(cls, v):
         if v <= 1:
@@ -59,12 +67,20 @@ class CalibrationImageSettings(ImageSettings):
 
     # Validator to ensure grid size errors are greater than 0 if provided
     @validator("calibrationTileSpacingErrors", pre=True, always=True)
-    def check_positive_errors(cls, v):
+    def check_positive_tile_spacing_errors(cls, v):
         if v is None:
             return v 
         if any(error <= 0 for error in v):
             raise ValueError("All grid spacing errors must be greater than 0.")
         return v
+    
+    # @validator("calibrationOriginShiftErrors", pre=True, always=True)
+    # def check_positive_origin_shift_errors(cls, v):
+    #     if v is None:
+    #         return v 
+    #     if any(error <= 0 for error in v):
+    #         raise ValueError("All origin shift errors must be greater than 0.")
+    #     return v
     
     def to_image_settings(self) -> ImageSettings:
         return ImageSettings(
