@@ -43,7 +43,6 @@ export const EditTestSettings = ({ record, onSave }: EditTestSettingsProps) => {
   };
 
   return(
-    <ScrollArea>
     <Form record={editRecord} onSubmit={handleSubmit}>
       <NumberInput source="frame_rate" />
       <NumberInput source="lowest_gain" />
@@ -52,6 +51,5 @@ export const EditTestSettings = ({ record, onSave }: EditTestSettingsProps) => {
       {/* Other camera settings here */}
       <Button> Save </Button>
     </Form>
-    </ScrollArea>
   )
 } 

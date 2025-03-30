@@ -1,6 +1,5 @@
 import { useParams } from "react-router-dom"
-import { Datagrid, DateField, SimpleShowLayout, TextField, useShowController } from "react-admin"
-import { Card } from "@/components/ui/card"
+import { DateField, SimpleShowLayout, TextField, useShowController } from "react-admin"
 
 export const ShowSetupSummary = () => {
   const { experimentId } = useParams()

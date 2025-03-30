@@ -1,14 +1,14 @@
-import { Datagrid, TextField, useGetList, useShowController, useRecordContext, ListBase } from "react-admin";
+import { useEffect, useState } from "react";
+import { Datagrid, ListBase, TextField, useGetList, useRecordContext, useShowController } from "react-admin";
 import { useParams } from "react-router-dom";
-import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { CreateTestSettings } from "./CreateTestSettings";
-import { EditTestSettings } from "./EditTestSettings";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { ListTestSettings } from "./ListTestSettings";
+import { CreateRealSettings } from "./CreateRealSettings";
+import { EditRealSettings } from "./EditRealSettings";
+import { Button } from "@/components/ui/button";
+import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 
-type DialogMode = 'create' | 'edit' | null;
+type DialogMode = 'create' | 'view' | null;
 
 interface SettingsButtonProps {
   onSave: () => void;
@@ -17,10 +17,11 @@ interface SettingsButtonProps {
 const SettingsButton = ({ onSave }: SettingsButtonProps) => {
   const record = useRecordContext();
   const [dialogMode, setDialogMode] = useState<DialogMode>(null);
+  const [isEditing, setIsEditing] = useState(false);
   const [hasSettings, setHasSettings] = useState(false);
   const { beamRunId } = useParams();
 
-  const { data: selectedCameraSettings } = useGetList(
+  const { data: selectedCameraSettings, refetch } = useGetList(
     record ? `settings/beam-run/test/${beamRunId}/camera/${record.id}` : '',
     // { meta: { enabled: !!record } }
   );
@@ -34,17 +35,25 @@ const SettingsButton = ({ onSave }: SettingsButtonProps) => {
   const handleCloseDialog = () => {
     console.log('SettingsButton: handleCloseDialog called');
     setDialogMode(null);
+    setIsEditing(false);
   };
 
   const handleSettingsClick = () => {
-    setDialogMode(hasSettings ? 'edit' : 'create');
+    setDialogMode(hasSettings ? 'view' : 'create');
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     console.log('SettingsButton: handleSave called');
+    // Refresh the settings data
+    await refetch();
     onSave();
     handleCloseDialog();
+  };
 
+  const getDialogTitle = () => {
+    if (dialogMode === 'create') return 'Create Settings';
+    if (dialogMode === 'view') return isEditing ? 'Edit Settings' : 'View Settings';
+    return '';
   };
 
   return (
@@ -53,37 +62,55 @@ const SettingsButton = ({ onSave }: SettingsButtonProps) => {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
-              {dialogMode === 'create' ? 'Create Test Settings' : 'Edit Test Settings'}
+              {getDialogTitle()}
             </DialogTitle>
           </DialogHeader>
           <ScrollArea className="h-[60vh]">
             {record && dialogMode === 'create' && (
-              <CreateTestSettings record={record} onSave={handleSave} />
+              <CreateRealSettings record={record} onSave={handleSave} />
             )}
-            {record && dialogMode === 'edit' && (
-              <EditTestSettings record={record} onSave={handleSave} />
+            {record && dialogMode === 'view' && (
+              <EditRealSettings 
+                record={record} 
+                onSave={handleSave} 
+                onEditStateChange={setIsEditing}
+              />
             )}
           </ScrollArea>
         </DialogContent>
       </Dialog>
 
       <div className="w-[140px]">
-        <Button 
-          variant="outline" 
-          onClick={(e) => {
-            e.stopPropagation();
-            handleSettingsClick();
-          }}
-          className="w-full"
-        >
-          {hasSettings ? 'Edit Settings' : 'Create Settings'}
-        </Button>
+        <HoverCard>
+          <HoverCardTrigger asChild>
+            <Button 
+              variant={hasSettings ? "outline" : "red"}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleSettingsClick();
+              }}
+              className="w-full"
+            >
+              {hasSettings ? 'View Settings' : 'Create Settings'}
+            </Button>
+          </HoverCardTrigger>
+          <HoverCardContent variant={hasSettings ? "default" : "red"} className="w-80">
+            <div className="space-y-1">
+              <h4 className="text-sm font-semibold">Camera Settings</h4>
+              <p className="text-sm">
+                {hasSettings 
+                  ? <>View or modify the current camera settings</>
+                  : <>No tested camera settings found for these beam parameters.<br/> Perform a test run or manually input here. </>}
+              </p>
+            </div>
+          </HoverCardContent>
+        </HoverCard>
       </div>
     </>
   );
 };
 
-export const ListCamerasInExperimentTest = ({ dataTaken } : { dataTaken: boolean }) => {
+export const ListCamerasInExperimentReal = ({ dataTaken } : { dataTaken: boolean }) => {
   // const dataProvider = useDataProvider();
   const { experimentId } = useParams();
   const [refreshTrigger, setRefreshTrigger] = useState(false);
@@ -102,7 +129,8 @@ export const ListCamerasInExperimentTest = ({ dataTaken } : { dataTaken: boolean
       <Datagrid 
         data={record.cameras} 
         bulkActionButtons={false}
-        expand={<ListTestSettings refreshTrigger={refreshTrigger} dataTaken={dataTaken} />}
+        rowClick={false}
+        hover={false}
       >
         <TextField source="username" />
         <TextField source="ip_address" />
@@ -115,7 +143,6 @@ export const ListCamerasInExperimentTest = ({ dataTaken } : { dataTaken: boolean
       <Datagrid 
       data={record.cameras} 
       bulkActionButtons={false}
-      expand={<ListTestSettings refreshTrigger={refreshTrigger} dataTaken={dataTaken} />}
       >
         <TextField source="username" />
         <TextField source="ip_address" />

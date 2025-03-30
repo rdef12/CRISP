@@ -1,4 +1,4 @@
-import { BooleanField, Datagrid, DateField, Identifier, List, Pagination, RaRecord, TextField } from "react-admin";
+import { BooleanField, Datagrid, DateField, Identifier, List, NumberField, Pagination, RaRecord, TextField } from "react-admin";
 import { useParams } from "react-router-dom";
 
 export const ListBeamRun = () => {
@@ -14,6 +14,8 @@ export const ListBeamRun = () => {
     <List resource={`beam-run/${experimentId}`}>
       <Datagrid rowClick={redirectOnRowClick}>
         <TextField source="beam_run_number"/>
+        <NumberField source="ESS_beam_energy" label="ESS Beam Energy"/>
+        <NumberField source="beam_current" />
         <DateField source="datetime_of_run" showTime={true} showDate={false}/>
         <BooleanField source="is_test"/>
       </Datagrid>
