@@ -86,21 +86,29 @@ def find_descending_order_eigen_info(square_matrix):
 
 
 def generate_householder_matrix(eigen_values, eigen_vectors, exclude_eigen_values_beyond=8): # Set to 8 to exclude only the smallest Eval and Evec
-    house_holder_matrix = np.zeros((9,9))
     
+    temp_house_holder_matrix = np.zeros((9,9))
     for count, eigen_vector in enumerate(eigen_vectors):
         if count >= exclude_eigen_values_beyond:
             continue
         
-        # HACK / TODO / NOTE
-        # Multiplying eigenvectors by order of magnitude, then divide at the end of computation.
-        # This factor actually cancels out!
+        temp_house_holder_matrix += np.outer(eigen_vector, eigen_vector)/eigen_values[count]
         
-        eigen_vector *= 10**28 # very large factor to address 10**-24 eigenvalues?
-        
-        house_holder_matrix += np.outer(eigen_vector, eigen_vector)/eigen_values[count]
-        print("Generated Householder Matrix:", house_holder_matrix)
+    min_abs_value = np.min(np.abs(temp_house_holder_matrix))
+    smallest_abs_order_of_magnitude = np.floor(np.log10(min_abs_value))
+    print("\n\n\nOrder of Magnitude of Minimum Absolute Value in Householder Matrix:", smallest_abs_order_of_magnitude)
     
+    # Repeat calculation but with this scale factor applied to elimiate precision errors for small float values.
+    house_holder_matrix = np.zeros((9,9))
+    for count, eigen_vector in enumerate(eigen_vectors):
+        if count >= exclude_eigen_values_beyond:
+            continue
+    
+        # Multiplying eigenvectors by huge scale factor, and this factor actually cancels out!
+        # Should be no risk of going above the upper floating point precision limit (HACK)
+        eigen_vector *= (-1 * smallest_abs_order_of_magnitude + 4) # factor of 10,000 overboard to be safe
+        house_holder_matrix += np.outer(eigen_vector, eigen_vector)/eigen_values[count]
+
     return house_holder_matrix
 
 
@@ -252,13 +260,13 @@ def generate_world_point_uncertainty(image_point, x_pixel_uncertainty, y_pixel_u
     covariance_from_homography = calculate_homography_position_covariance(image_point, homography_matrix, homography_covariance)   
     covariance_from_pixel_selection = calculate_covariance_from_pixel_selection(image_point, homography_matrix, x_pixel_uncertainty, y_pixel_uncertainty)
     
-    print("Covariance from Homography:", covariance_from_homography)
-    print("Covariance from Pixel Selection:", covariance_from_pixel_selection)
+    # print("Covariance from Homography:", covariance_from_homography)
+    # print("Covariance from Pixel Selection:", covariance_from_pixel_selection)
     
     world_point_covariance = covariance_from_homography + covariance_from_pixel_selection
-    print("World Point Covariance Matrix:", world_point_covariance)
+    #print("World Point Covariance Matrix:", world_point_covariance)
     x_variance, y_variance = world_point_covariance[0, 0],  world_point_covariance[1, 1]
-    print("X Variance:", x_variance, "Y Variance:", y_variance)
+    #print("X Variance:", x_variance, "Y Variance:", y_variance)
     x_uncertainty, y_uncertainty = np.sqrt(x_variance), np.sqrt(y_variance)
     
     return [x_uncertainty, y_uncertainty]

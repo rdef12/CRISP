@@ -86,7 +86,6 @@ def test_homography_grid_identified(image: np.ndarray, calibration_pattern: str,
         image = undistort_image(camera_matrix, distortion_coefficients, frame_size, image=image)
         
     grey_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-
     match calibration_pattern:
         case "chessboard":
             image_grid_positions, ret = find_image_grid_positions_chessboard(grey_image, calibration_grid_size)
