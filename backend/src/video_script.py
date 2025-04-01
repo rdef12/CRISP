@@ -36,6 +36,7 @@ from PIL import Image
 import numpy as np
 import os
 import time
+import json
 import shutil
 import logging
 import tarfile
@@ -93,6 +94,7 @@ def parse_arguments():
     
     # Sub arguments for test beam run
     test_run_parser = subparsers.add_parser("test_run", help="Perform test beam run imaging")
+    test_run_parser.add_argument('--gain_list', type=json.loads, help='Pass a list as JSON')
     test_run_parser.add_argument("-min", "--minimum_gain", type=float, required=True)
     test_run_parser.add_argument("-max", "--maximum_gain", type=float, required=True)
     test_run_parser.add_argument("-step", "--gain_increment", type=float, required=True)
@@ -350,6 +352,10 @@ def take_test_run_images(picam2, args, directory_path, frame_duration):
 
 def test_run(args):
     try:
+        # if args.gain_list:
+        #     print(args.gain_list, type(args.gain_list))
+        # return
+        
         directory_path = check_directory_exists(args.directory_name)
         if args.logging:
             setup_logging(directory_path, args.directory_name)

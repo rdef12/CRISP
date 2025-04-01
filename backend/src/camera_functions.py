@@ -130,7 +130,7 @@ def take_multiple_videos_for_main_run(request_body: Dict[str, rb.MainVideoSettin
 
     with ThreadPoolExecutor() as executor:
         # The executor is the key, the username is the value in the futures dict
-        futures = {executor.submit(take_single_video_for_main_run, username, settings): username 
+        futures = {executor.submit(take_single_video_for_main_run, username, settings, camera_settings_link_id): username 
                    for (username, settings), camera_settings_link_id in zip(request_body.items(), camera_settings_link_id_array)}
         
         for future in futures:
@@ -173,7 +173,7 @@ def take_multiple_videos_for_test_run(request_body: Dict[str, rb.TestVideoSettin
 
     with ThreadPoolExecutor() as executor:
         # The executor is the key, the username is the value in the futures dict
-        futures = {executor.submit(take_single_video_for_test_run, username, settings): username 
+        futures = {executor.submit(take_single_video_for_test_run, username, settings, camera_settings_link_id): username 
                    for (username, settings), camera_settings_link_id in zip(request_body.items(), camera_settings_link_id_array)}
         
         for future in futures:
