@@ -39,12 +39,12 @@ def get_photo_from_camera_settings_link_id(camera_settings_link_id: int): # This
         statement = select(Photo).where(Photo.camera_settings_link_id == camera_settings_link_id)
         photos = session.exec(statement).all()
         return_photos = []
-        if photos:
-            for photo in photos:
-                return_photos += [photo]
-            return return_photos
-        else:
-            raise ValueError(f"Photo with camera_settings_link_id: {camera_settings_link_id} cannot be a found.")
+        # if photos:
+        for photo in photos:
+            return_photos += [photo]
+        return return_photos
+        # else:
+            # raise ValueError(f"Photo with camera_settings_link_id: {camera_settings_link_id} cannot be a found.")
 
 
 def get_photo_from_id(photo_id: int) -> bytes:

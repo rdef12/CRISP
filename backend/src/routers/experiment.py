@@ -58,8 +58,6 @@ async def get_cameras(experiment_id: int, response: Response) -> list[Camera]:
 
 
 
-
-
 # @router.get("/scintillator-edges/{setup_camera_id}")
 # async def read_setup_camera(setup_camera_id: int) -> rb.SetupCameraScintillatorEdgeRequest:
 #     setup_camera = cdi.get_setup_camera_by_id(setup_camera_id)

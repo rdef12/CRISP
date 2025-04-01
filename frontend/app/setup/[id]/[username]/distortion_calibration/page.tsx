@@ -63,8 +63,8 @@ const areGridSpacingsComplete = (formData: CalibrationFormProps): boolean => {
         .then((status) => {
           if (!status) {
             clearInterval(intervalId);
-            alert(`Connection to ${username} failed!`);
-            router.push("/");  // Redirect to "/" after disconnect warning
+            // alert(`Connection to ${username} failed!`);
+            // router.push("/");  // Redirect to "/" after disconnect warning
           }
         })
         .catch((error) => {

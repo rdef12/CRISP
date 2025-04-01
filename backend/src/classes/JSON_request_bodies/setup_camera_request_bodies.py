@@ -24,6 +24,25 @@ class SetupCameraScintillatorEdgeRequest(BaseModel):
     vertical_end: Optional[int]
 
 
+class SetupCameraDistortionCalibrationGetRequest(BaseModel):
+    id: int
+    camera_id: int
+    setup_id: Optional[int] = None
+    distortion_calibration_camera_settings_link: Optional[int] = None
+    settings: Optional[Settings] = None
+    do_distortion_calibration: Optional[bool] = None
+    distortion_calibration_pattern_size_z_dim: Optional[int] = None
+    distortion_calibration_pattern_size_non_z_dim: Optional[int] = None
+    distortion_calibration_pattern_type: Optional[str] = None
+    distortion_calibration_pattern_spacing: Optional[float] = None
+
+class SetupCameraDistortionCalibrationPostRequest(BaseModel):
+    gain: float
+    distortion_calibration_pattern_size_z_dim: int
+    distortion_calibration_pattern_size_non_z_dim: int
+    distortion_calibration_pattern_type: str
+    distortion_calibration_pattern_spacing: float
+
 class SetupCameraPatchRequest(BaseModel):
 # Far face
     #Calibration pattern type here too?
@@ -50,12 +69,19 @@ class SetupCameraPatchRequest(BaseModel):
     near_y_offset_unc: Optional[float] = None
     near_z_offset: Optional[float] = None
     near_z_offset_unc: Optional[float] = None
-# Others
+# Scintillator edges
     scintillator_edges_photo_camera_settings_id: Optional[int] = None
     horizontal_scintillator_start: Optional[int] = None
     horizontal_scintillator_end: Optional[int] = None
-
     vertical_scintillator_start: Optional[int] = None
     vertical_scintillator_end: Optional[int] = None
-
+# Distortion calibration
+    do_distortion_calibration: Optional[bool] = None
+    distortion_calibration_camera_settings_link: Optional[int] = None
+    distortion_calibration_pattern_size_z_dim: Optional[int] = None
+    distortion_calibration_pattern_size_non_z_dim: Optional[int] = None
+    distortion_calibration_pattern_spacing: Optional[float] = None
+    distortion_calibration_pattern_type: Optional[str] = None
+# Others
+    lens_position: Optional[float] = None
     # e_log_entry: #How is this going to be stored, surely theres a better way than just a string?

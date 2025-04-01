@@ -22,9 +22,9 @@ matplotlib = "^3.10.0"
 [tool.poetry.dev-dependencies]
 watchfiles = "^1.0.4"
 
-[tool.poetry.group.dev.dependencies]
-sphinx = "^8.2.3"
-sphinx-autodoc-typehints = "^3.1.0"
+# [tool.poetry.group.dev.dependencies] #TODO COMMENTED TO WORK FOR ROBIN 30/03/25
+# sphinx = "^8.2.3"
+# sphinx-autodoc-typehints = "^3.1.0"
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
