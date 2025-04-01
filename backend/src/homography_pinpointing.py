@@ -1,8 +1,4 @@
 # -*- coding: utf-8 -*-
-"""
-TODO: Instead of just using the mid point of closest points as the intersection point, could this be a
-weighted average of the two closest points?
- """
 from src.calibration_functions import *
 from src.uncertainty_functions import *
 from src.viewing_functions import *
@@ -534,10 +530,17 @@ def calculate_intersection_point(first_equation_line_vectors, second_equation_li
          
         # 5 standard deviations because operating on a huge number of beam center coords across all image sets, it becomes quite possible that one component has an error exceeding 5 STD.
         raise Exception("\n\nThe seperation of two closest points is not consistent within 5 standard deviation of each of these points.")
+    
+      # NEW VERSION - uses weighted intersection point of closest points to determine the event's pinpointed location
+      numerator = (closest_point_on_second_line_to_first_line/ unc_closest_point_on_second_line_to_first_line**2) + (closest_point_on_first_line_to_second_line / unc_closest_point_on_first_line_to_second_line**2) 
+      denominator = 1 / unc_closest_point_on_second_line_to_first_line**2 + 1 / unc_closest_point_on_first_line_to_second_line**2
+      weighted_mean_intersection_point = numerator/ denominator
+      unc_weighted_mean_intersection_point = np.sqrt(1 / denominator)
+      return weighted_mean_intersection_point, unc_weighted_mean_intersection_point
 
-      midpoint_between_closest_points_of_the_lines = (closest_point_on_second_line_to_first_line + closest_point_on_first_line_to_second_line ) / 2 # this is the "intersection" point
-      unc_intersection_point = 0.5 * np.array([normal_addition_in_quadrature([unc_closest_point_on_second_line_to_first_line[i], unc_closest_point_on_first_line_to_second_line[i]]) for i in range(3)])
-      return midpoint_between_closest_points_of_the_lines, unc_intersection_point
+    #   midpoint_between_closest_points_of_the_lines = (closest_point_on_second_line_to_first_line + closest_point_on_first_line_to_second_line ) / 2 # this is the "intersection" point
+    #   unc_intersection_point = 0.5 * np.array([normal_addition_in_quadrature([unc_closest_point_on_second_line_to_first_line[i], unc_closest_point_on_first_line_to_second_line[i]]) for i in range(3)])
+    #   return midpoint_between_closest_points_of_the_lines, unc_intersection_point
     
     
     # This is a limit that refuses to give an intersection point if the distance of closest approach is too large - even if consistent due to large closest point uncertainties.
