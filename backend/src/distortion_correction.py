@@ -102,7 +102,7 @@ def calculate_reprojection_error(obj_points_array, img_points_array,
     return total_error
 
 
-def distortion_calibration_test_for_gui(image, chessboard_grid_size, chessboard_tile_spacing, image_count=None,
+def distortion_calibration_test_for_gui(image, chessboard_grid_size, image_count=None,
                                         criteria=CRITERIA):
         
         grey_image = cv.cvtColor(image, cv.COLOR_BGR2GRAY)

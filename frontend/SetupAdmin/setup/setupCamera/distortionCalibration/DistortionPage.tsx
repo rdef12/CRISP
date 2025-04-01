@@ -19,16 +19,12 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover"
 import { useRouter, useParams } from "next/navigation"
-import { CalibrationImageSettings, CalibrationFormProps } from "@/pi_functions/interfaces";
+import { CalibrationImageSettings, CalibrationFormProps, LogMessage } from "@/pi_functions/interfaces";
 import { getPiStatus } from "@/pi_functions/pi-status";
 
 // In the future, I would like to import a script to allow
 // latex to be rendered within the browser.
 
-interface LogMessage {
-  status: boolean;
-  message: string;
-}
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND
 
@@ -67,8 +63,8 @@ const areGridSpacingsComplete = (formData: CalibrationFormProps): boolean => {
         .then((status) => {
           if (!status) {
             clearInterval(intervalId);
-            alert(`Connection to ${username} failed!`);
-            router.push("/");  // Redirect to "/" after disconnect warning
+            // alert(`Connection to ${username} failed!`);
+            // router.push("/");  // Redirect to "/" after disconnect warning
           }
         })
         .catch((error) => {
@@ -91,22 +87,22 @@ const areGridSpacingsComplete = (formData: CalibrationFormProps): boolean => {
     }));
   };
 
-  const handleKeyDown = (e: KeyboardEvent) => {
-    if (e.key === "Enter") {
-      // Find the form element and trigger its submit
-      const form = document.getElementById("calibrationForm") as HTMLFormElement;
-      form?.requestSubmit(); // This will trigger the form's onSubmit handler
-    }
-  };
+  // const handleKeyDown = (e: KeyboardEvent) => {
+  //   if (e.key === "Enter") {
+  //     // Find the form element and trigger its submit
+  //     const form = document.getElementById("calibrationForm") as HTMLFormElement;
+  //     form?.requestSubmit(); // This will trigger the form's onSubmit handler
+  //   }
+  // };
 
-  useEffect(() => {
-    // Add event listener when the component mounts
-    window.addEventListener("keydown", handleKeyDown);
-    // Clean up the event listener when the component unmounts
-    return () => {
-      window.removeEventListener("keydown", handleKeyDown);
-    };
-  }, []); // Empty dependency array ensures this runs only once when the component mounts
+  // useEffect(() => {
+  //   // Add event listener when the component mounts
+  //   window.addEventListener("keydown", handleKeyDown);
+  //   // Clean up the event listener when the component unmounts
+  //   return () => {
+  //     window.removeEventListener("keydown", handleKeyDown);
+  //   };
+  // }, []); // Empty dependency array ensures this runs only once when the component mounts
   
 
   const takeImage = async (formData: CalibrationFormProps) => {
@@ -117,7 +113,7 @@ const areGridSpacingsComplete = (formData: CalibrationFormProps): boolean => {
       setShowSaveButton(false);
       const requestBody: CalibrationImageSettings = {filename: "temp_distortion_image", 
                                                     gain: formData.gain,
-                                                    timeDelay: 500,
+                                                    timeDelay: 1,
                                                     format: "jpeg",
                                                     calibrationGridSize: [parseInt(formData.xGridDimension.toString()), 
                                                                           parseInt(formData.yGridDimension.toString())],

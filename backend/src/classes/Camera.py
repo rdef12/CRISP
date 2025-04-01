@@ -381,6 +381,71 @@ class Camera():
         except Exception as e:
             raise Exception(f"Error while closing SFTP connection: {e}")
         
+
+
+
+  def transfer_image_without_writing_to_database(self, imageSettings: ImageSettings, camera_settings_link_id: int, full_file_path: str):
+    """
+    Returns the image bytes and metadata instead of copying the file locally.
+    Provides detailed error handling.
+    """
+    print("\n\n\n\n\n The transfer has begun")
+    remote_image_path = f"{full_file_path}.{imageSettings.format}"
+    print(f"Remote image path: {remote_image_path}")
+    remote_photo_meta_data_path = f"{full_file_path}.{imageSettings.meta_data_format}"
+    try:
+        self.open_sftp()
+
+    except paramiko.SSHException as e:
+        print("f")
+        raise Exception(f"SSH error while opening SFTP connection: {e}")
+    except paramiko.AuthenticationException:
+        print("g")
+        raise Exception("Authentication failed, please verify your credentials.")
+    except paramiko.SFTPError as e:
+        print("h")
+        raise Exception(f"SFTP error: {e}")
+    except Exception as e:
+        print("i")
+        raise Exception(f"Unexpected error while establishing SFTP connection: {e}")
+    
+    try:
+        with self.sftp_client.file(remote_image_path, "rb") as remote_file1:#, \
+            #  self.sftp_client.file(remote_photo_meta_data_path, "rb") as remote_file2:
+            photo_bytes = remote_file1.read()
+            if not photo_bytes:
+                raise ValueError(f"Failed to read image data from {remote_image_path}, photo_bytes is empty")
+    
+            # # photo_meta_data_bytes = remote_file2.read()
+            # added_photo = cdi.update_photo(camera_settings_link_id=camera_settings_link_id, photo=photo_bytes)#, photo_metadata=photo_meta_data_bytes)
+            # # added_photo = cdi.add_photo_for_testing(camera_settings_link_id=camera_settings_link_id, photo=photo_bytes)
+            # added_photo_id = added_photo["id"]
+            # print("\n\n\n\n\n I have finished this try alright")
+        return photo_bytes
+    
+    except FileNotFoundError as e:
+        print("a")
+        raise Exception(f"Error: One or more files not found on the remote server at path: {e}")
+    except PermissionError as e:
+        print("b")
+        raise Exception(f"Error: Permission denied while accessing one or more files: {e}")
+    except paramiko.SSHException as e:
+        print("c")
+        raise Exception(f"SSH error while transferring the image: {e}")
+    except IOError as e:
+        print("d")
+        raise Exception(f"IO error occurred while reading one or more of the files: {e}")
+    except Exception as e:
+        print("e")
+        raise Exception(f"Unexpected error while reading the image: {e}")
+
+    finally:
+        try:
+            self.close_sftp()
+        except Exception as e:
+            raise Exception(f"Error while closing SFTP connection: {e}")
+
+
   def check_video_script_exists(self):
     """
     Need to store video script file in the root, then store the 
@@ -599,5 +664,3 @@ class Camera():
     except Exception as e:
       print(f"Streaming error: {e}")
       return False
-  
-  
