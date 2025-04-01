@@ -28,7 +28,7 @@ export const CreateRealSettings = ({ record, onSave }: CreateRealSettingsProps) 
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [formData, setFormData] = useState<CameraSettings | null>(null);
   const { save } = useCreateController({
-    resource: `settings/beam-run/real/${beamRunId}/camera/${record.id}`,
+    resource: `beam-run/real/${beamRunId}/camera/${record.id}`,
     redirect: false
   });
 

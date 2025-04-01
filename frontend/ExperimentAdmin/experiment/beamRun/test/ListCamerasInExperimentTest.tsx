@@ -7,6 +7,7 @@ import { CreateTestSettings } from "./CreateTestSettings";
 import { EditTestSettings } from "./EditTestSettings";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ListTestSettings } from "./ListTestSettings";
+import { MoveToTestRunButton } from "./MoveToTestRunButton";
 
 type DialogMode = 'create' | 'edit' | null;
 
@@ -108,6 +109,7 @@ export const ListCamerasInExperimentTest = ({ dataTaken } : { dataTaken: boolean
         <TextField source="ip_address" />
         <SettingsButton onSave={handleSave} />
       </Datagrid>
+      <MoveToTestRunButton/>
     </ListBase>
   )
   if (dataTaken) return (

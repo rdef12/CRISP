@@ -12,12 +12,25 @@ class SettingsPutRequest(BaseModel):
     lens_position: float
     gain: float
 
-class BeamRunSettingsRequest(BaseModel):
+class TestBeamRunSettingsRequest(BaseModel):
     id: int
+    camera_settings_id: int
     frame_rate: int
     lens_position: float
     gain: float
     is_optimal: Optional[bool] = None
+
+class RealBeamRunSettingsRequest(BaseModel):
+    id: int
+    frame_rate: int
+    lens_position: float
+    gain: float
+    has_settings: bool
+    is_optimal: Optional[bool] = None
+
+
+class UpdateIsOptimalRequest(BaseModel):
+    id: int
 
 class RealBeamRunSettingsPost(BaseModel):
     frame_rate: int

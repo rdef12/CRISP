@@ -43,6 +43,10 @@ class CreateBeamRunSettingsTest(BaseModel):
     highest_gain: float
     gain_increment: float
 
+class CreateBeamRunSettingsReal(BaseModel):
+    frame_rate: int
+    gain: float
+
 class GetBeamRunSettingsTest(BaseModel):
     id: int # camera_id
     frame_rate: int
@@ -50,6 +54,16 @@ class GetBeamRunSettingsTest(BaseModel):
     highest_gain: float
     gain_increment: float
 
+class GetBeamRunSettingsReal(BaseModel):
+    id: int # camera_id
+    frame_rate: int
+    gain: float
+    lens_position: float
+
+
 class CreateBeamRunSettingsTestResponse(BaseModel):
     id: int #camera_id
     time_to_take_photos: int #seconds
+
+class CreateBeamRunSettingsRealResponse(BaseModel):
+    id: int #camera_id

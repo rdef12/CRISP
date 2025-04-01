@@ -68,9 +68,8 @@ import { useEffect, useState } from "react";
 
 export const TakeTestData = () => {
   const { beamRunId } = useParams();
-  const { save, saving } = useCreateController({ resource: `beam-run/test/take-data/${beamRunId}` })
-
-  if (saving) return null;
+  const { save, isPending } = useCreateController({ resource: `photo/beam-run/test/${beamRunId}`, redirect: false })
+  if (isPending) return null;
   return (
     <Form onSubmit={save}>
       <Button className="bg-red-500 hover:bg-red-600 text-white text-xl px-6 py-6 rounded-full flex items-center justify-center">

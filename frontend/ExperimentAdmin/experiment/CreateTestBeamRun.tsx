@@ -5,7 +5,9 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 
 export const CreateTestBeamRun = () => {
   const { experimentId } = useParams();
-  const redirectOnSubmission = ( id: string ) => `experiment/${experimentId}/beam-run/test/${id}`;
+  // const redirectOnSubmission = ( id ) => `experiment/${experimentId}/beam-run/test/${id}`;
+  const redirectOnSubmission = (record, id, data) =>  (`experiment/${experimentId}/beam-run/test/${id}`);
+
   // const redirect(( id ) => {
   //   return `experiment/${experimentId}/beam-run/test/${id}`
   // })

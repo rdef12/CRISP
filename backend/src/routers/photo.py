@@ -170,7 +170,31 @@ def take_picture(setup_camera_id: int):
                                                  photo=photo_base64,
                                                  calibration_status=calibration_results["status"],
                                                  message=calibration_results["message"])
-    
-
-    
     return response
+
+
+@router.get("/beam-run/test/{beam_run_id}/camera-settings/{camera_settings_id}")
+def get_test_run_photo(beam_run_id: int, camera_settings_id: int):
+    with Session(engine) as session:
+        photo_statement = select(Photo).where(Photo.camera_settings_link_id == camera_settings_id)
+        photo = session.exec(photo_statement).one()
+        photo_base64 = base64.b64encode(photo.photo).decode("utf-8")
+        return rb.TestRunPhotoGet(id=camera_settings_id,
+                                  photo=photo_base64)
+
+@router.get("/beam-run/real/{beam_run_id}/camera/{camera_id}")
+def get_real_run_photo(beam_run_id: int, camera_id: int, response: Response):
+    with Session(engine) as session:
+        photos_statement = (select(Photo)
+                            .join(CameraSettingsLink)
+                            .where(CameraSettingsLink.beam_run_id == beam_run_id)
+                            .where(CameraSettingsLink.camera_id == camera_id))
+        photos = session.exec(photos_statement).all()
+        photo_list = []
+        for photo in photos:
+            photo_base64 = base64.b64encode(photo.photo).decode("utf-8")
+            photo_list += [rb.RealRunPhotoGet(id=photo.id, camera_id=camera_id, photo=photo_base64)]
+        response.headers["Content-Range"] = str(len(photo_list))
+        
+        return photo_list
+    

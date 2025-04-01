@@ -12,7 +12,7 @@ export const ListBeamRun = () => {
   //   `/experiment/${record.experiment_id}/beam-run/${record.id}`
   return (
     <List resource={`beam-run/${experimentId}`}>
-      <Datagrid rowClick={redirectOnRowClick}>
+      <Datagrid rowClick={redirectOnRowClick} bulkActionButtons={false}>
         <TextField source="beam_run_number"/>
         <NumberField source="ESS_beam_energy" label="ESS Beam Energy"/>
         <NumberField source="beam_current" />

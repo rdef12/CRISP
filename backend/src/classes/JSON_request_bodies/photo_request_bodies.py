@@ -13,3 +13,13 @@ class DistortionCalibrationPhotoPost(BaseModel):
     photo: bytes
     calibration_status: bool
     message: str
+
+class TestRunPhotoGet(BaseModel):
+    id: int #camera_settings_id
+    photo: bytes
+
+
+class RealRunPhotoGet(BaseModel):
+    id: int
+    camera_id: int
+    photo: bytes

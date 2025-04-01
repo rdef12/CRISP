@@ -30,7 +30,7 @@ export const EditRealSettings = ({ record, onSave, onEditStateChange }: EditReal
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [formData, setFormData] = useState<CameraSettings | null>(null);
   const { save, record: editRecord } = useEditController({
-    resource: `settings/beam-run/real/${beamRunId}/camera`,
+    resource: `beam-run/real/${beamRunId}/camera`,
     id: record.id,
     redirect: false
   });

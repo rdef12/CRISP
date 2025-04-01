@@ -121,7 +121,6 @@ def add_test_settings(beam_run_id: int, camera_id: int, test_settings_body: rb.C
         all_camera_settings = session.exec(camera_settings_statement).all()
         if len(all_camera_settings) > 0:
             for camera_settings in all_camera_settings:
-                print(f"\n\n EXTERMINTAAAAAAAAAAAATE - {camera_settings} \n\n")
                 session.delete(camera_settings)
             session.commit()
 
@@ -130,6 +129,32 @@ def add_test_settings(beam_run_id: int, camera_id: int, test_settings_body: rb.C
         settings_id = cdi.add_settings(test_settings_body.frame_rate, preset_lens_position, float(gain))["id"]
         camera_settings_id = cdi.add_camera_settings_link_with_beam_run(camera_id, settings_id, beam_run_id)["id"]
     return rb.CreateBeamRunSettingsTestResponse(id=camera_id, time_to_take_photos=9) #TODO #TODO set the time to take photos properly
+
+
+@router.post("/real/{beam_run_id}/camera/{camera_id}")
+def add_real_settings(beam_run_id: int, camera_id: int, real_settings_body: rb.CreateBeamRunSettingsReal):
+
+    with Session(engine) as session:
+        beam_run = session.get(BeamRun, beam_run_id)
+        experiment_id = beam_run.experiment_id
+        setup_id = session.get(Experiment, experiment_id).setup_id
+        setup_camera_statement = select(CameraSetupLink).where(CameraSetupLink.camera_id == camera_id).where(CameraSetupLink.setup_id == setup_id)
+        setup_camera = session.exec(setup_camera_statement).one()
+        preset_lens_position = setup_camera.lens_position
+
+        camera_settings_statement = (select(CameraSettingsLink)
+                                     .where(CameraSettingsLink.beam_run_id == beam_run_id)
+                                     .where(CameraSettingsLink.camera_id == camera_id))
+        all_camera_settings = session.exec(camera_settings_statement).all()
+        if len(all_camera_settings) > 0:
+            for camera_settings in all_camera_settings:
+                session.delete(camera_settings)
+            session.commit()
+
+
+        settings_id = cdi.add_settings(real_settings_body.frame_rate, preset_lens_position, real_settings_body.gain)["id"]
+        camera_settings_id = cdi.add_camera_settings_link_with_beam_run(camera_id, settings_id, beam_run_id)["id"]
+    return rb.CreateBeamRunSettingsRealResponse(id=camera_id) #TODO #TODO set the time to take photos properly
 
 
 @router.get("/test/{beam_run_id}/camera/{camera_id}")
@@ -156,6 +181,19 @@ def get_test_settings_inputs(beam_run_id: int, camera_id: int) -> rb.GetBeamRunS
                                          highest_gain=maximum_gain,
                                          gain_increment=gain_increment)
     
+@router.get("/real/{beam_run_id}/camera/{camera_id}")
+def get_real_settings_(beam_run_id: int, camera_id: int) -> rb.GetBeamRunSettingsReal:
+    with Session(engine) as session:
+        camera_settings_statement = (select(CameraSettingsLink)
+                                     .where(CameraSettingsLink.beam_run_id == beam_run_id)
+                                     .where(CameraSettingsLink.camera_id == camera_id))
+        camera_settings = session.exec(camera_settings_statement).one()
+        settings = session.get(Settings, camera_settings.settings_id)
+        return rb.GetBeamRunSettingsReal(id=camera_id,
+                                         frame_rate=settings.frame_rate,
+                                         gain=settings.gain,
+                                         lens_position=settings.lens_position)
+
 @router.put("/test/{beam_run_id}/camera/{camera_id}")
 def update_test_settings(beam_run_id: int, camera_id: int, test_settings_body: rb.CreateBeamRunSettingsTest):   
     gain_range = np.arange(test_settings_body.lowest_gain,
@@ -183,7 +221,37 @@ def update_test_settings(beam_run_id: int, camera_id: int, test_settings_body: r
     for gain in gain_range:
         settings_id = cdi.add_settings(test_settings_body.frame_rate, preset_lens_position, float(gain))["id"]
         camera_settings_id = cdi.add_camera_settings_link_with_beam_run(camera_id, settings_id, beam_run_id)["id"]
-    return rb.CreateBeamRunSettingsTestResponse(id=camera_id, time_to_take_photos=9)
+    return rb.CreateBeamRunSettingsTestResponse(id=camera_id, time_to_take_photos=9) #TODO time to take photos no longer needed, dealt with in frontend
+
+
+@router.put("/real/{beam_run_id}/camera/{camera_id}")
+def update_real_settings(beam_run_id: int, camera_id: int, real_settings_body: rb.CreateBeamRunSettingsReal):   
+    preset_lens_position = None
+
+    with Session(engine) as session:
+        beam_run = session.get(BeamRun, beam_run_id)
+        experiment_id = beam_run.experiment_id
+        setup_id = session.get(Experiment, experiment_id).setup_id
+        setup_camera_statement = select(CameraSetupLink).where(CameraSetupLink.camera_id == camera_id).where(CameraSetupLink.setup_id == setup_id)
+        setup_camera = session.exec(setup_camera_statement).one()
+        preset_lens_position = setup_camera.lens_position
+
+        camera_settings_statement = (select(CameraSettingsLink)
+                                     .where(CameraSettingsLink.beam_run_id == beam_run_id)
+                                     .where(CameraSettingsLink.camera_id == camera_id))
+        all_camera_settings = session.exec(camera_settings_statement).all()
+        if len(all_camera_settings) > 0:
+            for camera_settings in all_camera_settings:
+                session.delete(camera_settings)
+            session.commit()
+
+        settings_id = cdi.add_settings(real_settings_body.frame_rate, preset_lens_position, real_settings_body.gain)["id"]
+        camera_settings_id = cdi.add_camera_settings_link_with_beam_run(camera_id, settings_id, beam_run_id)["id"]
+    return rb.CreateBeamRunSettingsRealResponse(id=camera_id)
+
+
+
+
 
 @router.get("/test/settings-completed/{beam_run_id}")
 def get_test_beam_run_details(beam_run_id: int, response: Response):
@@ -212,6 +280,33 @@ def get_test_beam_run_details(beam_run_id: int, response: Response):
                                                   unset_camera_ids=unset_cameras_ids)
     
 
+@router.get("/settings-completed/{beam_run_id}")
+def get_test_beam_run_details(beam_run_id: int, response: Response):
+    with Session(engine) as session:
+        beam_run = session.get(BeamRun, beam_run_id)
+        camera_settings_statement = select(CameraSettingsLink).where(CameraSettingsLink.beam_run_id == beam_run_id)
+        all_camera_settings_set = session.exec(camera_settings_statement).all()
+        cameras_set_ids = set()
+        for camera_settings in all_camera_settings_set:
+            cameras_set_ids.add(camera_settings.camera_id)
+
+        experiment_id = beam_run.experiment_id
+        experiment = session.get(Experiment, experiment_id)
+        setup_id = experiment.setup_id
+        setup_camera_statement = select(CameraSetupLink).where(CameraSetupLink.setup_id == setup_id)
+        all_setup_camera_links = session.exec(setup_camera_statement).all()
+        all_cameras_in_setup_ids = set()
+        for setup_camera_link in all_setup_camera_links:
+            all_cameras_in_setup_ids.add(setup_camera_link.camera_id)
+        
+        unset_cameras_ids = all_cameras_in_setup_ids.difference(cameras_set_ids)
+        unset_cameras_ids = list(unset_cameras_ids)
+        response.headers["Content-Range"] = str(len(unset_cameras_ids))
+
+        return rb.GetTestBeamRunSettingsCompleted(id=beam_run_id,
+                                                  unset_camera_ids=unset_cameras_ids)
+
+
 # @router.post("/test/take-data/{beam_run_id}")
 # def take_test_beam_run_images(beam_run_id: int):
 #     with Session(engine) as session:    
@@ -221,13 +316,22 @@ def get_test_beam_run_details(beam_run_id: int, response: Response):
 #         for camera_settings
 
 
-@router.get("/test/data-taken/{beam_run_id}")
+@router.get("/data-taken/{beam_run_id}")
 def get_is_data_taken(beam_run_id: int) -> rb.GetTestBeamRunDataTaken:
     with Session(engine) as session:
         test_photos_statement = select(Photo).join(CameraSettingsLink).where(CameraSettingsLink.beam_run_id == beam_run_id)
         test_photos = session.exec(test_photos_statement).all()
-        print(test_photos)
         if len(test_photos) > 0:
             return rb.GetTestBeamRunDataTaken(id=beam_run_id, data_taken=True)
         return rb.GetTestBeamRunDataTaken(id=beam_run_id, data_taken=False)
 
+
+
+# @router.get("/test/data-taken/{beam_run_id}")
+# def get_is_data_taken(beam_run_id: int) -> rb.GetTestBeamRunDataTaken:
+#     with Session(engine) as session:
+#         test_photos_statement = select(Photo).join(CameraSettingsLink).where(CameraSettingsLink.beam_run_id == beam_run_id)
+#         test_photos = session.exec(test_photos_statement).all()
+#         if len(test_photos) > 0:
+#             return rb.GetTestBeamRunDataTaken(id=beam_run_id, data_taken=True)
+#         return rb.GetTestBeamRunDataTaken(id=beam_run_id, data_taken=False)

@@ -2,7 +2,7 @@ import { Link, useParams } from "react-router-dom";
 import { useGetOne } from "react-admin"
 import { Button } from "@/components/ui/button";
 
-export const MoveToTestRunButton = () => {
+export const MoveToRealRunButton = () => {
   const { beamRunId } = useParams();
   const { data, isPending } = useGetOne( `beam-run/settings-completed`, { id: beamRunId } )
   if (isPending) return null;

@@ -595,5 +595,3 @@ class Camera():
     except Exception as e:
       print(f"Streaming error: {e}")
       return False
-  
-  

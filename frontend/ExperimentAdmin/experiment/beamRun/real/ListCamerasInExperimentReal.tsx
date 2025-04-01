@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Datagrid, ListBase, TextField, useGetList, useRecordContext, useShowController } from "react-admin";
+import { Datagrid, ListBase, TextField, useRecordContext, useShowController, useGetOne } from "react-admin";
 import { useParams } from "react-router-dom";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -7,12 +7,15 @@ import { CreateRealSettings } from "./CreateRealSettings";
 import { EditRealSettings } from "./EditRealSettings";
 import { Button } from "@/components/ui/button";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
+import { ShowRealRunPhoto } from "./ShowRealRunPhoto";
+import { MoveToRealRunButton } from "./MoveToRealRunButton";
 
 type DialogMode = 'create' | 'view' | null;
 
 interface SettingsButtonProps {
   onSave: () => void;
 }
+
 
 const SettingsButton = ({ onSave }: SettingsButtonProps) => {
   const record = useRecordContext();
@@ -21,15 +24,17 @@ const SettingsButton = ({ onSave }: SettingsButtonProps) => {
   const [hasSettings, setHasSettings] = useState(false);
   const { beamRunId } = useParams();
 
-  const { data: selectedCameraSettings, refetch } = useGetList(
-    record ? `settings/beam-run/test/${beamRunId}/camera/${record.id}` : '',
+  const { data: selectedCameraSettings } = useGetOne(
+    record ? `settings/beam-run/real/${beamRunId}/camera` : '',
     // { meta: { enabled: !!record } }
+    { id: record?.id }
   );
 
   useEffect(() => {
-    if (selectedCameraSettings) {
-      setHasSettings(selectedCameraSettings.length > 0);
+    if (selectedCameraSettings?.has_settings) {
+      setHasSettings(true);
     }
+    else setHasSettings(false)
   }, [selectedCameraSettings]);
 
   const handleCloseDialog = () => {
@@ -39,13 +44,12 @@ const SettingsButton = ({ onSave }: SettingsButtonProps) => {
   };
 
   const handleSettingsClick = () => {
+    // Always show create if no settings exist
     setDialogMode(hasSettings ? 'view' : 'create');
   };
 
-  const handleSave = async () => {
+  const handleSave = () => {
     console.log('SettingsButton: handleSave called');
-    // Refresh the settings data
-    await refetch();
     onSave();
     handleCloseDialog();
   };
@@ -69,11 +73,11 @@ const SettingsButton = ({ onSave }: SettingsButtonProps) => {
             {record && dialogMode === 'create' && (
               <CreateRealSettings record={record} onSave={handleSave} />
             )}
-            {record && dialogMode === 'view' && (
+            {record && dialogMode === 'view' && hasSettings && (
               <EditRealSettings 
                 record={record} 
                 onSave={handleSave} 
-                onEditStateChange={setIsEditing}
+                onEditStateChange={() => setIsEditing(true)}
               />
             )}
           </ScrollArea>
@@ -111,7 +115,6 @@ const SettingsButton = ({ onSave }: SettingsButtonProps) => {
 };
 
 export const ListCamerasInExperimentReal = ({ dataTaken } : { dataTaken: boolean }) => {
-  // const dataProvider = useDataProvider();
   const { experimentId } = useParams();
   const [refreshTrigger, setRefreshTrigger] = useState(false);
   const { isPending, resource, record } = useShowController({ 
@@ -124,6 +127,7 @@ export const ListCamerasInExperimentReal = ({ dataTaken } : { dataTaken: boolean
   const handleSave = () => {
     setRefreshTrigger(!refreshTrigger);
   };
+
   if (!dataTaken) return (
     <ListBase resource={resource}>
       <Datagrid 
@@ -136,18 +140,21 @@ export const ListCamerasInExperimentReal = ({ dataTaken } : { dataTaken: boolean
         <TextField source="ip_address" />
         <SettingsButton onSave={handleSave} />
       </Datagrid>
+      <MoveToRealRunButton />
     </ListBase>
-  )
-  if (dataTaken) return (
+  );
+
+  return (
     <ListBase resource={resource}>
       <Datagrid 
-      data={record.cameras} 
-      bulkActionButtons={false}
+        data={record.cameras} 
+        bulkActionButtons={false}
+        expand={<ShowRealRunPhoto />}
       >
         <TextField source="username" />
         <TextField source="ip_address" />
       </Datagrid>
     </ListBase>
-  )
-}
+  );
+};
 

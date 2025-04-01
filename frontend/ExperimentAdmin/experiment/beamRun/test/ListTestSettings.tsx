@@ -1,13 +1,16 @@
 import { useParams } from "react-router-dom";
-import { Datagrid, ListBase, NumberField, useRecordContext, useDataProvider, BooleanField } from "react-admin";
+import { Datagrid, ListBase, NumberField, useRecordContext, useDataProvider, BooleanField, RaRecord, Identifier } from "react-admin";
 import { useEffect, useState } from "react";
 import { Card, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { ShowTestRunPhoto } from "./ShowTestRunPhoto";
 
 interface TestSetting {
   id: number;
+  camera_settings_id: number;
   gain: number;
   frame_rate: number;
   lens_position: number;
+  is_optimal?: boolean;
 }
 
 interface ListTestSettingsProps {
@@ -21,6 +24,8 @@ export const ListTestSettings = ({ refreshTrigger, dataTaken }: ListTestSettings
   const dataProvider = useDataProvider();
   const [data, setData] = useState<TestSetting[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [selectedSetting, setSelectedSetting] = useState<TestSetting | null>(null);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
   
   console.log('[Settings] Render with refreshTrigger:', refreshTrigger);
   console.log('IM IN THE THING Data taken. ', dataTaken)
@@ -50,6 +55,12 @@ export const ListTestSettings = ({ refreshTrigger, dataTaken }: ListTestSettings
   useEffect(() => {
     fetchData();
   }, [refreshTrigger, record, beamRunId]);
+
+  const handleRowClick = (id: Identifier, resource: string, record: RaRecord): false => {
+    setSelectedSetting(record as TestSetting);
+    setIsDialogOpen(true);
+    return false;
+  };
 
   if (!record) return null;
 
@@ -87,24 +98,40 @@ export const ListTestSettings = ({ refreshTrigger, dataTaken }: ListTestSettings
     </div>
   );
 
-  if (dataTaken) return (
+  const handleSubmit = () => {
+    // This is where you'll add your form submission logic
+    setIsDialogOpen(false);
+  };
+
+  return (
     <div>
-        <Card>
-          <CardHeader>
-            <CardTitle>Minimum time for data collection: {sumOfReciprocals.toFixed(2)} s</CardTitle>
-          </CardHeader>
-          <CardFooter> Number of photos: {numberOfPhotos}</CardFooter>
-        </Card>
+      <Card>
+        <CardHeader>
+          <CardTitle>Minimum time for data collection: {sumOfReciprocals.toFixed(2)} s</CardTitle>
+        </CardHeader>
+        <CardFooter> Number of photos: {numberOfPhotos}</CardFooter>
+      </Card>
       <ListBase
         resource={`settings/beam-run/test/${beamRunId}/camera/${record.id}`}
       >
-        <Datagrid bulkActionButtons={false}>
+        <Datagrid 
+          bulkActionButtons={false}
+          rowClick={(id, resource, record) => handleRowClick(id, resource, record)}
+        >
           <NumberField source="gain" />
           <NumberField source="frame_rate" />
           <NumberField source="lens_position" />
           <BooleanField source="is_optimal" />
         </Datagrid>
       </ListBase>
+
+      <ShowTestRunPhoto
+        isOpen={isDialogOpen}
+        onOpenChange={setIsDialogOpen}
+        selectedSetting={selectedSetting}
+        onSubmit={handleSubmit}
+        onRefresh={fetchData}
+      />
     </div>
-  )
+  );
 }
