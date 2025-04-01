@@ -5,8 +5,9 @@ from src.classes.JSON_request_bodies import request_bodies as rb
 from src.database.CRUD import CRISP_database_interaction as cdi
 from src.classes.Camera import PhotoContext, CalibrationImageSettings
 from src.create_homographies import *
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, FileResponse
 from src.homography_pinpointing import perform_homography_pinpointing_between_camera_pair_for_GUI
+import os
 
 router = APIRouter(
     prefix="/homography",
@@ -85,6 +86,21 @@ def flip_homography_origin_position_api(setup_id: str, username: str, plane_type
 
 ################ FOR TESTING HOMOGRAPHY PINPOINTING SCRIPT WORKS #############################
 
+@router.get("/add_mock_cameras")
+def add_mock_cameras_api():
+    first_camera_id = cdi.add_camera(username="first_camera", ip_address=1, password=1, model=1)
+    first_pi = Pi(inputted_username="first_camera",
+                inputted_ip_address=1,
+                inputted_password=1,
+                inputted_camera_model=1)
+    second_camera_id = cdi.add_camera(username="second_camera", ip_address=2, password=2, model=2)
+    second_pi = Pi(inputted_username="second_camera",
+                    inputted_ip_address=2,
+                    inputted_password=2,
+                    inputted_camera_model=2)
+
+    return {"message": "cameras added"}
+
 
 @router.get("/add_mock_homography_images")
 def add_mock_homography_images_api():
@@ -94,10 +110,12 @@ def add_mock_homography_images_api():
     
     added_settings = cdi.add_settings(frame_rate=5, lens_position=0.5, gain=1)
     settings_id = added_settings["id"] # Do I need to make a uique one for each settings?
-    camera_id = cdi.get_camera_id_from_username("raspi4b3")
     
-    side_far_photo_camera_settings_link = cdi.add_camera_settings_link(camera_id=camera_id, settings_id=settings_id) # same args so same link?
-    side_near_photo_camera_settings_link = cdi.add_camera_settings_link(camera_id=camera_id, settings_id=settings_id)
+    first_camera_id = cdi.get_camera_id_from_username("first_camera")
+    second_camera_id = cdi.get_camera_id_from_username("second_camera")
+    
+    side_far_photo_camera_settings_link = cdi.add_camera_settings_link(camera_id=first_camera_id, settings_id=settings_id) # same args so same link?
+    side_near_photo_camera_settings_link = cdi.add_camera_settings_link(camera_id=first_camera_id, settings_id=settings_id)
     side_far_photo_camera_settings_link_id = side_far_photo_camera_settings_link["id"]
     side_near_photo_camera_settings_link_id = side_near_photo_camera_settings_link["id"]
     
@@ -111,14 +129,14 @@ def add_mock_homography_images_api():
     side_near_photo = cdi.update_photo(camera_settings_link_id=side_near_photo_camera_settings_link_id, photo=side_near_photo_bytes)
     side_near_photo_id = side_near_photo["id"]
     
-    top_far_photo_camera_settings_link = cdi.add_camera_settings_link(camera_id=camera_id, settings_id=settings_id) # same args so same link?
-    top_near_photo_camera_settings_link = cdi.add_camera_settings_link(camera_id=camera_id, settings_id=settings_id)
+    top_far_photo_camera_settings_link = cdi.add_camera_settings_link(camera_id=second_camera_id, settings_id=settings_id) # same args so same link?
+    top_near_photo_camera_settings_link = cdi.add_camera_settings_link(camera_id=second_camera_id, settings_id=settings_id)
     top_far_photo_camera_settings_link_id = top_far_photo_camera_settings_link["id"]
     top_near_photo_camera_settings_link_id = top_near_photo_camera_settings_link["id"]
     
-    with open("/code/src/calibration_testing_19_11_24/top_hq_front_chessboard_calibration_20_by_5_spacing_10mm.jpeg", "rb") as img_file:
+    with open("/code/src/calibration_testing_19_11_24/top_arducam_front_chessboard_calibration_20_by_5_spacing_10mm.jpeg", "rb") as img_file:
         top_near_photo_bytes = img_file.read()
-    with open("/code/src/calibration_testing_19_11_24/top_hq_back_chessboard_calibration_20_by_5_spacing_10mm.jpeg", "rb") as img_file:
+    with open("/code/src/calibration_testing_19_11_24/top_arducam_back_chessboard_calibration_20_by_5_spacing_10mm.jpeg", "rb") as img_file:
         top_far_photo_bytes = img_file.read()
     
     top_far_photo = cdi.update_photo(camera_settings_link_id=top_far_photo_camera_settings_link_id, photo=top_far_photo_bytes)
@@ -129,6 +147,55 @@ def add_mock_homography_images_api():
     return {"message": f"successfully saved images to database. Photo IDs are {side_far_photo_id, side_near_photo_id, top_far_photo_id, top_near_photo_id}"}
 
 
+@router.get("/test_homography_images")
+def test_homography_images_api():
+    image_ids = [
+        "1",
+        "2",
+        "3",
+        "4",
+    ]
+    
+    save_dir = "/code/local_saved_images"
+    os.makedirs(save_dir, exist_ok=True)
+    
+    saved_images = []
+    
+    for image_id in image_ids:
+        image_data = cdi.get_photo_from_id(image_id)  # Assuming this function retrieves the photo
+        file_path = os.path.join(save_dir, f"{image_id}.jpeg")
+        
+        with open(file_path, "wb") as img_file:
+            img_file.write(image_data)  # Assuming image_data["photo"] contains the binary image data
+        saved_images.append(file_path)
+    
+    return {"message": "Images saved locally", "saved_images": saved_images}
+
+
+@router.get("/view_homography_image/{image_id}")
+def view_image(image_id: str):
+    file_path = os.path.join("/code/local_saved_images", f"{image_id}.jpeg")
+    if os.path.exists(file_path):
+        return FileResponse(file_path, media_type="image/jpeg")
+    return {"error": "Image not found"}
+
+@router.get("/view_grid_image")
+def view_image(camera_id: int, plane_type: str):
+    file_path = f"/code/temp_images/camera_{camera_id}_homography_{plane_type}.jpeg"
+    print(file_path)
+    if os.path.exists(file_path):
+        return FileResponse(file_path, media_type="image/jpeg")
+    return {"error": "Image not found"}
+
+
+@router.get("/view_line_plot")
+def view_image():
+    file_path = "/code/src/plots/3d_lines_plot.png"
+    if os.path.exists(file_path):
+        return FileResponse(file_path, media_type="image/png")
+    return {"error": "Image not found"}
+
+
 from datetime import datetime
 import pytz
 @router.put("/create_homography_test_setup_table")
@@ -137,7 +204,6 @@ def create_homography_test_setup_table_api():
     setup_id = cdi.add_setup(setup_name="homography_test",
                              date_created=datetime_of_creation,
                              date_last_edited=datetime_of_creation)["id"]
-    print(setup_id)
     return {"message": "Setup created!"}
 
 
@@ -196,30 +262,78 @@ def populate_camera_setup_tables_api():
 def populate_camera_setup_table_homography_config_api():
     """
     run this before trying to build matrices - that script reads these in from db
+    
+    TODO - origin shift properties!
     """
     # FAR FACE TOP CAM
     cdi.update_far_face_calibration_pattern_size(2, 1, [20, 5])
     cdi.update_far_face_calibration_pattern_type(2, 1, "chessboard")
     cdi.update_far_face_calibration_spacing(2, 1, [10, 10])
     cdi.update_far_face_calibration_spacing_unc(2, 1, [0.1, 0.1]) # check this was used last sem
+    cdi.update_far_face_calibration_board_thickness(2, 1, 0.8)
+    cdi.update_far_face_calibration_board_thickness_unc(2, 1, 0.1)
+    
+    # cdi.update_far_face_z_shift(2, 1, 10.7) # first estimate
+    # cdi.update_far_face_non_z_shift(2, 1, 9.6) # first estimate
+    # cdi.update_far_face_z_shift_unc(2, 1, 0.1) # first estimate
+    # cdi.update_far_face_non_z_shift_unc(2, 1, 0.1) # first estimate
+    
+    cdi.update_far_face_z_shift(2, 1, 10.5) # first estimate
+    cdi.update_far_face_non_z_shift(2, 1, 4) # first estimate
+    cdi.update_far_face_z_shift_unc(2, 1, 0.5) # first estimate
+    cdi.update_far_face_non_z_shift_unc(2, 1, 0.5) # first estimate
+    
+    # cdi.update_far_face_z_shift(2, 1, 10) # first estimate
+    # cdi.update_far_face_non_z_shift(2, 1, 4.3) # first estimate
+    # cdi.update_far_face_z_shift_unc(2, 1, 0.5) # first estimate
+    # cdi.update_far_face_non_z_shift_unc(2, 1, 0.5) # first estimate
     
     # NEAR FACE TOP CAM
     cdi.update_near_face_calibration_pattern_size(2, 1, [20, 5])
     cdi.update_near_face_calibration_pattern_type(2, 1, "chessboard")
     cdi.update_near_face_calibration_spacing(2, 1, [10, 10])
     cdi.update_near_face_calibration_spacing_unc(2, 1, [0.1, 0.1]) # check this was used last sem
+    cdi.update_near_face_calibration_board_thickness(2, 1, 0.8)
+    cdi.update_near_face_calibration_board_thickness_unc(2, 1, 0.1)
+    
+    # cdi.update_near_face_z_shift(2, 1, 10.7) # first estimate
+    # cdi.update_near_face_non_z_shift(2, 1, 9.6) # first estimate
+    # cdi.update_near_face_z_shift_unc(2, 1, 0.1) # first estimate
+    # cdi.update_near_face_non_z_shift_unc(2, 1, 0.1) # first estimate
+    
+    cdi.update_near_face_z_shift(2, 1, 10.5) # first estimate
+    cdi.update_near_face_non_z_shift(2, 1, 4) # first estimate
+    cdi.update_near_face_z_shift_unc(2, 1, 0.5) # first estimate
+    cdi.update_near_face_non_z_shift_unc(2, 1, 0.5) # first estimate
+    
+    # cdi.update_near_face_z_shift(2, 1, 10) # first estimate
+    # cdi.update_near_face_non_z_shift(2, 1, 4.3) # first estimate
+    # cdi.update_near_face_z_shift_unc(2, 1, 0.5) # first estimate
+    # cdi.update_near_face_non_z_shift_unc(2, 1, 0.5) # first estimate
     
     # FAR FACE SIDE CAM
     cdi.update_far_face_calibration_pattern_size(1, 1, [20, 10])
     cdi.update_far_face_calibration_pattern_type(1, 1, "chessboard")
     cdi.update_far_face_calibration_spacing(1, 1, [10, 10])
     cdi.update_far_face_calibration_spacing_unc(1, 1, [0.1, 0.1]) # check this was used last sem
+    cdi.update_far_face_calibration_board_thickness(1, 1, 2.8)
+    cdi.update_far_face_calibration_board_thickness_unc(1, 1, 0.1)
+    cdi.update_far_face_z_shift(1, 1, 10.5) # first estimate
+    cdi.update_far_face_non_z_shift(1, 1, 5.8) # first estimate
+    cdi.update_far_face_z_shift_unc(1, 1, 0.1) # first estimate
+    cdi.update_far_face_non_z_shift_unc(1, 1, 0.1) # first estimate
     
     # NEAR FACE SIDE CAM
     cdi.update_near_face_calibration_pattern_size(1, 1, [20, 10])
     cdi.update_near_face_calibration_pattern_type(1, 1, "chessboard")
     cdi.update_near_face_calibration_spacing(1, 1, [10, 10])
     cdi.update_near_face_calibration_spacing_unc(1, 1, [0.1, 0.1]) # check this was used last sem
+    cdi.update_near_face_calibration_board_thickness(1, 1, 2.8)
+    cdi.update_near_face_calibration_board_thickness_unc(1, 1, 0.1)
+    cdi.update_near_face_z_shift(1, 1, 10.5) # first estimate
+    cdi.update_near_face_non_z_shift(1, 1, 5.8) # first estimate
+    cdi.update_near_face_z_shift_unc(1, 1, 0.1) # first estimate
+    cdi.update_near_face_non_z_shift_unc(1, 1, 0.1) # first estimate
     
     return {"message": "done"}
 
@@ -240,19 +354,23 @@ def populate_camera_setup_table_homography_matrices_api():
     
     # FAR SIDE CAM
     far_side_photo_bytes = cdi.get_photo_from_id(1)
-    side_transforms = ImagePointTransforms(horizontal_flip=False,
+    far_side_transform = ImagePointTransforms(horizontal_flip=False,
                                       vertical_flip=False,
                                       swap_axes=False)
-    perform_homography_calibration("first_camera", 1, "far", side_transforms, photo_bytes=far_side_photo_bytes)
+    perform_homography_calibration("first_camera", 1, "far", far_side_transform, photo_bytes=far_side_photo_bytes)
     
     # NEAR SIDE CAM
+    near_side_transform = ImagePointTransforms(horizontal_flip=True,
+                                               vertical_flip=True,
+                                               swap_axes=False)
     near_side_photo_bytes = cdi.get_photo_from_id(2)
-    perform_homography_calibration("first_camera", 1, "near", side_transforms, photo_bytes=near_side_photo_bytes)
+    perform_homography_calibration("first_camera", 1, "near", near_side_transform, photo_bytes=near_side_photo_bytes)
     
     
     # FAR TOP CAM
     far_top_photo_bytes = cdi.get_photo_from_id(3)
-    top_transforms = ImagePointTransforms(horizontal_flip=False,
+    # NOTE - horizontal flip!
+    top_transforms = ImagePointTransforms(horizontal_flip=True,
                                       vertical_flip=False,
                                       swap_axes=False)
     perform_homography_calibration("second_camera", 1, "far", top_transforms, photo_bytes=far_top_photo_bytes)
@@ -268,20 +386,33 @@ def initialize_homography_setup():
     """
     TODO - add prints to show progress along pipeline
     """
+    add_mock_cameras_api()
+    add_mock_homography_images_api()
     create_homography_test_setup_table_api()
     add_two_cams_for_homography_test_api()
     populate_setup_table_api()
     populate_camera_setup_tables_api()
     populate_camera_setup_table_homography_config_api()
     populate_camera_setup_table_homography_matrices_api()
-    return {"message": "Homography setup initialized successfully!"}
+    
+    print(f"\n\n\ntop near homography matrix {cdi.get_near_face_homography_matrix(2, 1)}",
+          f"top near covariance matrix {cdi.get_near_face_homography_covariance_matrix(2, 1)}\n\n\n", sep="\n\n")
+    
+    side_dd = cdi.get_camera_depth_direction(1, 1)
+    
+    return {"message": "Homography setup initialized successfully!",
+            "side_dd": side_dd}
 
 
 
 @router.get("/homography_pinpointing_test")
 def homography_pinpointing_test_api():
+    """
+    1) use docs to execute initialize_full_homography_setup
+    2) use docs to execute homography_pinpointing_test
+    """
     setup_id = 1
     side_camera_id = 1
     top_camera_id = 2
     perform_homography_pinpointing_between_camera_pair_for_GUI(setup_id, top_camera_id, side_camera_id)
-    return {"message": "SUCCESS"}
+    return {"message": "pinpointing complete"}

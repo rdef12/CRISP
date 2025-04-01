@@ -13,8 +13,9 @@ class DepthDirectionEnum(int, Enum):
     POSITIVE = 1
     NEGATIVE = -1
 
-from sqlmodel import Field, SQLModel, PickleType, JSON, Column, ARRAY, Integer, LargeBinary, Relationship
-# from sqlalchemy.dialects import postgresql #ARRAY contains requires dialect specific type
+# from sqlmodel import Field, SQLModel, PickleType, JSON, Column, ARRAY, Integer, LargeBinary, Relationship
+from sqlmodel import Field, SQLModel, PickleType, JSON, LargeBinary, Relationship
+from sqlalchemy import Column, ARRAY, Float, Integer
 
 class Setup(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
@@ -52,8 +53,8 @@ class CameraSetupLink(SQLModel, table=True):
     #Calibration pattern type here too?
     far_face_calibration_pattern_size: Optional[List[int]] = Field(default=None, sa_column=Column(ARRAY(Integer)))
     far_face_calibration_pattern_type: Optional[str] = Field(default=None)
-    far_face_calibration_spacing: Optional[List[float]] = Field(default=None, sa_column=Column(ARRAY(Integer)))
-    far_face_calibration_spacing_unc: Optional[List[float]] = Field(default=None, sa_column=Column(ARRAY(Integer)))
+    far_face_calibration_spacing: Optional[List[float]] = Field(default=None, sa_column=Column(ARRAY(Float)))
+    far_face_calibration_spacing_unc: Optional[List[float]] = Field(default=None, sa_column=Column(ARRAY(Float)))
     # far_face_calibratoin_photo_settings_id: Optional[int] = Field(default=None, foreign_key="settings.id") # Add back filling bit to settings
     far_face_calibration_photo_camera_settings_id: Optional[int] = Field(default=None, foreign_key="camerasettingslink.id")
     # far_face_calibration_photo: Optional[bytes] = Field(default=None, sa_column=Column(LargeBinary))
@@ -79,8 +80,8 @@ class CameraSetupLink(SQLModel, table=True):
 # Near face homography
     near_face_calibration_pattern_size: Optional[List[int]] = Field(default=None, sa_column=Column(ARRAY(Integer)))
     near_face_calibration_pattern_type: Optional[str] = Field(default=None)
-    near_face_calibration_spacing: Optional[List[float]] = Field(default=None, sa_column=Column(ARRAY(Integer)))
-    near_face_calibration_spacing_unc: Optional[List[float]] = Field(default=None, sa_column=Column(ARRAY(Integer)))
+    near_face_calibration_spacing: Optional[List[float]] = Field(default=None, sa_column=Column(ARRAY(Float)))
+    near_face_calibration_spacing_unc: Optional[List[float]] = Field(default=None, sa_column=Column(ARRAY(Float)))
     # near_face_calibratoin_photo_settings_id: Optional[int] = Field(default=None, foreign_key="settings.id") # Add back filling bit to setting
     near_face_calibration_photo_camera_settings_id: Optional[int] = Field(default=None, foreign_key="camerasettingslink.id")
     # near_face_calibration_photo: Optional[bytes] = Field(default=None, sa_column=Column(LargeBinary))

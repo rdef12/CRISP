@@ -7,9 +7,8 @@ import numpy as np
 from typing import List, Literal
 import pickle
 
-from src.database.models import Camera, CameraSetupLink, Experiment, Setup
+from src.database.models import Camera, CameraSetupLink, Experiment, Setup, OpticalAxisEnum, DepthDirectionEnum
 from src.classes.JSON_request_bodies import request_bodies as rb
-
 
 # Create
 
@@ -78,7 +77,7 @@ def get_camera_depth_direction(camera_id:int, setup_id:int) -> str:
         statement = select(CameraSetupLink).where(CameraSetupLink.camera_id == camera_id).where(CameraSetupLink.setup_id == setup_id)
         result = session.exec(statement).one()
         if result:
-            return result.depth_direction
+            return result.depth_direction.value # .value because type is enum
         else:
             raise ValueError(f"Camera's depth direction not found for camera with id {camera_id} and setup with id {setup_id}.")
         
@@ -87,7 +86,7 @@ def get_camera_optical_axis(camera_id:int, setup_id:int) -> int:
         statement = select(CameraSetupLink).where(CameraSetupLink.camera_id == camera_id).where(CameraSetupLink.setup_id == setup_id)
         result = session.exec(statement).one()
         if result:
-            return result.optical_axis
+            return result.optical_axis.value # .value because type is enum
         else:
             raise ValueError(f"Optical axis not found for camera with id {camera_id} and setup with id {setup_id}.")
        
