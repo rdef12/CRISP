@@ -90,6 +90,12 @@ def get_settings_id_by_camera_settings_id(camera_settings_id: int):
         camera_settings = session.get(CameraSettingsLink, camera_settings_id)
         settings_id = camera_settings.settings_id
         return settings_id
+    
+def get_beam_run_id_by_camera_settings_link_id(camera_settings_link_id: int):
+    with Session(engine) as session:
+        camera_settings = session.get(CameraSettingsLink, camera_settings_link_id)
+        beam_run_id = camera_settings.beam_run_id
+        return beam_run_id
 
 # Update
 

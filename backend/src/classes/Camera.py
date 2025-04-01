@@ -4,8 +4,8 @@ import paramiko
 import cv2
 import os
 import tarfile
-from io import BytesIO
-
+import numpy as np
+import re
 
 from src.classes.JSON_request_bodies import request_bodies as rb
 from src.database.CRUD import CRISP_database_interaction as cdi
@@ -415,94 +415,106 @@ class Camera():
         raise Exception(f"Error transferring video script to Pi: {e}")
     finally:
         self.close_sftp()
-    
-
-  def run_main_run_script(self, main_video_settings: rb.MainVideoSettings):
-    """
-    If script not found on pi, transfer script from here to the pi.
-    Then run SSH command with flags from rb.VideoSettings
-    """
-    log = "-log" if main_video_settings.log == True else ""
-    
-    lens_position = 5 # TODO - GET FROM DATABASE IN THE FUTURE
-    
-    # -raw flag added under the assumption that we always wanna save the raw files too
-    # when the video script is called - TODO: could make a user option??
-    command = (f"python video_script.py -dir {main_video_settings.directory_name} " +
-            f"-lp {lens_position} -raw" + 
-            f"-c {main_video_settings.colour} -fr {main_video_settings.frame_rate} " +
-            f"-f {main_video_settings.format} {log} -b {main_video_settings.bit_depth} " +
-            f"main_run -g {main_video_settings.gain} -num {main_video_settings.num_of_images}")
-    
-    stdin, stdout, stderr = self.ssh_client.exec_command(command)
-    error = stderr.read().decode().strip()
-    output_lines = stdout.readlines()
-    last_line = output_lines[-1].strip() if output_lines else "" # Script prints "Image capture complete" when done
-    
-    if "Image capture complete" in last_line:
-        print(f"Image capture finished on {self.username}.")
-    else:
-        raise Exception(f"Command failed with error:\n{error}")
-    stdin.close()
-    return None
-
-  def run_test_run_script(self, test_video_settings: rb.TestVideoSettings):
-    """
-    If script not found on pi, transfer script from here to the pi.
-    Then run SSH command with flags from rb.VideoSettings
-    """
-    log = "-log" if test_video_settings.log == True else ""
-    
-    lens_position = 5 # TODO - GET FROM DATABASE IN THE FUTURE
-    
-    # -raw flag added under the assumption that we always wanna save the raw files too
-    # when the video script is called - TODO: could make a user option??
-    command = (f"python video_script.py -dir {test_video_settings.directory_name} " +
-            f"-lp {lens_position} -raw" + 
-            f"-c {test_video_settings.colour} -fr {test_video_settings.frame_rate} " +
-            f"-f {test_video_settings.format} {log} -b {test_video_settings.bit_depth} " +
-            f"test_run -min {test_video_settings.min_gain} -max {test_video_settings.max_gain} " +
-            f"-step {test_video_settings.gain_step}")
-    
-    stdin, stdout, stderr = self.ssh_client.exec_command(command)
-    error = stderr.read().decode().strip()
-    output_lines = stdout.readlines()
-    last_line = output_lines[-1].strip() if output_lines else "" # Script prints "Image capture complete" when done
-    
-    if "Image capture complete" in last_line:
-        print(f"Image capture finished on {self.username}.")
-    else:
-        raise Exception(f"Command failed with error:\n{error}")
-    stdin.close()
-    return None
-  
-  
-#   def create_camera_settings_link_for_video(self, username: str, video_settings: rb.VideoSettings):
-      
-#         #TODO obviously these will take variable values once model is fleshed out
-#         lens_position = 5 # TODO - GET FROM DATABASE IN THE FUTURE
         
-#         added_settings = cdi.add_settings(frame_rate=5, lens_position=lens_position, gain=video_settings.gain)
-#         settings_id = added_settings["id"]
-#         camera_id = cdi.get_camera_id_from_username(self.username)
-#         added_camera_settings_link = cdi.add_camera_settings_link(camera_id=camera_id, settings_id=settings_id)
-#         camera_settings_link_id = added_camera_settings_link["id"]
-#         return camera_settings_link_id
+  @staticmethod
+  def source_camera_settings(camera_settings_link_id: int):
+    settings_id = cdi.get_camera_and_settings_ids(camera_settings_link_id)["settings_id"]
+    settings = cdi.get_settings_by_id(settings_id)
+    return settings.frame_rate, settings.lens_position, settings.gain
+    
+  def run_main_run_script(self, beam_run_id, camera_settings_link_id: int):
+    """
+    If script not found on pi, transfer script from here to the pi.
+    Then run SSH command with flags from rb.VideoSettings
+    """
+    frame_rate, lens_position, gain = Camera.source_camera_settings(camera_settings_link_id)
+    directory_name = self.real_run_image_directory + str(beam_run_id)
+    num_of_images = 10
+    
+    # -raw flag added under the assumption that we always wanna save the raw files too
+    command = (f"python video_script.py -dir {directory_name} " +
+            f"-lp {lens_position} -raw " + 
+            f"-c all -fr {frame_rate} " +
+            f"-f jpeg -log -b 8 " +
+            f"main_run -g {gain} -num {num_of_images} " +
+            f"-csl {camera_settings_link_id}")
+    
+    print(f"\n\n\n{command}\n\n\n")
+    
+    stdin, stdout, stderr = self.ssh_client.exec_command(command)
+    error = stderr.read().decode().strip()
+    output_lines = stdout.readlines()
+    last_line = output_lines[-1].strip() if output_lines else "" # Script prints "Image capture complete" when done
+    
+    if "Image capture complete" in last_line:
+        print(f"Image capture finished on {self.username}.")
+    else:
+        raise Exception(f"Command failed with error:\n{error}")
+    stdin.close()
+    return None
+
+  def run_test_run_script(self, beam_run_id, camera_settings_link_id_array):
+    """
+    If script not found on pi, transfer script from here to the pi.
+    Then run SSH command with flags from rb.VideoSettings
+    """
+    gain_list = []
+    for id in camera_settings_link_id_array:
+        frame_rate, lens_position, gain = Camera.source_camera_settings(id)
+        gain_list.append(gain)
+        
+    directory_name = self.test_run_image_directory + str(beam_run_id)
+    
+    # -raw flag added under the assumption that we always wanna save the raw files too
+    
+    command = (f"python video_script.py -dir {directory_name} " +
+            f"-lp {lens_position} -raw " + 
+            f"-c all -fr {frame_rate} " +
+            f"-f jpeg -log -b 8 " +
+            f"test_run --gain_list '{gain_list}' --cs_id_array '{camera_settings_link_id_array}'")
+    
+    print(f"\n\n\n{command}\n\n\n")
+    
+    stdin, stdout, stderr = self.ssh_client.exec_command(command)
+    error = stderr.read().decode().strip()
+    output_lines = stdout.readlines()
+    last_line = output_lines[-1].strip() if output_lines else "" # Script prints "Image capture complete" when done
+    
+    if "Image capture complete" in last_line:
+        print(f"Image capture finished on {self.username}.")
+    else:
+        raise Exception(f"Command failed with error:\n{error}")
+    stdin.close()
+    return None
   
+  @staticmethod
+  def extract_csl_id(filename):
+    match = re.search(r"cslID_(\d+)", filename)
+    return int(match.group(1)) if match else None
   
-  def transfer_video_frames(self, username: str, video_settings: rb.MainVideoSettings|rb.TestVideoSettings,
-                            camera_settings_link_id):
+  def transfer_video_frames(self, beam_run_id, context=Literal["real", "test"], camera_settings_link_id: int|None=None):
     try:
+        print("\n\n\n\n\n The transfer has begun")
+        if context == "real":
+            directory_name = self.real_run_image_directory + str(beam_run_id)
+        elif context == "test":
+            directory_name = self.test_run_image_directory + str(beam_run_id)
+        else:
+            raise ValueError("Context argument can only be 'real' or 'test'")
+        
         self.open_sftp()
         # Alternatively, could print tar_archive path from script and extract from stdout
-        files_in_directory = self.sftp_client.listdir(f"{self.remote_root_directory}/{video_settings.directory_name}")
+        files_in_directory = self.sftp_client.listdir(f"{directory_name}")
+        print(f"Files in directory: {files_in_directory}")
+        
         tarball_files = [f for f in files_in_directory if f.endswith(('.tar', '.tar.gz', '.tgz'))]
         if not tarball_files:
             raise Exception("No tarball found in the directory.")
 
         # Assuming there's only one tarball, use the first match
         tarball_name = tarball_files[0]
-        remote_tar_path = os.path.join(video_settings.directory_name, tarball_name)
+        print(f"Tarball name: {tarball_name}")
+        remote_tar_path = os.path.join(directory_name, tarball_name)
         print(f"\n\n\nFound tarball: {tarball_name}, proceeding with extraction...\n\n\n")
         
         photo_id_array = []
@@ -514,9 +526,13 @@ class Camera():
                         extracted_file = tar.extractfile(member)
                         image_bytes = extracted_file.read()
                         
+                        # Not just using the inputted array incase some of the requested test images failed to be captured
+                        if camera_settings_link_id is None:
+                            camera_settings_link_id = Camera.extract_csl_id(member.name)
+                            
                         added_photo = cdi.add_photo(camera_settings_link_id=camera_settings_link_id, photo=image_bytes)
                         photo_id_array.append(added_photo["id"])
-                
+        
         return photo_id_array
         
     except Exception as e:

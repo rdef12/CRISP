@@ -29,7 +29,15 @@ def get_camera_id_from_username(username: str) -> int:
             return result.id
         else:
             raise ValueError(f"Camera with username: {username} not found")
-
+        
+def get_username_from_camera_id(camera_id: int) -> str:
+    with Session(engine) as session:
+        statement = select(Camera).where(Camera.id == camera_id)
+        result = session.exec(statement).one()
+        if result:
+            return result.username
+        else:
+            raise ValueError(f"Camera with id = {camera_id} not found")
 
 def get_camera_entry_with_username(username: str):
     with Session(engine) as session:

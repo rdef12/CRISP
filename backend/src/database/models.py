@@ -253,7 +253,6 @@ class Camera(SQLModel, table=True):
     settings_links: list["CameraSettingsLink"] = Relationship(back_populates="camera")
 
 
-
 class Settings(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     #Camera settings (needs to expand to full list)

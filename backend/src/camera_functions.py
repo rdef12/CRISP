@@ -98,63 +98,66 @@ def stream_video_feed(username: str):
     finally:
         if 'cap' in locals():  # locals() returns a dictionary of declared variables in scope
             cap.release()
+            
+############# MAIN BEAM RUN #########################
 
-
-def take_single_video_for_main_run(username: str, video_settings: rb.MainVideoSettings, camera_settings_link_id):
+def take_single_video_for_main_run(camera_settings_link_id):
     try:
+        camera_id = cdi.get_camera_and_settings_ids(camera_settings_link_id)["camera_id"]
+        print("\n\ncamera id:", camera_id, type(camera_id), "\n\n")
+        username = cdi.get_username_from_camera_id(camera_id)
         if (pi := Pi.get_pi_with_username(username)) is None:
             raise Exception(f"No Pi instantiated with the username {username}")
         
         if not pi.camera.check_video_script_exists():
             raise Exception("Video script could not be accessed on pi")
         
-        print("\n\n\nScript found!\n\n\n")
-        pi.camera.run_main_run_script(video_settings)
-        photo_id_array = pi.camera.transfer_video_frames(username, video_settings, camera_settings_link_id)
+        beam_run_id = cdi.get_beam_run_id_by_camera_settings_link_id(camera_settings_link_id)
+        pi.camera.run_main_run_script(beam_run_id, camera_settings_link_id)
+        
+        photo_id_array = pi.camera.transfer_video_frames(beam_run_id, context="real",
+                                                         camera_settings_link_id=camera_settings_link_id)
         return photo_id_array
         
     except Exception as e:
         print(f"Error taking video on {username}: {e}")
         raise
 
-############# MAIN BEAM RUN #########################
-
-def take_multiple_videos_for_main_run(request_body: Dict[str, rb.MainVideoSettings],
-                         camera_settings_link_id_array,
-                         ) -> Dict[str, List[str]]:
+def take_multiple_videos_for_main_run(camera_settings_link_id_array) -> Dict[str, List[str]]:
     """
     Executes video recording for multiple users in parallel using ThreadPoolExecutor.
     Returns a dictionary where each username maps to their photo ID array.
     """
     results = {}
-
     with ThreadPoolExecutor() as executor:
         # The executor is the key, the username is the value in the futures dict
-        futures = {executor.submit(take_single_video_for_main_run, username, settings, camera_settings_link_id): username 
-                   for (username, settings), camera_settings_link_id in zip(request_body.items(), camera_settings_link_id_array)}
+        futures = {executor.submit(take_single_video_for_main_run, camera_settings_link_id): camera_settings_link_id 
+                   for camera_settings_link_id in camera_settings_link_id_array}
         
         for future in futures:
-            username = futures[future] # way to map futures.result() to a dict with username as the key
+            camera_settings_link_id = futures[future] # way to map futures.result() to a dict with username as the key
             try:
-                results[username] = future.result()  # Store result in dictionary
+                results[camera_settings_link_id] = future.result()  # Store result in dictionary
             except Exception as e:
-                print(f"Error in main run video capture for {username}: {e}")
-                results[username] = []  # Store an empty list in case of failure
+                print(f"Error in test run video capture for image with camera setting link id: {camera_settings_link_id}: {e}")
+                results[camera_settings_link_id] = []  # Store an empty list in case of failure
     return results
 
 ############# TEST BEAM RUN #########################
 
-def take_single_video_for_test_run(username: str, video_settings: rb.TestVideoSettings, camera_settings_link_id):
+def take_single_video_for_test_run(camera_settings_link_id_array):
     try:
+        camera_id = cdi.get_camera_and_settings_ids(camera_settings_link_id_array[0])["camera_id"]
+        username = cdi.get_username_from_camera_id(camera_id)
         if (pi := Pi.get_pi_with_username(username)) is None:
             raise Exception(f"No Pi instantiated with the username {username}")
         
         if not pi.camera.check_video_script_exists():
             raise Exception("Video script could not be accessed on pi")
         
-        print("\n\n\nScript found!\n\n\n")
-        pi.camera.run_test_run_script(video_settings)
-        photo_id_array = pi.camera.transfer_video_frames(username, video_settings, camera_settings_link_id)
+        beam_run_id = cdi.get_beam_run_id_by_camera_settings_link_id(camera_settings_link_id_array[0])
+        pi.camera.run_test_run_script(beam_run_id, camera_settings_link_id_array)
+        photo_id_array = pi.camera.transfer_video_frames(beam_run_id, context="test")
         return photo_id_array
         
     except Exception as e:
@@ -162,25 +165,22 @@ def take_single_video_for_test_run(username: str, video_settings: rb.TestVideoSe
         raise
 
 
-def take_multiple_videos_for_test_run(request_body: Dict[str, rb.TestVideoSettings],
-                         camera_settings_link_id_array,
-                         ) -> Dict[str, List[str]]:
+def take_multiple_videos_for_test_run(camera_settings_link_id_array) -> Dict[str, List[str]]:
     """
     Executes video recording for multiple users in parallel using ThreadPoolExecutor.
     Returns a dictionary where each username maps to their photo ID array.
     """
     results = {}
-
     with ThreadPoolExecutor() as executor:
-        # The executor is the key, the username is the value in the futures dict
-        futures = {executor.submit(take_single_video_for_test_run, username, settings, camera_settings_link_id): username 
-                   for (username, settings), camera_settings_link_id in zip(request_body.items(), camera_settings_link_id_array)}
+        # The executor is the key, the link id is the value in the futures dict
+        futures = {executor.submit(take_single_video_for_test_run, camera_settings_link_id): camera_settings_link_id 
+                   for camera_settings_link_id in camera_settings_link_id_array}
         
         for future in futures:
-            username = futures[future] # way to map futures.result() to a dict with username as the key
+            camera_settings_link_id = futures[future] # way to map futures.result() to a dict with username as the key
             try:
-                results[username] = future.result()  # Store result in dictionary
+                results[camera_settings_link_id] = future.result()  # Store result in dictionary
             except Exception as e:
-                print(f"Error in test run video capture for {username}: {e}")
-                results[username] = []  # Store an empty list in case of failure
+                print(f"Error in test run video capture for image with camera setting link id: {camera_settings_link_id}: {e}")
+                results[camera_settings_link_id] = []  # Store an empty list in case of failure
     return results

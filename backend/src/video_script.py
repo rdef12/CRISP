@@ -43,10 +43,10 @@ import tarfile
 import socket # get hostname without passing into SSH command
 from libcamera import controls
 
-def setup_logging(directory_path, relative_directory_name):
+def setup_logging(directory_path):
     
     logging.basicConfig(
-        filename=f"{directory_path}/{relative_directory_name}_imaging.log",
+        filename=f"{directory_path}/metadata.log",
         level=logging.INFO,  # You can adjust the level (DEBUG, INFO, etc.)
         format='%(asctime)s - %(message)s',  # Format includes timestamp
         filemode='a'  # Use 'a' to append to the log file (not overwrite)
@@ -77,7 +77,7 @@ def parse_arguments():
     parser.add_argument("-lp", "--lens_position", type=lens_position_type, help="Lens position for focussing cam", default=0.0)
     parser.add_argument("-f", "--format", type=str, help="Image encoding type", default="jpeg")
     parser.add_argument("-b", "--bit_depth", type=int, choices=[8, 16], help="PNG bit depth", default=8)
-    parser.add_argument("-dir", "--directory_name", type=str, help="Name of the RELATIVE image directory to store images inside", required=True)
+    parser.add_argument("-dir", "--directory_name", type=str, help="Name of the ABSOLUTE image directory to store images inside", required=True)
     parser.add_argument("-log", "--logging", action="store_true", help="Add logging info to a .log file in the image directory")
     parser.add_argument("-fr", "--frame_rate", type=float, help="Specify frame rate (will be converted to an exposure time)", default=1.0) # in fps
     parser.add_argument("-c", "--colour", type=str, choices=["r", "g", "b", "all"], help="Specify colour channel to save from image (one channel or all) ", default="all")
@@ -91,13 +91,15 @@ def parse_arguments():
     main_run_parser.add_argument("-num", "--num_of_images", type=int, help="Number of images to take") # Using required breaks the -i arg.
     main_run_parser.add_argument("-g", "--gain", type=float, help="Gain Setting", default=1.0)
     main_run_parser.add_argument("-i", "--print_info", action="store_true", help="Flag for whether to print control information and quit script")
+    main_run_parser.add_argument("-csl", "--camera_settings_link_id", type=int, help="Stores the camera setting link ID of the in the CameraSettings table that holds these images' settings", required=True)
     
     # Sub arguments for test beam run
     test_run_parser = subparsers.add_parser("test_run", help="Perform test beam run imaging")
-    test_run_parser.add_argument('--gain_list', type=json.loads, help='Pass a list as JSON')
-    test_run_parser.add_argument("-min", "--minimum_gain", type=float, required=True)
-    test_run_parser.add_argument("-max", "--maximum_gain", type=float, required=True)
-    test_run_parser.add_argument("-step", "--gain_increment", type=float, required=True)
+    test_run_parser.add_argument('--gain_list', type=json.loads, help='Pass a list as JSON', required=True)
+    test_run_parser.add_argument('--cs_id_array', type=json.loads, help='Pass a list as JSON', required=True)
+    # test_run_parser.add_argument("-min", "--minimum_gain", type=float, required=True)
+    # test_run_parser.add_argument("-max", "--maximum_gain", type=float, required=True)
+    # test_run_parser.add_argument("-step", "--gain_increment", type=float, required=True)
     
     args = parser.parse_args()
     
@@ -118,22 +120,19 @@ def convert_framerate_to_frame_duration(framerate):
     return round(10**6/framerate)
 
 
-def check_directory_exists(relative_dir):
-    script_dir = os.path.dirname(os.path.realpath(__file__))
-    full_directory_path = os.path.join(script_dir, relative_dir)
-
+def check_directory_exists(directory_path: str):
     # Check if the directory exists
-    if not os.path.exists(full_directory_path):
-        os.makedirs(full_directory_path)
-        return full_directory_path
+    if not os.path.exists(directory_path):
+        os.makedirs(directory_path)
+        return directory_path
     
     # Delete already existing photos associated with earlier beam runs
-    for entry in os.scandir(full_directory_path):
+    for entry in os.scandir(directory_path):
         if entry.is_file():
             os.remove(entry.path)
         elif entry.is_dir():
             shutil.rmtree(entry.path)  # Removes subdirectories
-    return full_directory_path
+    return directory_path
     
 
 def process_frame(image, args):
@@ -192,13 +191,13 @@ def update_controls(picam2, args, frame_duration):
     return 1
 
 
-def take_main_run_images(picam2, args, directory_path, frame_duration):
+def take_main_run_images(picam2, args, frame_duration):
     num_digits = len(str(args.num_of_images))
     
     if not update_controls(picam2, args, frame_duration):
         raise Exception("Image controls not applied within max attempts")
     
-    frames = [] 
+    frames = []
     # Minimal delay between frame capturing when done this way.
     for i in range(1, args.num_of_images + 1):
         print(f"Capturing image {i}")
@@ -220,7 +219,7 @@ def take_main_run_images(picam2, args, directory_path, frame_duration):
         
         # Pis have limited memory so storing ~60 raw files in RAM is probably not a good idea...
         if args.save_dng:
-            raw_path = f"{directory_path}/image_{i:0{num_digits}d}.dng"
+            raw_path = f"{args.directory_name}/image_{i:0{num_digits}d}.dng"
             r.save_dng(raw_path)
         
         # Convert the captured raw image data into a frame that can be processed.
@@ -231,8 +230,8 @@ def take_main_run_images(picam2, args, directory_path, frame_duration):
     # Images processed after all of the capturing is complete
     for i, frame in enumerate(frames, 1):
         image = process_frame(frame, args)
-        filename = f"image_{(i):0{num_digits}d}.{args.format}"  # Dynamically pad the index
-        image.save(f"{directory_path}/{filename}", format=args.format)
+        filename = f"main_run_image_{(i):0{num_digits}d}_cslID_{args.camera_settings_link_id}.{args.format}"
+        image.save(f"{args.directory_name}/{filename}", format=args.format)
     
     logging.info(f"{args.num_of_images} images saved to directory.")
     return 1
@@ -267,9 +266,9 @@ def package_images_for_transfer(directory_path):
 
 def main_run(args):
     try:
-        directory_path = check_directory_exists(args.directory_name)
+        check_directory_exists(args.directory_name)
         if args.logging:
-            setup_logging(directory_path, args.directory_name)
+            setup_logging(args.directory_name)
             
         picam2 = Picamera2()
         capture_config = picam2.create_still_configuration(raw={}, display=None)
@@ -284,15 +283,17 @@ def main_run(args):
         picam2.set_controls({"AnalogueGain": args.gain,
                              "ColourGains": (1.0, 1.0),
                              "NoiseReductionMode": 0,
+                            #  "AfMode": controls.AfModeEnum.Manual,
+                            #  "LensPosition": args.lens_position, 
                              "Contrast": 1.0,
                              "Saturation": 1.0,
                              "Sharpness": 1.0,
                              "FrameDurationLimits": (frame_duration, frame_duration),
                              "ExposureTime": int(frame_duration / 2),})
         picam2.start()
-        ret = take_main_run_images(picam2, args, directory_path, frame_duration)
+        ret = take_main_run_images(picam2, args, frame_duration)
         if ret:
-            package_images_for_transfer(directory_path)
+            package_images_for_transfer(args.directory_name)
         print("Image capture complete")
         return 0
     
@@ -304,15 +305,14 @@ def main_run(args):
             picam2.stop()
 
 
-def take_test_run_images(picam2, args, directory_path, frame_duration):
+def take_test_run_images(picam2, args, frame_duration):
 
-    gains = np.linspace(args.minimum_gain, args.maximum_gain, 
-                    num=int(round((args.maximum_gain - args.minimum_gain) / args.gain_increment)) + 1)
-    
+    gains = args.gain_list
     num_of_images = len(gains)
     num_digits = len(str(num_of_images))
 
     frames = [] 
+    successful_capture = [] # list of all cs_ids of captured images
     for count, gain in enumerate(gains, start=1):
         print(f"Capturing image {count}")
         
@@ -331,7 +331,7 @@ def take_test_run_images(picam2, args, directory_path, frame_duration):
             continue
 
         if args.save_dng:
-            raw_path = f"{directory_path}/image_{count:0{num_digits}d}.dng"
+            raw_path = f"{args.directory_name}/image_{count:0{num_digits}d}.dng"
             r.save_dng(raw_path)
         
         # Convert the captured raw image data into a frame that can be processed.
@@ -339,12 +339,14 @@ def take_test_run_images(picam2, args, directory_path, frame_duration):
         frames.append(frame)
         r.release()
         picam2.stop() # ready for controls to be updated again
+        successful_capture.append(args.cs_id_array[count-1])
     
     # Images processed after all of the capturing is complete
-    for i, frame in enumerate(frames, 1):
+    
+    for i, frame in enumerate(frames):
         image = process_frame(frame, args)
-        filename = f"image_{(i):0{num_digits}d}.{args.format}"  # Dynamically pad the index
-        image.save(f"{directory_path}/{filename}", format=args.format)
+        filename = f"test_run_image_cslID_{successful_capture[i]}.{args.format}"
+        image.save(f"{args.directory_name}/{filename}", format=args.format)
     
     logging.info(f"{num_of_images} images saved to directory.")
     
@@ -352,13 +354,9 @@ def take_test_run_images(picam2, args, directory_path, frame_duration):
 
 def test_run(args):
     try:
-        # if args.gain_list:
-        #     print(args.gain_list, type(args.gain_list))
-        # return
-        
-        directory_path = check_directory_exists(args.directory_name)
+        check_directory_exists(args.directory_name)
         if args.logging:
-            setup_logging(directory_path, args.directory_name)
+            setup_logging(args.directory_name)
             
         picam2 = Picamera2()
         capture_config = picam2.create_still_configuration(raw={}, display=None)
@@ -369,15 +367,17 @@ def test_run(args):
         picam2.set_controls({
                             "ColourGains": (1.0, 1.0),
                             "NoiseReductionMode": 0,
+                            # "AfMode": controls.AfModeEnum.Manual,
+                            # "LensPosition": args.lens_position, 
                             "Contrast": 1.0,
                             "Saturation": 1.0,
                             "Sharpness": 1.0,
                             "FrameDurationLimits": (frame_duration, frame_duration),
                             "ExposureTime": int(frame_duration / 2)})
         
-        ret = take_test_run_images(picam2, args, directory_path, frame_duration)
+        ret = take_test_run_images(picam2, args, frame_duration)
         if ret:
-            package_images_for_transfer(directory_path)
+            package_images_for_transfer(args.directory_name)
         print("Image capture complete")
         return 0
     
