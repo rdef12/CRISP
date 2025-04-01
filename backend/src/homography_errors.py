@@ -94,15 +94,21 @@ def generate_householder_matrix(eigen_values, eigen_vectors, exclude_eigen_value
         
         # HACK / TODO / NOTE
         # Multiplying eigenvectors by order of magnitude, then divide at the end of computation.
-        eigen_vector *= 10**12
+        # This factor actually cancels out!
+        
+        eigen_vector *= 10**28 # very large factor to address 10**-24 eigenvalues?
         
         house_holder_matrix += np.outer(eigen_vector, eigen_vector)/eigen_values[count]
+        print("Generated Householder Matrix:", house_holder_matrix)
     
     return house_holder_matrix
 
 
 def find_homography_covariance_matrix(homography_jacobian, pixel_uncertainty_covariance_matrix):
-    matrix_to_pseudo_inverse = homography_jacobian.T @ np.linalg.inv(pixel_uncertainty_covariance_matrix) @ homography_jacobian
+    
+    # matrix_to_pseudo_inverse = homography_jacobian.T @ np.linalg.inv(pixel_uncertainty_covariance_matrix) @ homography_jacobian
+    matrix_to_pseudo_inverse = homography_jacobian.T @ np.linalg.pinv(pixel_uncertainty_covariance_matrix) @ homography_jacobian
+    
     eigen_values, eigen_vectors = find_descending_order_eigen_info(matrix_to_pseudo_inverse)
     house_holder_matrix = generate_householder_matrix(eigen_values, eigen_vectors)
     
@@ -207,12 +213,15 @@ def calculate_world_point_uncertainty(image_point, x_pixel_uncertainty, y_pixel_
     covariance_from_homography = calculate_covariance_from_homography(image_point, image_grid_points, homography_matrix, x_grid_uncertainties, y_grid_uncertainties)
     covariance_from_pixel_selection = calculate_covariance_from_pixel_selection(image_point, homography_matrix, x_pixel_uncertainty, y_pixel_uncertainty)
     
+    print("Covariance from Homography:", covariance_from_homography)
+    print("Covariance from Pixel Selection:", covariance_from_pixel_selection)
+    
     world_point_covariance = covariance_from_homography + covariance_from_pixel_selection
-    # print(world_point_covariance)
+    print("World Point Covariance Matrix:", world_point_covariance)
     x_variance = world_point_covariance[0, 0]
     y_variance = world_point_covariance[1, 1]
     
-    # print(x_variance, y_variance)
+    print("X Variance:", x_variance, "Y Variance:", y_variance)
     
     x_uncertainty = np.sqrt(x_variance)
     y_uncertainty = np.sqrt(y_variance)
@@ -224,6 +233,7 @@ def calculate_world_point_uncertainty(image_point, x_pixel_uncertainty, y_pixel_
 ############################ MADE FOR IMPORTING IN SEMESTER TWO #########################
 
 def generate_homography_covariance_matrix(image_grid_positions, homography_matrix, grid_uncertainties_array):
+    
     homogeneous_image_grid_positions = convert_inhomogeneous_to_homogeneous_image_points(image_grid_positions)
     homogeneous_world_grid_positions = np.zeros((len(image_grid_positions), 1, 3))
     for count, homogeneous_image_grid_position in enumerate(homogeneous_image_grid_positions):
@@ -234,6 +244,7 @@ def generate_homography_covariance_matrix(image_grid_positions, homography_matri
     grid_measurement_covariance = find_measured_points_covariance_matrix(grid_uncertainties_array) 
     
     return find_homography_covariance_matrix(homography_jacobian, grid_measurement_covariance)
+    #return np.zeros((9, 9))
 
 
 def generate_world_point_uncertainty(image_point, x_pixel_uncertainty, y_pixel_uncertainty, homography_matrix, homography_covariance):
@@ -241,8 +252,13 @@ def generate_world_point_uncertainty(image_point, x_pixel_uncertainty, y_pixel_u
     covariance_from_homography = calculate_homography_position_covariance(image_point, homography_matrix, homography_covariance)   
     covariance_from_pixel_selection = calculate_covariance_from_pixel_selection(image_point, homography_matrix, x_pixel_uncertainty, y_pixel_uncertainty)
     
+    print("Covariance from Homography:", covariance_from_homography)
+    print("Covariance from Pixel Selection:", covariance_from_pixel_selection)
+    
     world_point_covariance = covariance_from_homography + covariance_from_pixel_selection
+    print("World Point Covariance Matrix:", world_point_covariance)
     x_variance, y_variance = world_point_covariance[0, 0],  world_point_covariance[1, 1]
+    print("X Variance:", x_variance, "Y Variance:", y_variance)
     x_uncertainty, y_uncertainty = np.sqrt(x_variance), np.sqrt(y_variance)
     
     return [x_uncertainty, y_uncertainty]

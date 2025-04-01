@@ -36,6 +36,7 @@ from PIL import Image
 import numpy as np
 import os
 import time
+import json
 import shutil
 import logging
 import tarfile
@@ -93,14 +94,11 @@ def parse_arguments():
     
     # Sub arguments for test beam run
     test_run_parser = subparsers.add_parser("test_run", help="Perform test beam run imaging")
-    # test_run_parser.add_argument("-min", "--minimum_gain", type=float, required=True)
-    # test_run_parser.add_argument("-max", "--maximum_gain", type=float, required=True)
-    # test_run_parser.add_argument("-step", "--gain_increment", type=float, required=True)
-    test_run_parser.add_argument("-tgs", "--test_gains", nargs='+', type=float, required=True)
-    test_run_parser.add_argument("-tcsid", "--test_camera_settings_ids", nargs='+', type=float, required=True)
+    test_run_parser.add_argument('--gain_list', type=json.loads, help='Pass a list as JSON')
+    test_run_parser.add_argument("-min", "--minimum_gain", type=float, required=True)
+    test_run_parser.add_argument("-max", "--maximum_gain", type=float, required=True)
+    test_run_parser.add_argument("-step", "--gain_increment", type=float, required=True)
     
-
-
     args = parser.parse_args()
     
     if (args.bit_depth == 16) and args.colour == "all":
@@ -310,8 +308,7 @@ def take_test_run_images(picam2, args, directory_path, frame_duration):
 
     gains = np.linspace(args.minimum_gain, args.maximum_gain, 
                     num=int(round((args.maximum_gain - args.minimum_gain) / args.gain_increment)) + 1)
-    gains = np.array(args.test_gains)
-    camera_settings_ids = np.array(args.test_camera_settings_ids)
+    
     num_of_images = len(gains)
     num_digits = len(str(num_of_images))
 
@@ -355,6 +352,10 @@ def take_test_run_images(picam2, args, directory_path, frame_duration):
 
 def test_run(args):
     try:
+        # if args.gain_list:
+        #     print(args.gain_list, type(args.gain_list))
+        # return
+        
         directory_path = check_directory_exists(args.directory_name)
         if args.logging:
             setup_logging(directory_path, args.directory_name)

@@ -8,7 +8,17 @@ export interface ImageSettings {
 export interface CalibrationImageSettings extends ImageSettings {
   calibrationGridSize: [number, number]; // Tuple for grid size (rows, columns)
   calibrationTileSpacing: [number, number]; // Spacing between tiles in mm
+
   calibrationTileSpacingErrors?: [number, number]; // optional prop
+
+  calibrationBoardThickness?: number; // optional prop
+  calibrationBoardThicknessError?: number; // optional prop
+  // calibrationOriginShift?: [number, number]; // optional prop
+  // calibrationOriginShiftErrors?: [number, number]; // optional prop
+  zDirectedShift?: number | ""; // optional prop
+  zDirectedShiftError?: number | ""; // optional prop
+  nonZDirectedOriginShift?: number | ""; // optional prop
+  nonZDirectedOriginShiftError?: number | ""; // optional prop
 }
 
 export interface CalibrationFormProps {
@@ -19,13 +29,18 @@ export interface CalibrationFormProps {
   yGridSpacing: number | "";
   xGridSpacingError?: number | ""; // optional prop
   yGridSpacingError?: number | ""; // optional prop
+  calibrationBoardThickness?: ""; // optional prop
+  calibrationBoardThicknessError?: number | ""; // optional prop
+  zDirectedShift?: number | ""; // optional prop
+  zDirectedShiftError?: number | ""; // optional prop
+  nonZDirectedOriginShift?: number | ""; // optional prop
+  nonZDirectedOriginShiftError?: number | ""; // optional prop
 }
 
 export interface LogMessage {
   status: boolean;
   message: string;
 }
-
 
 export interface VideoSettings {
   directory_name: string;

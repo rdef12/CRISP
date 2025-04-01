@@ -4,12 +4,11 @@ from src.database.database import engine
 from sqlmodel import Session, select, PickleType
 from sqlalchemy.orm.exc import NoResultFound
 import numpy as np
-from typing import List
+from typing import List, Literal
 import pickle
 
-from src.database.models import Camera, CameraSetupLink, Experiment, Setup
+from src.database.models import Camera, CameraSetupLink, Experiment, Setup, OpticalAxisEnum, DepthDirectionEnum
 from src.classes.JSON_request_bodies import request_bodies as rb
-
 
 # Create
 
@@ -81,6 +80,131 @@ def get_cameras_in_experiment(experiment_id: int) -> list[Camera]:
 #         else:
 #             raise ValueError(f"Near face calibration photo not found for camera with id {camera_id} and setup with id {setup_id}.")
 
+def get_camera_depth_direction(camera_id:int, setup_id:int) -> str:
+    with Session(engine) as session:
+        statement = select(CameraSetupLink).where(CameraSetupLink.camera_id == camera_id).where(CameraSetupLink.setup_id == setup_id)
+        result = session.exec(statement).one()
+        if result:
+            return result.depth_direction.value # .value because type is enum
+        else:
+            raise ValueError(f"Camera's depth direction not found for camera with id {camera_id} and setup with id {setup_id}.")
+        
+def get_camera_optical_axis(camera_id:int, setup_id:int) -> int:
+    with Session(engine) as session:
+        statement = select(CameraSetupLink).where(CameraSetupLink.camera_id == camera_id).where(CameraSetupLink.setup_id == setup_id)
+        result = session.exec(statement).one()
+        if result:
+            return result.optical_axis.value # .value because type is enum
+        else:
+            raise ValueError(f"Optical axis not found for camera with id {camera_id} and setup with id {setup_id}.")
+       
+def get_far_face_z_shift(camera_id: int, setup_id: int) -> float:
+    with Session(engine) as session:
+        statement = select(CameraSetupLink).where(CameraSetupLink.camera_id == camera_id).where(CameraSetupLink.setup_id == setup_id)
+        result = session.exec(statement).one()
+        if result:
+            return result.far_face_z_shift
+        else:
+            raise ValueError(f"Far face Z shift not found for camera with id {camera_id} and setup with id {setup_id}.")
+
+def get_far_face_z_shift_unc(camera_id: int, setup_id: int) -> float:
+    with Session(engine) as session:
+        statement = select(CameraSetupLink).where(CameraSetupLink.camera_id == camera_id).where(CameraSetupLink.setup_id == setup_id)
+        result = session.exec(statement).one()
+        if result:
+            return result.far_face_z_shift_unc
+        else:
+            raise ValueError(f"Far face Z shift uncertainty not found for camera with id {camera_id} and setup with id {setup_id}.")
+
+def get_far_face_non_z_shift(camera_id: int, setup_id: int) -> float:
+    with Session(engine) as session:
+        statement = select(CameraSetupLink).where(CameraSetupLink.camera_id == camera_id).where(CameraSetupLink.setup_id == setup_id)
+        result = session.exec(statement).one()
+        if result:
+            return result.far_face_non_z_shift
+        else:
+            raise ValueError(f"Far face non-Z shift not found for camera with id {camera_id} and setup with id {setup_id}.")
+
+def get_far_face_non_z_shift_unc(camera_id: int, setup_id: int) -> float:
+    with Session(engine) as session:
+        statement = select(CameraSetupLink).where(CameraSetupLink.camera_id == camera_id).where(CameraSetupLink.setup_id == setup_id)
+        result = session.exec(statement).one()
+        if result:
+            return result.far_face_non_z_shift_unc
+        else:
+            raise ValueError(f"Far face non-Z shift uncertainty not found for camera with id {camera_id} and setup with id {setup_id}.")
+
+def get_far_face_calibration_board_thickness(camera_id: int, setup_id: int) -> float:
+    with Session(engine) as session:
+        statement = select(CameraSetupLink).where(CameraSetupLink.camera_id == camera_id).where(CameraSetupLink.setup_id == setup_id)
+        result = session.exec(statement).one()
+        if result:
+            return result.far_face_calibration_board_thickness
+        else:
+            raise ValueError(f"Far face calibration board thickness not found for camera with id {camera_id} and setup with id {setup_id}.")
+
+def get_far_face_calibration_board_thickness_unc(camera_id: int, setup_id: int) -> float:
+    with Session(engine) as session:
+        statement = select(CameraSetupLink).where(CameraSetupLink.camera_id == camera_id).where(CameraSetupLink.setup_id == setup_id)
+        result = session.exec(statement).one()
+        if result:
+            return result.far_face_calibration_board_thickness_unc
+        else:
+            raise ValueError(f"Far face calibration board thickness uncertainty not found for camera with id {camera_id} and setup with id {setup_id}.")
+
+def get_near_face_z_shift(camera_id: int, setup_id: int) -> float:
+    with Session(engine) as session:
+        statement = select(CameraSetupLink).where(CameraSetupLink.camera_id == camera_id).where(CameraSetupLink.setup_id == setup_id)
+        result = session.exec(statement).one()
+        if result:
+            return result.near_face_z_shift
+        else:
+            raise ValueError(f"Near face Z shift not found for camera with id {camera_id} and setup with id {setup_id}.")
+
+def get_near_face_z_shift_unc(camera_id: int, setup_id: int) -> float:
+    with Session(engine) as session:
+        statement = select(CameraSetupLink).where(CameraSetupLink.camera_id == camera_id).where(CameraSetupLink.setup_id == setup_id)
+        result = session.exec(statement).one()
+        if result:
+            return result.near_face_z_shift_unc
+        else:
+            raise ValueError(f"Near face Z shift uncertainty not found for camera with id {camera_id} and setup with id {setup_id}.")
+
+def get_near_face_non_z_shift(camera_id: int, setup_id: int) -> float:
+    with Session(engine) as session:
+        statement = select(CameraSetupLink).where(CameraSetupLink.camera_id == camera_id).where(CameraSetupLink.setup_id == setup_id)
+        result = session.exec(statement).one()
+        if result:
+            return result.near_face_non_z_shift
+        else:
+            raise ValueError(f"Near face non-Z shift not found for camera with id {camera_id} and setup with id {setup_id}.")
+
+def get_near_face_non_z_shift_unc(camera_id: int, setup_id: int) -> float:
+    with Session(engine) as session:
+        statement = select(CameraSetupLink).where(CameraSetupLink.camera_id == camera_id).where(CameraSetupLink.setup_id == setup_id)
+        result = session.exec(statement).one()
+        if result:
+            return result.near_face_non_z_shift_unc
+        else:
+            raise ValueError(f"Near face non-Z shift uncertainty not found for camera with id {camera_id} and setup with id {setup_id}.")
+
+def get_near_face_calibration_board_thickness(camera_id: int, setup_id: int) -> float:
+    with Session(engine) as session:
+        statement = select(CameraSetupLink).where(CameraSetupLink.camera_id == camera_id).where(CameraSetupLink.setup_id == setup_id)
+        result = session.exec(statement).one()
+        if result:
+            return result.near_face_calibration_board_thickness
+        else:
+            raise ValueError(f"Near face calibration board thickness not found for camera with id {camera_id} and setup with id {setup_id}.")
+
+def get_near_face_calibration_board_thickness_unc(camera_id: int, setup_id: int) -> float:
+    with Session(engine) as session:
+        statement = select(CameraSetupLink).where(CameraSetupLink.camera_id == camera_id).where(CameraSetupLink.setup_id == setup_id)
+        result = session.exec(statement).one()
+        if result:
+            return result.near_face_calibration_board_thickness_unc
+        else:
+            raise ValueError(f"Near face calibration board thickness uncertainty not found for camera with id {camera_id} and setup with id {setup_id}.")
 
 def get_far_face_calibration_pattern_size(camera_id:int, setup_id:int) -> tuple[int, int]:
     with Session(engine) as session:
@@ -323,6 +447,189 @@ def update_near_face_camera_settings_link(camera_id:int, setup_id:int, camera_se
 #     except Exception as e:
 #         raise RuntimeError(f"An error occurred: {str(e)}")
 
+def update_far_face_z_shift(camera_id: int, setup_id: int, z_shift: float):
+    try:
+        with Session(engine) as session:
+            statement = select(CameraSetupLink).where(CameraSetupLink.camera_id == camera_id).where(CameraSetupLink.setup_id == setup_id)
+            camera_setup_link = session.exec(statement).one()
+            camera_setup_link.far_face_z_shift = z_shift
+            session.commit()
+            return {"message": f"Far face Z shift updated for camera {camera_id} and setup {setup_id}."}
+    except NoResultFound:
+        raise ValueError(f"No camera setup link found for camera_id={camera_id} and setup_id={setup_id}.")
+    except Exception as e:
+        raise RuntimeError(f"An error occurred: {str(e)}")
+
+def update_far_face_z_shift_unc(camera_id: int, setup_id: int, z_shift_unc: float):
+    try:
+        with Session(engine) as session:
+            statement = select(CameraSetupLink).where(CameraSetupLink.camera_id == camera_id).where(CameraSetupLink.setup_id == setup_id)
+            camera_setup_link = session.exec(statement).one()
+            camera_setup_link.far_face_z_shift_unc = z_shift_unc
+            session.commit()
+            return {"message": f"Far face Z shift uncertainty updated for camera {camera_id} and setup {setup_id}."}
+    except NoResultFound:
+        raise ValueError(f"No camera setup link found for camera_id={camera_id} and setup_id={setup_id}.")
+    except Exception as e:
+        raise RuntimeError(f"An error occurred: {str(e)}")
+
+def update_far_face_non_z_shift(camera_id: int, setup_id: int, non_z_shift: float):
+    try:
+        with Session(engine) as session:
+            statement = select(CameraSetupLink).where(CameraSetupLink.camera_id == camera_id).where(CameraSetupLink.setup_id == setup_id)
+            camera_setup_link = session.exec(statement).one()
+            camera_setup_link.far_face_non_z_shift = non_z_shift
+            session.commit()
+            return {"message": f"Far face non-Z shift updated for camera {camera_id} and setup {setup_id}."}
+    except NoResultFound:
+        raise ValueError(f"No camera setup link found for camera_id={camera_id} and setup_id={setup_id}.")
+    except Exception as e:
+        raise RuntimeError(f"An error occurred: {str(e)}")
+
+def update_far_face_non_z_shift_unc(camera_id: int, setup_id: int, non_z_shift_unc: float):
+    try:
+        with Session(engine) as session:
+            statement = select(CameraSetupLink).where(CameraSetupLink.camera_id == camera_id).where(CameraSetupLink.setup_id == setup_id)
+            camera_setup_link = session.exec(statement).one()
+            camera_setup_link.far_face_non_z_shift_unc = non_z_shift_unc
+            session.commit()
+            return {"message": f"Far face non-Z shift uncertainty updated for camera {camera_id} and setup {setup_id}."}
+    except NoResultFound:
+        raise ValueError(f"No camera setup link found for camera_id={camera_id} and setup_id={setup_id}.")
+    except Exception as e:
+        raise RuntimeError(f"An error occurred: {str(e)}")
+
+def update_far_face_calibration_board_thickness(camera_id: int, setup_id: int, thickness: float):
+    try:
+        with Session(engine) as session:
+            statement = select(CameraSetupLink).where(CameraSetupLink.camera_id == camera_id).where(CameraSetupLink.setup_id == setup_id)
+            camera_setup_link = session.exec(statement).one()
+            camera_setup_link.far_face_calibration_board_thickness = thickness
+            session.commit()
+            return {"message": f"Far face calibration board thickness updated for camera {camera_id} and setup {setup_id}."}
+    except NoResultFound:
+        raise ValueError(f"No camera setup link found for camera_id={camera_id} and setup_id={setup_id}.")
+    except Exception as e:
+        raise RuntimeError(f"An error occurred: {str(e)}")
+
+def update_far_face_calibration_board_thickness_unc(camera_id: int, setup_id: int, thickness_unc: float):
+    try:
+        with Session(engine) as session:
+            statement = select(CameraSetupLink).where(CameraSetupLink.camera_id == camera_id).where(CameraSetupLink.setup_id == setup_id)
+            camera_setup_link = session.exec(statement).one()
+            camera_setup_link.far_face_calibration_board_thickness_unc = thickness_unc
+            session.commit()
+            return {"message": f"Far face calibration board thickness uncertainty updated for camera {camera_id} and setup {setup_id}."}
+    except NoResultFound:
+        raise ValueError(f"No camera setup link found for camera_id={camera_id} and setup_id={setup_id}.")
+    except Exception as e:
+        raise RuntimeError(f"An error occurred: {str(e)}")
+    
+    
+def update_near_face_z_shift(camera_id: int, setup_id: int, z_shift: float):
+    try:
+        with Session(engine) as session:
+            statement = select(CameraSetupLink).where(CameraSetupLink.camera_id == camera_id).where(CameraSetupLink.setup_id == setup_id)
+            camera_setup_link = session.exec(statement).one()
+            camera_setup_link.near_face_z_shift = z_shift
+            session.commit()
+            return {"message": f"Near face Z shift updated for camera {camera_id} and setup {setup_id}."}
+    except NoResultFound:
+        raise ValueError(f"No camera setup link found for camera_id={camera_id} and setup_id={setup_id}.")
+    except Exception as e:
+        raise RuntimeError(f"An error occurred: {str(e)}")
+
+def update_near_face_z_shift_unc(camera_id: int, setup_id: int, z_shift_unc: float):
+    try:
+        with Session(engine) as session:
+            statement = select(CameraSetupLink).where(CameraSetupLink.camera_id == camera_id).where(CameraSetupLink.setup_id == setup_id)
+            camera_setup_link = session.exec(statement).one()
+            camera_setup_link.near_face_z_shift_unc = z_shift_unc
+            session.commit()
+            return {"message": f"Near face Z shift uncertainty updated for camera {camera_id} and setup {setup_id}."}
+    except NoResultFound:
+        raise ValueError(f"No camera setup link found for camera_id={camera_id} and setup_id={setup_id}.")
+    except Exception as e:
+        raise RuntimeError(f"An error occurred: {str(e)}")
+
+def update_near_face_non_z_shift(camera_id: int, setup_id: int, non_z_shift: float):
+    try:
+        with Session(engine) as session:
+            statement = select(CameraSetupLink).where(CameraSetupLink.camera_id == camera_id).where(CameraSetupLink.setup_id == setup_id)
+            camera_setup_link = session.exec(statement).one()
+            camera_setup_link.near_face_non_z_shift = non_z_shift
+            session.commit()
+            return {"message": f"Near face non-Z shift updated for camera {camera_id} and setup {setup_id}."}
+    except NoResultFound:
+        raise ValueError(f"No camera setup link found for camera_id={camera_id} and setup_id={setup_id}.")
+    except Exception as e:
+        raise RuntimeError(f"An error occurred: {str(e)}")
+
+def update_near_face_non_z_shift_unc(camera_id: int, setup_id: int, non_z_shift_unc: float):
+    try:
+        with Session(engine) as session:
+            statement = select(CameraSetupLink).where(CameraSetupLink.camera_id == camera_id).where(CameraSetupLink.setup_id == setup_id)
+            camera_setup_link = session.exec(statement).one()
+            camera_setup_link.near_face_non_z_shift_unc = non_z_shift_unc
+            session.commit()
+            return {"message": f"Near face non-Z shift uncertainty updated for camera {camera_id} and setup {setup_id}."}
+    except NoResultFound:
+        raise ValueError(f"No camera setup link found for camera_id={camera_id} and setup_id={setup_id}.")
+    except Exception as e:
+        raise RuntimeError(f"An error occurred: {str(e)}")
+
+def update_near_face_calibration_board_thickness(camera_id: int, setup_id: int, thickness: float):
+    try:
+        with Session(engine) as session:
+            statement = select(CameraSetupLink).where(CameraSetupLink.camera_id == camera_id).where(CameraSetupLink.setup_id == setup_id)
+            camera_setup_link = session.exec(statement).one()
+            camera_setup_link.near_face_calibration_board_thickness = thickness
+            session.commit()
+            return {"message": f"Near face calibration board thickness updated for camera {camera_id} and setup {setup_id}."}
+    except NoResultFound:
+        raise ValueError(f"No camera setup link found for camera_id={camera_id} and setup_id={setup_id}.")
+    except Exception as e:
+        raise RuntimeError(f"An error occurred: {str(e)}")
+
+def update_near_face_calibration_board_thickness_unc(camera_id: int, setup_id: int, thickness_unc: float):
+    try:
+        with Session(engine) as session:
+            statement = select(CameraSetupLink).where(CameraSetupLink.camera_id == camera_id).where(CameraSetupLink.setup_id == setup_id)
+            camera_setup_link = session.exec(statement).one()
+            camera_setup_link.near_face_calibration_board_thickness_unc = thickness_unc
+            session.commit()
+            return {"message": f"Near face calibration board thickness uncertainty updated for camera {camera_id} and setup {setup_id}."}
+    except NoResultFound:
+        raise ValueError(f"No camera setup link found for camera_id={camera_id} and setup_id={setup_id}.")
+    except Exception as e:
+        raise RuntimeError(f"An error occurred: {str(e)}")
+
+def update_camera_optical_axis(camera_id:int, setup_id:int, camera_optical_axis: Literal["x", "y", "z"]):
+    try:
+        with Session(engine) as session:
+            statement = select(CameraSetupLink).where(CameraSetupLink.camera_id == camera_id).where(CameraSetupLink.setup_id == setup_id)
+            result = session.exec(statement).one()
+            result.optical_axis = camera_optical_axis
+            session.commit()
+            return {"message": f"Optical axis updated for camera with id {camera_id} and setup with id {setup_id}."}
+    except NoResultFound:
+        raise ValueError(f"No camera setup link found for camera_id={camera_id} and setup_id={setup_id}.")
+    except Exception as e:
+        raise RuntimeError(f"An error occurred: {str(e)}")
+    
+    
+def update_camera_depth_direction(camera_id:int, setup_id:int, camera_depth_direction: Literal[1, -1]):
+    try:
+        with Session(engine) as session:
+            statement = select(CameraSetupLink).where(CameraSetupLink.camera_id == camera_id).where(CameraSetupLink.setup_id == setup_id)
+            result = session.exec(statement).one()
+            result.depth_direction = camera_depth_direction
+            session.commit()
+            return {"message": f"Depth direction updated for camera with id {camera_id} and setup with id {setup_id}."}
+    except NoResultFound:
+        raise ValueError(f"No camera setup link found for camera_id={camera_id} and setup_id={setup_id}.")
+    except Exception as e:
+        raise RuntimeError(f"An error occurred: {str(e)}")
 
 def update_far_face_calibration_pattern_size(camera_id:int, setup_id:int, far_face_calibration_pattern_size: tuple[int, int]):
     try:

@@ -27,7 +27,7 @@ const AdminApp = () => (
       <Route path=":experimentId/beam-run/real/:beamRunId" element={<ShowRealBeamRun />} />
       <Route path=":experimentId/beam-run/real/:beamRunId/take-data" element={<TakeRealData />} />
 
-    </Resource>
+     </Resource>
 
   </Admin>
 );

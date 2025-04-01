@@ -72,7 +72,14 @@ class Pi:
                 Pi.delete_pi(self.username)
                 return False
         return False
-    
+      
+  def get_pi_disk_space(self):
+    if self.ssh_status:
+        _, stdout, _ = self.ssh_client.exec_command("df -h / | grep '/' | awk '{print $3 \" / \" $2}'", timeout=10)
+        return stdout.read().decode('utf-8').strip()
+    raise paramiko.SSHException("SSH connection not established.")
+
+  
   def close_ssh_connection(self):
     if self.ssh_status:
       self.ssh_client.close()

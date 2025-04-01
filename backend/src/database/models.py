@@ -1,9 +1,21 @@
-from typing import Optional, List
+from typing import Optional, List, Literal
 from datetime import datetime
 import numpy as np
+from enum import Enum
 
-from sqlmodel import Field, SQLModel, PickleType, JSON, Column, ARRAY, Integer, LargeBinary, Relationship
-# from sqlalchemy.dialects import postgresql #ARRAY contains requires dialect specific type
+# Used for typehinting - cannot use Literal type as an SQL column
+class OpticalAxisEnum(str, Enum):
+    x = "x"
+    y = "y"
+    z = "z"
+
+class DepthDirectionEnum(int, Enum):
+    POSITIVE = 1
+    NEGATIVE = -1
+
+# from sqlmodel import Field, SQLModel, PickleType, JSON, Column, ARRAY, Integer, LargeBinary, Relationship
+from sqlmodel import Field, SQLModel, PickleType, JSON, LargeBinary, Relationship
+from sqlalchemy import Column, ARRAY, Float, Integer
 
 class Setup(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
@@ -34,12 +46,15 @@ class CameraSetupLink(SQLModel, table=True):
     setup: "Setup" = Relationship(back_populates="camera_links")
 
     #Calibration parameters
-# Far face
+# General homography
+    optical_axis: Optional[OpticalAxisEnum] = Field(default=None)
+    depth_direction: Optional[DepthDirectionEnum] = Field(default=None) # used to specify which side of the origin the cam is along optical axis
+# Far face homography
     #Calibration pattern type here too?
     far_face_calibration_pattern_size: Optional[List[int]] = Field(default=None, sa_column=Column(ARRAY(Integer)))
     far_face_calibration_pattern_type: Optional[str] = Field(default=None)
-    far_face_calibration_spacing: Optional[List[float]] = Field(default=None, sa_column=Column(ARRAY(Integer)))
-    far_face_calibration_spacing_unc: Optional[List[float]] = Field(default=None, sa_column=Column(ARRAY(Integer)))
+    far_face_calibration_spacing: Optional[List[float]] = Field(default=None, sa_column=Column(ARRAY(Float)))
+    far_face_calibration_spacing_unc: Optional[List[float]] = Field(default=None, sa_column=Column(ARRAY(Float)))
     # far_face_calibratoin_photo_settings_id: Optional[int] = Field(default=None, foreign_key="settings.id") # Add back filling bit to settings
     far_face_calibration_photo_camera_settings_id: Optional[int] = Field(default=None, foreign_key="camerasettingslink.id")
     # far_face_calibration_photo: Optional[bytes] = Field(default=None, sa_column=Column(LargeBinary))
@@ -47,30 +62,40 @@ class CameraSetupLink(SQLModel, table=True):
 
     far_face_homography_matrix: Optional[bytes] = Field(default=None, sa_column=PickleType)
     far_face_homography_covariance_matrix: Optional[bytes] = Field(default=None, sa_column=PickleType)
-    far_x_offset: Optional[float] = Field(default=None)
-    far_x_offset_unc: Optional[float] = Field(default=None)
-    far_y_offset: Optional[float] = Field(default=None)
-    far_y_offset_unc: Optional[float] = Field(default=None)
-    far_z_offset: Optional[float] = Field(default=None)
-    far_z_offset_unc: Optional[float] = Field(default=None)
-# Near face
+    
+    # NOTE - below replaced with calibraiton board thickness and Z/non-Z shifts
+    # far_x_offset: Optional[float] = Field(default=None)
+    # far_x_offset_unc: Optional[float] = Field(default=None)
+    # far_y_offset: Optional[float] = Field(default=None)
+    # far_y_offset_unc: Optional[float] = Field(default=None)
+    # far_z_offset: Optional[float] = Field(default=None)
+    # far_z_offset_unc: Optional[float] = Field(default=None)
+    far_face_z_shift: Optional[float] = Field(default=None)
+    far_face_z_shift_unc: Optional[float] = Field(default=None)
+    far_face_non_z_shift: Optional[float] = Field(default=None)
+    far_face_non_z_shift_unc:  Optional[float] = Field(default=None)
+    far_face_calibration_board_thickness:  Optional[float] = Field(default=None)
+    far_face_calibration_board_thickness_unc: Optional[float] = Field(default=None)
+    
+# Near face homography
     near_face_calibration_pattern_size: Optional[List[int]] = Field(default=None, sa_column=Column(ARRAY(Integer)))
     near_face_calibration_pattern_type: Optional[str] = Field(default=None)
-    near_face_calibration_spacing: Optional[List[float]] = Field(default=None, sa_column=Column(ARRAY(Integer)))
-    near_face_calibration_spacing_unc: Optional[List[float]] = Field(default=None, sa_column=Column(ARRAY(Integer)))
+    near_face_calibration_spacing: Optional[List[float]] = Field(default=None, sa_column=Column(ARRAY(Float)))
+    near_face_calibration_spacing_unc: Optional[List[float]] = Field(default=None, sa_column=Column(ARRAY(Float)))
     # near_face_calibratoin_photo_settings_id: Optional[int] = Field(default=None, foreign_key="settings.id") # Add back filling bit to setting
     near_face_calibration_photo_camera_settings_id: Optional[int] = Field(default=None, foreign_key="camerasettingslink.id")
     # near_face_calibration_photo: Optional[bytes] = Field(default=None, sa_column=Column(LargeBinary))
     # near_face_calibration_photo_id: Optional[int] = Field(default=None, foreign_key="photo.id")
     near_face_homography_matrix: Optional[bytes] = Field(default=None, sa_column=PickleType) # How do you show 2d shape? (3x3 array)
     near_face_homography_covariance_matrix: Optional[bytes] = Field(default=None, sa_column=PickleType) # How do you show 2d shape? (9x9 array)
-    near_x_offset: Optional[float] = Field(default=None)
-    near_x_offset_unc: Optional[float] = Field(default=None)
-    near_y_offset: Optional[float] = Field(default=None)
-    near_y_offset_unc: Optional[float] = Field(default=None)
-    near_z_offset: Optional[float] = Field(default=None)
-    near_z_offset_unc: Optional[float] = Field(default=None)
-# Scintillator edges
+    near_face_z_shift_unc: Optional[float] = Field(default=None)
+    near_face_non_z_shift: Optional[float] = Field(default=None)
+    near_face_non_z_shift_unc: Optional[float] = Field(default=None)
+    near_face_calibration_board_thickness: Optional[float] = Field(default=None)
+    near_face_calibration_board_thickness_unc: Optional[float] = Field(default=None)
+    
+    
+# Others
     scintillator_edges_photo_camera_settings_id: Optional[int] = Field(default=None, foreign_key="camerasettingslink.id")
     # horizontal_scintillator_limits: Optional[List[float]] = Field(default=None, sa_column=Column(ARRAY(Integer))) # How do you show 2d shape? (4x1 of 2x2 array)
     horizontal_scintillator_start: Optional[int]

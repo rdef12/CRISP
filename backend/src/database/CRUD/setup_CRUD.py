@@ -53,6 +53,71 @@ def get_all_setups() -> list[Setup]:
         results = session.exec(statement).all()
         return results if results else []
 
+def get_block_x_dimension(setup_id:int) -> float:
+    with Session(engine) as session:
+        statement = select(Setup).where(Setup.id == setup_id)
+        result = session.exec(statement).one()
+        if result:
+            return result.block_x_dimension
+        else:
+            raise ValueError(f"Block's x dimensions not found for setup with id {setup_id}.")
+        
+def get_block_x_dimension_unc(setup_id:int) -> float:
+    with Session(engine) as session:
+        statement = select(Setup).where(Setup.id == setup_id)
+        result = session.exec(statement).one()
+        if result:
+            return result.block_x_dimension_unc
+        else:
+            raise ValueError(f"Block's x dimension uncertainty not found for setup with id {setup_id}.")
+
+def get_block_y_dimension(setup_id:int) -> float:
+    with Session(engine) as session:
+        statement = select(Setup).where(Setup.id == setup_id)
+        result = session.exec(statement).one()
+        if result:
+            return result.block_y_dimension
+        else:
+            raise ValueError(f"Block's y dimensions not found for setup with id {setup_id}.")   
+    
+def get_block_y_dimension_unc(setup_id:int) -> float:
+    with Session(engine) as session:
+        statement = select(Setup).where(Setup.id == setup_id)
+        result = session.exec(statement).one()
+        if result:
+            return result.block_y_dimension_unc
+        else:
+            raise ValueError(f"Block's y dimension uncertainty not found for setup with id {setup_id}.")
+        
+def get_block_z_dimension(setup_id:int) -> float:
+    with Session(engine) as session:
+        statement = select(Setup).where(Setup.id == setup_id)
+        result = session.exec(statement).one()
+        if result:
+            return result.block_z_dimension
+        else:
+            raise ValueError(f"Block's z dimension not found for setup with id {setup_id}.")
+
+def get_block_refractive_index(setup_id:int) -> float:
+    with Session(engine) as session:
+        statement = select(Setup).where(Setup.id == setup_id)
+        result = session.exec(statement).one()
+        if result:
+            return result.block_refractive_index
+
+        else:
+            raise ValueError(f"Block's refractive index not found for setup with id {setup_id}.")
+
+def get_block_refractive_index_unc(setup_id:int) -> float:
+    with Session(engine) as session:
+        statement = select(Setup).where(Setup.id == setup_id)
+        result = session.exec(statement).one()
+        if result:
+            return result.block_refractive_index_unc
+
+        else:
+            raise ValueError(f"Block's refractive index uncertainty not found for setup with id {setup_id}.")
+
 # Update
 
 def patch_setup(setup_id: int, patch: rb.SetupPatchRequest):

@@ -1,5 +1,5 @@
 import { useParams } from "react-router-dom";
-import { required, Form, useCreateController, NumberInput, useRedirect } from "react-admin";
+import { required, Form, useCreateController, NumberInput } from "react-admin";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 

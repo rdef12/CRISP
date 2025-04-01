@@ -57,7 +57,13 @@ export default function HomograpyCalibration() {
         xGridSpacing: "",
         yGridSpacing: "",
         xGridSpacingError: "",
-        yGridSpacingError: ""
+        yGridSpacingError: "",
+        calibrationBoardThickness: "",
+        calibrationBoardThicknessError: "",
+        zDirectedShift: "",
+        zDirectedShiftError: "",
+        nonZDirectedOriginShift: "",
+        nonZDirectedOriginShiftError: "",
       });
 
     const [transformState, setTransformState] = useState<ImagePointTransforms>({
@@ -77,6 +83,19 @@ export default function HomograpyCalibration() {
                !!formData.xGridSpacingError && 
                !!formData.yGridSpacingError;
     };
+
+    const isCalibrationBoardThicknessComplete = (formData: CalibrationFormProps): boolean => {
+        return !!formData.calibrationBoardThickness && 
+               !!formData.calibrationBoardThicknessError;
+    };
+
+    const areOriginShiftsComplete = (formData: CalibrationFormProps): boolean => {
+        return !!formData.zDirectedShift && 
+               !!formData.zDirectedShiftError && 
+               !!formData.nonZDirectedOriginShift && 
+               !!formData.nonZDirectedOriginShiftError;
+    };
+
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
@@ -108,10 +127,24 @@ export default function HomograpyCalibration() {
             calibrationTileSpacingErrors: [
                 parseInt(formData.xGridSpacingError!.toString()), // ! is used to assert non-null for optional prop
                 parseInt(formData.yGridSpacingError!.toString()) // ! is used to assert non-null for optional prop
-              ]
+              ],
+            calibrationBoardThickness: parseFloat(formData.calibrationBoardThickness!.toString()),
+            calibrationBoardThicknessError: parseFloat(formData.calibrationBoardThicknessError!.toString()),
+            zDirectedShift: parseFloat(formData.zDirectedShift!.toString()),
+            zDirectedShiftError: parseFloat(formData.zDirectedShiftError!.toString()),
+            nonZDirectedOriginShift: parseFloat(formData.nonZDirectedOriginShift!.toString()),
+            nonZDirectedOriginShiftError: parseFloat(formData.nonZDirectedOriginShiftError!.toString()),
+            // calibrationOriginShift: [
+            //     parseFloat(formData.horizontalOriginShift!.toString()),
+            //     parseFloat(formData.verticalOriginShift!.toString())
+            // ],
+            // calibrationOriginShiftErrors: [
+            //     parseFloat(formData.horizontalOriginShiftError!.toString()),
+            //     parseFloat(formData.verticalOriginShiftError!.toString())
+            // ]
           };
           
-          const response = await fetch(`${BACKEND_URL}/take_homography_calibration_image/${id}/${username}/${plane}`, {
+          const response = await fetch(`${BACKEND_URL}/homography/take_homography_calibration_image/${id}/${username}/${plane}`, {
             method: "POST",
             body: JSON.stringify(requestBody),
             headers: { "Content-Type": "application/json" }
@@ -154,7 +187,7 @@ export default function HomograpyCalibration() {
             setShowImage(false);
             setIsLoading(true);
             setShowSaveButton(false);
-            const response = await fetch(`${BACKEND_URL}/flip_homography_origin_position/${id}/${username}/${plane}`, {
+            const response = await fetch(`${BACKEND_URL}/homography/flip_homography_origin_position/${id}/${username}/${plane}`, {
                 method: "POST",
                 body: JSON.stringify(transformState),
                 headers: { "Content-Type": "application/json" }
@@ -187,7 +220,7 @@ export default function HomograpyCalibration() {
       };
 
       const saveHomography = async () => {
-        const response = await fetch(`${BACKEND_URL}/perform_homography_calibration/${id}/${username}/${plane}`, {
+        const response = await fetch(`${BACKEND_URL}/homography/perform_homography_calibration/${id}/${username}/${plane}`, {
             method: "POST",
             body: JSON.stringify(transformState), // version before form submission?
             headers: { "Content-Type": "application/json" }
@@ -234,6 +267,14 @@ export default function HomograpyCalibration() {
                                 alert("Please fill in all grid spacings.");
                                 return;
                             }
+                            if (!isCalibrationBoardThicknessComplete(formData)) {
+                                alert("Please fill in all calibration board thickness properties.");
+                                return;
+                            }
+                            if (!areOriginShiftsComplete(formData)) {
+                                alert("Please fill in all origin shift properties.");
+                                return;
+                            }
                             takeImage(formData); // Call image capture
                             }}
                             className="space-y-4"
@@ -252,7 +293,7 @@ export default function HomograpyCalibration() {
                                 </div>
                                 
                                 <div className="flex flex-col space-y-2">
-                                <Label className="text-green-500 mb-2" htmlFor="xGridDimension">Grid Dimensions</Label>
+                                <Label className="text-green-500 mb-2" htmlFor="GridDimension">Grid Dimensions</Label>
                                     <Popover>
                                         <PopoverTrigger asChild>
                                             <Button variant="outline">
@@ -298,7 +339,7 @@ export default function HomograpyCalibration() {
                                         </PopoverTrigger>
                                         <PopoverContent>
                                             <div className="flex flex-col space-y-4">
-                                            <Label className="mt-2" htmlFor="xGridSpacing">Horizontal Grid Spacing</Label>
+                                            <Label className="mt-2" htmlFor="xGridSpacing">Horizontal Grid Spacing (mm)</Label>
                                             <Input
                                                 type="number"
                                                 id="xGridSpacing"
@@ -310,7 +351,7 @@ export default function HomograpyCalibration() {
                                             />
                                             </div>
                                             <div className="flex flex-col space-y-4">
-                                            <Label className="mt-2" htmlFor="xGridSpacingError">Horizontal Grid Spacing Error</Label>
+                                            <Label className="mt-2" htmlFor="xGridSpacingError">Horizontal Grid Spacing Error (mm)</Label>
                                             <Input
                                                 type="number"
                                                 id="xGridSpacingError"
@@ -322,7 +363,7 @@ export default function HomograpyCalibration() {
                                             />
                                             </div>
                                             <div className="flex flex-col space-y-2">
-                                            <Label className="mt-2" htmlFor="yGridSpacing">Vertical Grid Spacing</Label>
+                                            <Label className="mt-2" htmlFor="yGridSpacing">Vertical Grid Spacing (mm)</Label>
                                             <Input
                                                 type="number"
                                                 id="yGridSpacing"
@@ -334,13 +375,113 @@ export default function HomograpyCalibration() {
                                             />
                                             </div>
                                             <div className="flex flex-col space-y-4">
-                                            <Label className="mt-2" htmlFor="yGridSpacingError">Vertical Grid Spacing Error</Label>
+                                            <Label className="mt-2" htmlFor="yGridSpacingError">Vertical Grid Spacing Error (mm)</Label>
                                             <Input
                                                 type="number"
                                                 id="yGridSpacingError"
                                                 name="yGridSpacingError"
                                                 placeholder="Enter vertical spacing error (mm)"
                                                 value={formData.yGridSpacingError}
+                                                onChange={handleChange}
+                                                required
+                                            />
+                                            </div>
+                                        </PopoverContent>
+                                    </Popover>
+                                </div>
+
+                                {/* For calibration board */}
+                                <div className="flex flex-col space-y-2">
+                                <Label className="text-green-500 mb-2" htmlFor="calibrationBoard">Calibration Board</Label>
+                                    <Popover>
+                                        <PopoverTrigger asChild>
+                                            <Button variant="outline">
+                                                Enter Calibration Board Properties
+                                            </Button>
+                                        </PopoverTrigger>
+                                        <PopoverContent>
+                                            <div className="flex flex-col space-y-4">
+                                            <Label className="mt-2" htmlFor="calibrationBoardThickness">Calibration Board Thickness (mm)</Label>
+                                            <Input
+                                                type="number"
+                                                id="calibrationBoardThickness"
+                                                name="calibrationBoardThickness"
+                                                placeholder="Enter calibration board thickness (mm)"
+                                                value={formData.calibrationBoardThickness}
+                                                onChange={handleChange}
+                                                required
+                                            />
+                                            </div>
+                                            <div className="flex flex-col space-y-2">
+                                            <Label className="mt-2" htmlFor="calibrationBoardThicknessError">Calibration Board Thickness Error (mm)</Label>
+                                            <Input
+                                                type="number"
+                                                id="calibrationBoardThicknessError"
+                                                name="calibrationBoardThicknessError"
+                                                placeholder="Enter calibration board thickness error (mm)"
+                                                value={formData.calibrationBoardThicknessError}
+                                                onChange={handleChange}
+                                                required
+                                            />
+                                            </div>
+                                        </PopoverContent>
+                                    </Popover>
+                                </div>
+
+                                {/* For origin shift */}
+                                <div className="flex flex-col space-y-2">
+                                <Label className="text-green-500 mb-2" htmlFor="originShift">Origin Shift</Label>
+                                    <Popover>
+                                        <PopoverTrigger asChild>
+                                            <Button variant="outline">
+                                                Enter Origin Shift Properties
+                                            </Button>
+                                        </PopoverTrigger>
+                                        <PopoverContent>
+                                            <div className="flex flex-col space-y-4">
+                                            <Label className="mt-2" htmlFor="zDirectedShift">Z-directed Origin Shift (mm)</Label>
+                                            <Input
+                                                type="number"
+                                                id="zDirectedShift"
+                                                name="zDirectedShift"
+                                                placeholder="Enter Z-directed origin shift (mm)"
+                                                value={formData.zDirectedShift}
+                                                onChange={handleChange}
+                                                required
+                                            />
+                                            </div>
+                                            <div className="flex flex-col space-y-4">
+                                            <Label className="mt-2" htmlFor="zDirectedShiftError">Z-Directed Origin Shift Error (mm)</Label>
+                                            <Input
+                                                type="number"
+                                                id="zDirectedShiftError"
+                                                name="zDirectedShiftError"
+                                                placeholder="Enter Z-directed origin shift error (mm)"
+                                                value={formData.zDirectedShiftError}
+                                                onChange={handleChange}
+                                                required
+                                            />
+                                            </div>
+                                            <div className="flex flex-col space-y-2">
+                                            <Label className="mt-2" htmlFor="nonZDirectedOriginShift">Non-Z-Directed Origin Shift (mm)</Label>
+                                            <Input
+                                                type="number"
+                                                id="nonZDirectedOriginShift"
+                                                name="nonZDirectedOriginShift"
+                                                placeholder="Enter non-Z-directed origin shift (mm)"
+                                                value={formData.nonZDirectedOriginShift}
+                                                onChange={handleChange}
+                                                required
+                                            />
+                                            </div>
+                                            <div className="flex flex-col space-y-2">
+                                            <Label className="mt-2" htmlFor="nonZDirectedOriginShiftError">Non-Z-Directed Origin Shift Error (mm)</Label>
+                                            <Input
+                                                type="number"
+                                                id="nonZDirectedOriginShiftError"
+                                                name="nonZDirectedOriginShiftError"
+                                                placeholder="Enter non-Z-directed origin shift error (mm)"
+                                                value={formData.nonZDirectedOriginShiftError}
                                                 onChange={handleChange}
                                                 required
                                             />
@@ -382,7 +523,7 @@ export default function HomograpyCalibration() {
                                                                 </div>
                                                             </TooltipTrigger>
                                                             <TooltipContent>
-                                                                <p>Text goes here</p>
+                                                                <p>This toggle horizontally reflects the origin such that it is now defined as the feature point in the horizontally opposite corner.</p>
                                                             </TooltipContent>
                                                         </Tooltip>
                                                     </TooltipProvider>

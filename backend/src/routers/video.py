@@ -11,7 +11,7 @@ router = APIRouter(
 )
 
 @router.post("/take_video")
-def take_video(request_body: Dict[str, rb.VideoSettings]):
+def take_video(request_body: Dict[str, rb.MainVideoSettings]):
     """
     Possible that we want setup_id as a route variable in the future.
     
@@ -19,7 +19,8 @@ def take_video(request_body: Dict[str, rb.VideoSettings]):
     and video settings as the value
     """
     
-    photo_id_dictionary = take_multiple_videos(request_body) 
+    camera_settings_link_id_array = [1, 2, 3, 4] # TODO - might not work anymore since I changed so link not made inside Camera class method
+    photo_id_dictionary = take_multiple_videos_for_main_run(request_body, camera_settings_link_id_array)
     photo_bytes_array = []
     for photo_id_array in photo_id_dictionary.values():
         for photo_id in photo_id_array:
