@@ -1,8 +1,5 @@
 # -*- coding: utf-8 -*-
 """
-TODO: Need to propagate uncertainty in calibration board thickness at the physical position uncertainty stage.
-(Already done in the unc_tangent_of_angle functions)
-
 TODO: Instead of just using the mid point of closest points as the intersection point, could this be a
 weighted average of the two closest points?
  """
@@ -71,6 +68,7 @@ class AbstractCamera(ABC):
         self.scintillator = Scintillator(refractive_index=cdi.get_block_refractive_index(setup_id),
                                          refractive_index_unc=cdi.get_block_refractive_index_unc(setup_id))
         
+        self.setup_id = setup_id
         self.front_homography_matrix= cdi.get_near_face_homography_matrix(camera_id, setup_id)
         self.front_homography_covariance = cdi.get_near_face_homography_covariance_matrix(camera_id, setup_id)
         self.back_homography_matrix = cdi.get_far_face_homography_matrix(camera_id, setup_id)
@@ -122,6 +120,7 @@ class AbstractCamera(ABC):
         far_plane_two_dimensional_position_homography_error = generate_world_point_uncertainty([[pixel_coords]], unc_pixel_coords[0], unc_pixel_coords[1], self.back_homography_matrix, self.back_homography_covariance)
         print(f"Far plane 2D homography error: {far_plane_two_dimensional_position_homography_error}")
         return near_plane_two_dimensional_homography_error, far_plane_two_dimensional_position_homography_error
+    
     @staticmethod
     def _calculate_calibration_plane_physical_position_error(two_dimensional_homography_errors: List[float], two_dimensional_origin_shift_errors: List[float]):
         """
@@ -378,11 +377,8 @@ def get_projected_position_of_pixel(homography_matrix, pixel_coords: tuple[float
 
     # Performs conversion to OpenCV form
     if pixel_coords:
-        # print(f"\n\n\nPIXEL COORDS: {pixel_coords}\n\n")
         opencv_pixel = convert_iterable_to_opencv_format(pixel_coords)
-        # print(f"\n\n\OPENCV COORDS: {opencv_pixel}\n\n")
     associated_real_position = convert_image_position_to_real_position(pixel=opencv_pixel, homography_matrix_input=homography_matrix)[0, 0]
-    # print(f"\n\nREAL POSITION: {associated_real_position}\n\n")
     return associated_real_position
 
 
@@ -551,24 +547,15 @@ def calculate_intersection_point(first_equation_line_vectors, second_equation_li
     print("Error: {}".format(e))
     
 
-def plot_3d_lines(line1, line2, num_points=100):
+def plot_3d_lines(line1, line2, setup_id):
     """
     Plots two 3D lines using their initial positions and direction vectors, along with six planes,
     and saves the plot as an image.
-
-    Parameters:
-    - line1: List containing [initial_position, direction_vector] for the first line.
-    - line2: List containing [initial_position, direction_vector] for the second line.
-    - num_points: Number of points to generate along each line for plotting.
-    - save_path: Filepath to save the plot image.
     """
     fig, axes = plt.subplots(1, 3, figsize=(12, 6), subplot_kw={'projection': '3d'})
+    views = [(90, 0), (0, -90), (0,0)]
+    num_points = 100
 
-    # ax.view_init(elev=10, azim=-80)  # Try different elevation and azimuth angles
-    views = [(90, 0), (0, -90), (0,0)]  # Two different view angles
-
-    # HARDCODED ID
-    setup_id = 1
     x_block_dimension = cdi.get_block_x_dimension(setup_id)
     y_block_dimension = cdi.get_block_y_dimension(setup_id)
     z_block_dimension = cdi.get_block_z_dimension(setup_id)
@@ -631,8 +618,7 @@ def plot_3d_lines(line1, line2, num_points=100):
 
     fig.legend(handles=legend_handles, loc='upper center', ncol=4, bbox_to_anchor=(0.5, 0.95), frameon=True)
     plt.tight_layout()
-    plt.subplots_adjust(top=0.8)  # Adjust spacing to fit the legend
-    # Save the plot
+    plt.subplots_adjust(top=0.8)
     plt.savefig("/code/src/plots/3d_lines_plot.png", dpi=600)
     plt.close(fig)
 
@@ -640,7 +626,7 @@ def plot_3d_lines(line1, line2, num_points=100):
 def extract_3d_physical_position(first_camera: AbstractCamera, occupied_pixel_on_first_camera: tuple[int, int], 
                                  second_camera: AbstractCamera, occupied_pixel_on_second_camera: tuple[int, int],
                                  unc_pixel_on_first_camera: tuple[int, int], unc_pixel_on_second_camera: tuple[int, int],
-                                 scintillator_present=False):
+                                 scintillator_present=False, plot_line_equations: bool=False):
     
     ([first_tan_phi, first_tan_theta], 
      [unc_first_tan_phi, unc_first_tan_theta], 
@@ -695,11 +681,11 @@ def extract_3d_physical_position(first_camera: AbstractCamera, occupied_pixel_on
     first_camera_line_vectors = [first_camera_initial_position, first_camera_direction_vector]
     second_camera_line_vectors = [second_camera_initial_position, second_camera_direction_vector]
     
-    print("\n\nFirst camera line vectors:", first_camera_line_vectors)
-    print("\n\nSecond camera line vectors:", second_camera_line_vectors)
+    # print("\n\nFirst camera line vectors:", first_camera_line_vectors)
+    # print("\n\nSecond camera line vectors:", second_camera_line_vectors)
 
-    # Call the function to plot the lines
-    plot_3d_lines(first_camera_line_vectors, second_camera_line_vectors)
+    if plot_line_equations:
+        plot_3d_lines(first_camera_line_vectors, second_camera_line_vectors, first_camera.setup_id)
     
     distance_of_closest_approach = calculate_distance_of_closest_approach(first_camera_line_vectors, second_camera_line_vectors)
     print("\n\nDistance of closest approach is {}".format(distance_of_closest_approach))
@@ -840,40 +826,17 @@ def extract_3d_physical_position(first_camera: AbstractCamera, occupied_pixel_on
 def perform_homography_pinpointing_between_camera_pair_for_GUI(setup_id, first_camera_id, second_camera_id):
     try:
         top_cam = AbstractCamera.setup(first_camera_id, setup_id)
-        
-        # print("\n\nTOP CAMERA", vars(top_cam), "\n\n")
-        # print(f"top camera dd = {top_cam.axes_mapping.depth_direction}")
-        
-        # origin_position = get_projected_position_of_pixel(top_cam.back_homography_matrix,
-        #                                                   pixel_coords=(1088, 2685))
-        # print(f"\n\n\nORIGIN POSITION {origin_position}\n\n\n")
-        
         side_cam = AbstractCamera.setup(second_camera_id, setup_id)
-        
-        # print("\n\nSIDE CAMERA", vars(side_cam), "\n\n")
-        # print(f"side camera dd = {side_cam.axes_mapping.depth_direction}")
-        
-        # test_point = [1, 2]
-        # print(f"\n\nTOP CAM TEST PIXEL {top_cam.map_image_coord_to_3d_point(test_point, 3)}\n\n")
-        # print(f"\n\nSIDE CAM TEST PIXEL {side_cam.map_image_coord_to_3d_point(test_point, 3)}\n\n")
-        
-        # print(print(f"SIDE FRONT HOMOGRAPHY: {side_cam.front_homography_matrix}"))
         
         red_brick_corner_top_cam_pixel = (1837, 2204)
         unc_red_brick_corner_top_cam_pixel = (4,4)
         red_brick_corner_side_cam_pixel = (1752, 881)
         unc_red_brick_corner_side_cam_pixel = (6, 6)
-        
-        # TOP_CAM_NEAR_FACE_TEST_PIXEL = (890, 2877)
-        # TOP_CAM_FAR_FACE_TEST_PIXEL = (2094, 2310)
-        
+              
         intersection_point, unc_intersection_point = extract_3d_physical_position(top_cam, red_brick_corner_top_cam_pixel, side_cam, red_brick_corner_side_cam_pixel,
-                                                                                                    unc_red_brick_corner_top_cam_pixel, unc_red_brick_corner_side_cam_pixel,
-                                                                                                    scintillator_present=False)
-        # intersection_point, unc_intersection_point = extract_3d_physical_position(top_cam, TOP_CAM_FAR_FACE_TEST_PIXEL, side_cam, red_brick_corner_side_cam_pixel,
-        #                                                                                     unc_red_brick_corner_top_cam_pixel, unc_red_brick_corner_side_cam_pixel,
-        #                                                                                     scintillator_present=False)
-        
+                                                                                unc_red_brick_corner_top_cam_pixel, unc_red_brick_corner_side_cam_pixel,
+                                                                                scintillator_present=False)
+
         print("\n\nIntersection Point of red brick corner is {0} +/- {1}".format(intersection_point, unc_intersection_point))
         return 0
     

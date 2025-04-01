@@ -182,7 +182,6 @@ def view_image(image_id: str):
 @router.get("/view_grid_image")
 def view_image(camera_id: int, plane_type: str):
     file_path = f"/code/temp_images/camera_{camera_id}_homography_{plane_type}.jpeg"
-    print(file_path)
     if os.path.exists(file_path):
         return FileResponse(file_path, media_type="image/jpeg")
     return {"error": "Image not found"}
@@ -357,27 +356,26 @@ def populate_camera_setup_table_homography_matrices_api():
     far_side_transform = ImagePointTransforms(horizontal_flip=False,
                                       vertical_flip=False,
                                       swap_axes=False)
-    perform_homography_calibration("first_camera", 1, "far", far_side_transform, photo_bytes=far_side_photo_bytes)
+    perform_homography_calibration("first_camera", 1, "far", far_side_transform, photo_bytes=far_side_photo_bytes, save_overlayed_grid=True)
     
     # NEAR SIDE CAM
     near_side_transform = ImagePointTransforms(horizontal_flip=True,
                                                vertical_flip=True,
                                                swap_axes=False)
     near_side_photo_bytes = cdi.get_photo_from_id(2)
-    perform_homography_calibration("first_camera", 1, "near", near_side_transform, photo_bytes=near_side_photo_bytes)
+    perform_homography_calibration("first_camera", 1, "near", near_side_transform, photo_bytes=near_side_photo_bytes, save_overlayed_grid=True)
     
     
     # FAR TOP CAM
     far_top_photo_bytes = cdi.get_photo_from_id(3)
-    # NOTE - horizontal flip!
     top_transforms = ImagePointTransforms(horizontal_flip=True,
                                       vertical_flip=False,
                                       swap_axes=False)
-    perform_homography_calibration("second_camera", 1, "far", top_transforms, photo_bytes=far_top_photo_bytes)
+    perform_homography_calibration("second_camera", 1, "far", top_transforms, photo_bytes=far_top_photo_bytes, save_overlayed_grid=True)
     
     # NEAR TOP CAM
     near_top_photo_bytes = cdi.get_photo_from_id(4)
-    perform_homography_calibration("second_camera", 1, "near", top_transforms, photo_bytes=near_top_photo_bytes)
+    perform_homography_calibration("second_camera", 1, "near", top_transforms, photo_bytes=near_top_photo_bytes, save_overlayed_grid=True)
     return {"message": "done"}
 
 
@@ -395,13 +393,7 @@ def initialize_homography_setup():
     populate_camera_setup_table_homography_config_api()
     populate_camera_setup_table_homography_matrices_api()
     
-    print(f"\n\n\ntop near homography matrix {cdi.get_near_face_homography_matrix(2, 1)}",
-          f"top near covariance matrix {cdi.get_near_face_homography_covariance_matrix(2, 1)}\n\n\n", sep="\n\n")
-    
-    side_dd = cdi.get_camera_depth_direction(1, 1)
-    
-    return {"message": "Homography setup initialized successfully!",
-            "side_dd": side_dd}
+    return {"message": "Homography setup initialized successfully!"}
 
 
 

@@ -74,16 +74,16 @@ def add_origin_to_image(image, image_grid_positions, calibration_grid_size):
 def test_homography_grid_identified(image: np.ndarray, calibration_pattern: str, 
                                     calibration_grid_size: tuple[int, int], 
                                     image_point_transforms: ImagePointTransforms,
+                                    camera_id: int, setup_id: int,
                                     correct_for_distortion: bool=False):
     """
     Return the image bytestring and status of test
     """
     if correct_for_distortion:
-        # NEW LOGIC FOR CORRECT FOR DISTORTION from database
-        # camera_matrix, dist = load_camera_calibration(distortion_calibration_path)
-        # frame_size = determine_frame_size(image_path=image_path)
-        # image = undistort_image(camera_matrix, dist, frame_size, image_path=image_path)
-        pass
+        camera_matrix = cdi.get_camera_matrix(camera_id, setup_id)
+        distortion_coefficients = cdi.get_distortion_coefficients(camera_id, setup_id)
+        frame_size = determine_frame_size(image=image)
+        image = undistort_image(camera_matrix, distortion_coefficients, frame_size, image=image)
         
     grey_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
@@ -132,14 +132,14 @@ def build_calibration_plane_homography(image: np.ndarray, plane_type: str, calib
                                         camera_id: int, setup_id: int,
                                         correct_for_distortion: bool=False,
                                         save_file_path: str|None=None,
-                                        save_to_database: bool=False):
+                                        save_to_database: bool=False,
+                                        save_overlayed_grid: bool=False):
 
         if correct_for_distortion:
-            # NEW LOGIC NEEDED TO LOAD IN DISTORTION DATA FROM DATABASE
-            # camera_matrix, dist = load_camera_calibration(distortion_calibration_path)
-            # frame_size = determine_frame_size(image_path=image_path)
-            # image = undistort_image(camera_matrix, dist, frame_size, image_path=image_path)
-            pass
+            camera_matrix = cdi.get_camera_matrix(camera_id, setup_id)
+            distortion_coefficients = cdi.get_distortion_coefficients(camera_id, setup_id)
+            frame_size = determine_frame_size(image=image)
+            image = undistort_image(camera_matrix, distortion_coefficients, frame_size, image=image)
             
         grey_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
@@ -152,7 +152,6 @@ def build_calibration_plane_homography(image: np.ndarray, plane_type: str, calib
                 raise Exception("No calibration pattern called {} defined".format(calibration_pattern))
 
         if image_point_transforms.horizontal_flip:
-            print("\n\n HORIZONTAL FLIP APPLIED \n\n")
             image_grid_positions_reshaped = image_grid_positions.reshape((calibration_grid_size[1], calibration_grid_size[0], 2))[:, ::-1] # Reverse the order of columns
             image_grid_positions = convert_array_to_opencv_form(image_grid_positions_reshaped)
         if image_point_transforms.vertical_flip:
@@ -163,11 +162,6 @@ def build_calibration_plane_homography(image: np.ndarray, plane_type: str, calib
             image_grid_positions = convert_array_to_opencv_form(image_grid_positions_reshaped)
 
         real_grid_positions = generate_real_grid_positions(calibration_grid_size, pattern_spacing, image_point_transforms.swap_axes)
-        print("\n\n\n")
-        print(image_grid_positions.shape)
-        print("\n\n\n")
-        print(real_grid_positions.shape)
-        print("\n\n\n")
         homography_matrix, _ = cv2.findHomography(image_grid_positions, real_grid_positions)
         grid_uncertainties_array = np.full((len(image_grid_positions), 2), grid_uncertainties)
         homography_covariance = generate_homography_covariance_matrix(image_grid_positions, homography_matrix, grid_uncertainties_array)
@@ -176,11 +170,10 @@ def build_calibration_plane_homography(image: np.ndarray, plane_type: str, calib
             save_homography_calibration_to_database(camera_id, setup_id, plane_type, homography_matrix, 
                                                     homography_covariance)
         
-        # FOR TESTING
-        add_origin_to_image(image, image_grid_positions, calibration_grid_size)
-        filepath = f"/code/temp_images/camera_{camera_id}_homography_{plane_type}.jpeg"
-        print(f"\n\n{filepath}\n\n")
-        cv2.imwrite(filepath, image)
+        if save_overlayed_grid:
+            add_origin_to_image(image, image_grid_positions, calibration_grid_size)
+            filepath = f"/code/temp_images/camera_{camera_id}_homography_{plane_type}.jpeg"
+            cv2.imwrite(filepath, image)
         
         if save_file_path is not None:
             save_homography_data(save_file_path, homography_matrix, homography_covariance)
@@ -203,11 +196,9 @@ def test_grid_recognition_for_gui(username: str, setup_id: int,
         case "near":
             pattern_size = cdi.get_near_face_calibration_pattern_size(camera_id, setup_id)
             pattern_type = cdi.get_near_face_calibration_pattern_type(camera_id, setup_id)
-            
-    if any(x is None for x in (pattern_size, pattern_type)):
-        correct_for_distortion = False
-    else:
-        correct_for_distortion = True
+    
+    # If distortion correction fields are not completely filled, set to False
+    correct_for_distortion = cdi.check_for_distortion_correction_condition(camera_id, setup_id)
 
     if bool(photo_bytes) == bool(photo_id):  # XNOR
         raise Exception("Only Image bytes or Photo ID must be entered")
@@ -216,7 +207,7 @@ def test_grid_recognition_for_gui(username: str, setup_id: int,
     image = load_image_byte_string_to_opencv(photo_bytes)
     
     return test_homography_grid_identified(image, pattern_type, pattern_size, 
-                                           image_point_transforms,
+                                           image_point_transforms, camera_id, setup_id,
                                            correct_for_distortion=correct_for_distortion)
     
 
@@ -225,7 +216,8 @@ def perform_homography_calibration(username: str, setup_id: int,
                                    image_point_transforms: ImagePointTransforms = ImagePointTransforms(
                                         horizontal_flip=False, vertical_flip=False, swap_axes=False
                                    ),
-                                   photo_id: int|None=None, photo_bytes:str|None=None):
+                                   photo_id: int|None=None, photo_bytes:str|None=None,
+                                   save_overlayed_grid: bool=False):
     """
     Applied to single plane - so ran twice for a given camera (from two different GUI pages)
     """
@@ -243,12 +235,8 @@ def perform_homography_calibration(username: str, setup_id: int,
                 pattern_spacing = cdi.get_near_face_calibration_spacing(camera_id, setup_id)
                 unc_spacing = cdi.get_near_face_calibration_spacing_unc(camera_id, setup_id)
         
-        
-        # TODO - fix this!
-        if any(x is None for x in (pattern_size, pattern_type, pattern_spacing, unc_spacing)):
-            correct_for_distortion = False
-        else:
-            correct_for_distortion = True
+        # If distortion correction fields are not completely filled, set to False
+        correct_for_distortion = cdi.check_for_distortion_correction_condition(camera_id, setup_id)
 
         if bool(photo_bytes) == bool(photo_id):  # XNOR
             raise Exception("Only Image bytes or Photo ID must be entered")
@@ -256,10 +244,9 @@ def perform_homography_calibration(username: str, setup_id: int,
             photo_bytes = cdi.get_photo_from_id(photo_id)
         image = load_image_byte_string_to_opencv(photo_bytes)
         
-        print(f"\n\nIMAGE TRANSFORMATIONS {image_point_transforms}\n\n")
         build_calibration_plane_homography(image, calibration_plane_type, pattern_type, pattern_size, pattern_spacing, 
                                         unc_spacing, image_point_transforms, camera_id, setup_id, correct_for_distortion=correct_for_distortion,
-                                        save_to_database=True)
+                                        save_to_database=True, save_overlayed_grid=save_overlayed_grid)
         
         return True # If return True, frontend knows it was successful
     except Exception as e:
