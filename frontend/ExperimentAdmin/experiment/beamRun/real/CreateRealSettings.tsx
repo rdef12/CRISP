@@ -16,6 +16,7 @@ import {
 interface CameraSettings {
   gain: number;
   frame_rate: number;
+  number_of_images: number;
 }
 
 interface CreateRealSettingsProps {
@@ -36,7 +37,8 @@ export const CreateRealSettings = ({ record, onSave }: CreateRealSettingsProps) 
     console.log('CreateRealSettings: handleSubmit called');
     const settings: CameraSettings = {
       gain: Number(data.gain),
-      frame_rate: Number(data.frame_rate)
+      frame_rate: Number(data.frame_rate),
+      number_of_images: Number(data.number_of_images)
     };
     setFormData(settings);
     setShowConfirmDialog(true);
@@ -65,6 +67,7 @@ export const CreateRealSettings = ({ record, onSave }: CreateRealSettingsProps) 
         <div className="space-y-4">
           <NumberInput source="gain" />
           <NumberInput source="frame_rate" />
+          <NumberInput source="number_of_images" />
           <div className="flex justify-end">
             <Button type="submit">Create Settings</Button>
           </div>

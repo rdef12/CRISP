@@ -78,6 +78,7 @@ def add_real_beam_run(experiment_id: int, beam_run_body: rb.CreateBeamRun):
                                    beam_current,
                                    beam_current_unc,
                                    is_test)
+    DEFAULT_NUMBER_OF_IMAGES = 60
     with Session(engine) as session:
         cameras_in_experiment_statement = select(CameraSetupLink).join(Setup).join(Experiment).where(Experiment.id == experiment_id)
 
@@ -93,7 +94,10 @@ def add_real_beam_run(experiment_id: int, beam_run_body: rb.CreateBeamRun):
                                          .where(CameraSettingsLink.is_optimal == True))
             try:
                 optimal_settings = session.exec(optimal_settings_statment).one()
-                cdi.add_camera_settings_link_with_beam_run(camera.id, optimal_settings.id, beam_run.id)
+                cdi.add_camera_settings_link_with_beam_run_and_number_of_images(camera.id,
+                                                                                optimal_settings.id,
+                                                                                beam_run.id,
+                                                                                DEFAULT_NUMBER_OF_IMAGES)
             except:
                 pass
         
@@ -151,9 +155,11 @@ def add_real_settings(beam_run_id: int, camera_id: int, real_settings_body: rb.C
                 session.delete(camera_settings)
             session.commit()
 
-
         settings_id = cdi.add_settings(real_settings_body.frame_rate, preset_lens_position, real_settings_body.gain)["id"]
-        camera_settings_id = cdi.add_camera_settings_link_with_beam_run(camera_id, settings_id, beam_run_id)["id"]
+        camera_settings_id = cdi.add_camera_settings_link_with_beam_run_and_number_of_images(camera_id,
+                                                                                             settings_id,
+                                                                                             beam_run_id,
+                                                                                             real_settings_body.number_of_images)["id"]
     return rb.CreateBeamRunSettingsRealResponse(id=camera_id) #TODO #TODO set the time to take photos properly
 
 
@@ -192,7 +198,8 @@ def get_real_settings_(beam_run_id: int, camera_id: int) -> rb.GetBeamRunSetting
         return rb.GetBeamRunSettingsReal(id=camera_id,
                                          frame_rate=settings.frame_rate,
                                          gain=settings.gain,
-                                         lens_position=settings.lens_position)
+                                         lens_position=settings.lens_position,
+                                         number_of_images=camera_settings.number_of_images)
 
 @router.put("/test/{beam_run_id}/camera/{camera_id}")
 def update_test_settings(beam_run_id: int, camera_id: int, test_settings_body: rb.CreateBeamRunSettingsTest):   
@@ -246,7 +253,10 @@ def update_real_settings(beam_run_id: int, camera_id: int, real_settings_body: r
             session.commit()
 
         settings_id = cdi.add_settings(real_settings_body.frame_rate, preset_lens_position, real_settings_body.gain)["id"]
-        camera_settings_id = cdi.add_camera_settings_link_with_beam_run(camera_id, settings_id, beam_run_id)["id"]
+        camera_settings_id = cdi.add_camera_settings_link_with_beam_run_and_number_of_images(camera_id,
+                                                                                             settings_id,
+                                                                                             beam_run_id,
+                                                                                             real_settings_body.number_of_images)["id"]
     return rb.CreateBeamRunSettingsRealResponse(id=camera_id)
 
 

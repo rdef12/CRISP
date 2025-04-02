@@ -268,6 +268,7 @@ class CameraSettingsLink(SQLModel, table=True):
 
     # beam_run_id: Optional
     is_optimal: Optional[bool] = Field(default=None) # Set true/false when associated with a test beam run left Null otherwise
+    number_of_images: Optional[int] = Field(default=None)
 
     camera: "Camera" = Relationship(back_populates="settings_links")
     settings: "Settings" = Relationship(back_populates="camera_links")

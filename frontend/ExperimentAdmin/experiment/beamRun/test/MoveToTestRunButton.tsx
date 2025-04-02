@@ -9,12 +9,12 @@ export const MoveToTestRunButton = () => {
   console.log("Unset camera date", data.unset_camera_ids)
   if ((data?.unset_camera_ids).length)
     return (
-      <Button disabled>
+      <Button disabled className="w-full">
         Take data
       </Button>
     );
   return(
-    <Button >
+    <Button className="w-full">
       <Link to="take-data"> Take data </Link>
     </Button>
   );
