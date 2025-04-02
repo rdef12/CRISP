@@ -15,8 +15,6 @@ from src.camera_functions import load_image_byte_string_to_opencv
 from src.viewing_functions import show_image_in_window
 from src.database.CRUD import CRISP_database_interaction as cdi
 
-# CHESSBOARD_GRID_SIZE = (15, 11)
-# CHESSBOARD_TILE_SPACING = 10 # In millimetres
 
 CRITERIA = (cv.TERM_CRITERIA_EPS + cv.TERM_CRITERIA_MAX_ITER, 30, 0.001)
 

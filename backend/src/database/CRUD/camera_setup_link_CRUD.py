@@ -391,6 +391,21 @@ def get_distortion_calibration_pattern_spacing(camera_id:int, setup_id:int) -> f
             return result.distortion_calibration_pattern_spacing
         else:
             raise ValueError(f"Distortion calibration spacing type not found for camera with id {camera_id} and setup with id {setup_id}.")
+        
+def check_for_distortion_correction_condition(camera_id: int, setup_id: int) -> bool:
+    with Session(engine) as session:
+        statement = select(CameraSetupLink).where(CameraSetupLink.camera_id == camera_id).where(CameraSetupLink.setup_id == setup_id)
+        result = session.exec(statement).one()
+        if result:
+            return not any(getattr(result, field) is None for field in [
+                'camera_matrix', 
+                'distortion_coefficients', 
+                'distortion_calibration_pattern_size', 
+                'distortion_calibration_pattern_type', 
+                'distortion_calibration_pattern_spacing'
+            ]) # Will return True if all fields are not None
+        else:
+            raise ValueError(f"Distortion calibration settings not found for camera with id {camera_id} and setup with id {setup_id}.")
 
 # Update
 
