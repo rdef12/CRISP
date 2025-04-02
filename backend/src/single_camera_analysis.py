@@ -143,7 +143,7 @@ def get_3d_beam_path(beam_run_id: int, first_camera_id: int, second_camera_id: i
         
         # Fit beam profile on rotated image
         (horizontal_coords, fit_parameters_array, beam_center_errors, _,  _, _) = fit_beam_profile_along_full_roi(rotated_image, brightness_error,
-                                                                                                                    h_bounds, v_bounds, show_fit_qualities=True)
+                                                                                                                  h_bounds, v_bounds, show_fit_qualities=True)
         
         beam_center_vertical_coords, *fit_params = fit_parameters_array[:, :4].T
         beam_scale_values, beam_sigma_values, background_noise_array = fit_params
