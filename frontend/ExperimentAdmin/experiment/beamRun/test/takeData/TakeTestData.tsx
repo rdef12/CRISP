@@ -1,7 +1,6 @@
 import { Button } from "@/components/ui/button"
 import { useParams } from "react-router-dom";
 import { Form, useCreateController } from "react-admin"
-import { useEffect, useState } from "react";
 
 // const LoadingBar = ({ onComplete }) => {
 //   const [progress, setProgress] = useState(0);
@@ -72,7 +71,7 @@ export const TakeTestData = () => {
   if (isPending) return null;
   return (
     <Form onSubmit={save}>
-      <Button className="bg-red-500 hover:bg-red-600 text-white text-xl px-6 py-6 rounded-full flex items-center justify-center">
+      <Button>
         Start data collection
       </Button>
     </Form>

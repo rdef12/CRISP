@@ -131,7 +131,6 @@ def get_real_settings(beam_run_id: int, camera_id: int):
         # if len(settings_list) == 1:
         try:
             settings = session.exec(settings_statement).one()
-            print(f"\n\n\n\n HELOOOOOOOOOO I AM SETTINGS {settings} \n\n\n\n")
             # return rb.RealBeamRunSettingsRequest(id=camera_id,
             #                             frame_rate=settings.frame_rate,
             #                             lens_position=settings.lens_position,
