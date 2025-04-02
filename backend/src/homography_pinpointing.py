@@ -696,6 +696,45 @@ def extract_3d_physical_position(first_camera: AbstractCamera, occupied_pixel_on
     return calculate_intersection_point(first_camera_line_vectors, second_camera_line_vectors,
                                         [unc_first_camera_initial_position, unc_first_camera_directional_vector],
                                         [unc_second_camera_initial_position, unc_second_camera_directional_vector])
+
+
+def extract_weighted_average_3d_physical_position(list_of_camera_objects, list_of_pixels_containing_point, 
+                                                  list_of_pixel_uncertainties, scintillator_present: bool=False):
+    """
+    Using the weighted average stuff from the Year 1 data analysis course, find the average 3d position
+    using multiple camera perspective pairings.
+    """
+    possible_camera_combinations = list(itertools.combinations(list_of_camera_objects, 2))
+    possible_pixel_combinations = list(itertools.combinations(list_of_pixels_containing_point, 2))
+    possible_pixel_unc_combinations = list(itertools.combinations(list_of_pixel_uncertainties, 2))
+    num_of_combinations = len(possible_camera_combinations)
+    
+    intersection_point_array = []
+    unc_intersection_point_array = []
+    
+    for camera_combination, pixel_combination, unc_pixel_combination in zip(possible_camera_combinations, possible_pixel_combinations, possible_pixel_unc_combinations):
+        
+        camera_1, camera_2 = camera_combination
+        pixel_coords_1, pixel_coords_2 = pixel_combination
+        unc_pixel_coords_1, unc_pixel_coords_2 = unc_pixel_combination
+        
+        line_intersection_point, unc_line_intersection_point = extract_3d_physical_position(camera_1, pixel_coords_1, camera_2, pixel_coords_2,
+                                                                                            unc_pixel_coords_1, unc_pixel_coords_2, scintillator_present=scintillator_present)
+        intersection_point_array.append(line_intersection_point)
+        unc_intersection_point_array.append(unc_line_intersection_point)
+    
+    if num_of_combinations == 1:
+        return line_intersection_point, unc_line_intersection_point
+    
+    intersection_point_array = np.array(intersection_point_array)
+    unc_intersection_point_array = np.array(unc_intersection_point_array)
+    
+    numerator_array = np.sum(intersection_point_array / unc_intersection_point_array**2, axis=0)
+    denominator_array = np.sum(1 / unc_intersection_point_array**2, axis=0)
+    
+    weighted_mean_intersection_point = numerator_array / denominator_array
+    unc_weighted_mean_intersection_point = np.sqrt(1 /denominator_array)
+    return weighted_mean_intersection_point, unc_weighted_mean_intersection_point
     
 
 # # Beam vector line vectors should be a 2D np array, containing the initial position vector and the directional vector.
@@ -746,48 +785,6 @@ def extract_3d_physical_position(first_camera: AbstractCamera, occupied_pixel_on
 #     return calculate_intersection_point(camera_line_vectors, beam_center_line_vectors,
 #                                         [unc_camera_intitial_position, unc_camera_directional_vector],
 #                                         [unc_beam_center_initial_position, unc_beam_center_directional_vector]) 
-    
-
-# def extract_weighted_average_3d_physical_position(list_of_camera_objects, list_of_pixels_containing_point, 
-#                                          list_of_pixel_uncertainties, scintillator_present: bool=False):
-#     """
-#     Using the weighted average stuff from the Year 1 data analysis course, find the average 3d position
-#     using multiple camera perspective pairings.
-#     """
-    
-#     possible_camera_combinations = list(itertools.combinations(list_of_camera_objects, 2))
-#     possible_pixel_combinations = list(itertools.combinations(list_of_pixels_containing_point, 2))
-#     possible_pixel_unc_combinations = list(itertools.combinations(list_of_pixel_uncertainties, 2))
-#     num_of_combinations = len(possible_camera_combinations)
-    
-#     intersection_point_array = []
-#     unc_intersection_point_array = []
-    
-#     for camera_combination, pixel_combination, unc_pixel_combination in zip(possible_camera_combinations, possible_pixel_combinations, possible_pixel_unc_combinations):
-        
-#         camera_1, camera_2 = camera_combination
-#         pixel_coords_1, pixel_coords_2 = pixel_combination
-#         unc_pixel_coords_1, unc_pixel_coords_2 = unc_pixel_combination
-        
-#         line_intersection_point, unc_line_intersection_point = extract_3d_physical_position(camera_1, pixel_coords_1, camera_2, pixel_coords_2,
-#                                                                                             unc_pixel_coords_1, unc_pixel_coords_2, scintillator_present=scintillator_present)
-#         intersection_point_array.append(line_intersection_point)
-#         unc_intersection_point_array.append(unc_line_intersection_point)
-    
-#     if num_of_combinations == 1:
-#         return line_intersection_point, unc_line_intersection_point
-    
-#     intersection_point_array = np.array(intersection_point_array)
-#     unc_intersection_point_array = np.array(unc_intersection_point_array)
-    
-#     numerator_array = np.sum(intersection_point_array / unc_intersection_point_array**2, axis=0)
-#     denominator_array = np.sum(1 / unc_intersection_point_array**2, axis=0)
-    
-#     weighted_mean_intersection_point = numerator_array / denominator_array
-#     unc_weighted_mean_intersection_point = np.sqrt(1 /denominator_array)
-    
-#     return weighted_mean_intersection_point, unc_weighted_mean_intersection_point
-
 
 # def build_pixel_line_vectors_inside_scintillator(camera: AbstractCamera, occupied_pixel_on_camera: tuple[int, int], unc_pixel_on_camera: tuple[int, int]):
     

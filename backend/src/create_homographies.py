@@ -135,6 +135,7 @@ def build_calibration_plane_homography(image: np.ndarray, plane_type: str, calib
                                         save_overlayed_grid: bool=False):
 
         if correct_for_distortion:
+            print("\n\n\n\n DISTORTION CORRECTION APPLIED \n\n\n\n")
             camera_matrix = cdi.get_camera_matrix(camera_id, setup_id)
             distortion_coefficients = cdi.get_distortion_coefficients(camera_id, setup_id)
             frame_size = determine_frame_size(image=image)
