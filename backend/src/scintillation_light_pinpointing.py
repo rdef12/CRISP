@@ -4,7 +4,7 @@ producing homographies!
 
 I also think the beam edge detection should be applied to undistorted images only
 """
-from homography_pinpointing import AbstractCamera, extract_weighted_average_3d_physical_position
+from src.homography_pinpointing import AbstractCamera, extract_weighted_average_3d_physical_position
 
 def pinpoint_bragg_peak(beam_run_id, camera_id_list, setup_id):
     try:

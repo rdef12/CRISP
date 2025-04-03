@@ -43,6 +43,10 @@ import tarfile
 import socket # get hostname without passing into SSH command
 from libcamera import controls
 
+
+def get_relative_time(start_time):
+    return time.time() - start_time
+
 def setup_logging(directory_path):
     
     logging.basicConfig(
@@ -136,6 +140,9 @@ def check_directory_exists(directory_path: str):
     
 
 def process_frame(image, args):
+
+    if args.colour == "all":
+        return image  # Skip bit depth and colour selection logic - just exit the function
     
     if image.mode == "RGBA":
         r, g, b, a = image.split()  # 4 channels: Red, Green, Blue, Alpha
@@ -143,10 +150,8 @@ def process_frame(image, args):
         r, g, b = image.split()  # 3 channels: Red, Green, Blue
     else:
         raise Exception("Expected RGBA or RGB type Pillow image.")
-
-    if args.colour == "all":
-        return image  # Skip bit depth and colour selection logic - just exit the function
-    elif args.colour == "r":
+    
+    if args.colour == "r":
         channel = r
     elif args.colour == "g":
         channel = g
@@ -155,7 +160,6 @@ def process_frame(image, args):
     else:
         raise Exception("Somehow bypassed colour argument validation")
 
-    
     grayscale_image = channel.convert("L")
     # NOTE - doing the conversion here might not work because if already cast to 8 bit depth, the data is already lost
     # This would just be a rescaling of intensities.
@@ -191,22 +195,25 @@ def update_controls(picam2, args, frame_duration):
     return 1
 
 
-def take_main_run_images(picam2, args, frame_duration):
+def take_main_run_images(picam2, args, frame_duration, start_time):
     num_digits = len(str(args.num_of_images))
     
     if not update_controls(picam2, args, frame_duration):
         raise Exception("Image controls not applied within max attempts")
     
-    frames = []
-    # Minimal delay between frame capturing when done this way.
+    # frames = [] # Minimal delay between frame capturing when done this way.
     for i in range(1, args.num_of_images + 1):
         print(f"Capturing image {i}")
         logging.info(f"Image {i} Metadata: {picam2.capture_metadata()}")
+        logging.info(f"Image {i} capture started at t = : {get_relative_time(start_time)}")
         
+        logging.info(f"Image {i} capture requested at t = : {get_relative_time(start_time)}")
         r = picam2.capture_request()
         if not r:
             logging.warning(f"Image {i} failed to capture!")
             continue
+        logging.info(f"Image {i} capture request completed at t = : {get_relative_time(start_time)}")
+        
         
         # This is a save operation during the capture process
         # which slows its ability to capture images in accordance with the 
@@ -218,20 +225,27 @@ def take_main_run_images(picam2, args, frame_duration):
         # although the frame rate in practice will be lower!
         
         # Pis have limited memory so storing ~60 raw files in RAM is probably not a good idea...
+        dng_start_time = time.time()
         if args.save_dng:
             raw_path = f"{args.directory_name}/image_{i:0{num_digits}d}.dng"
             r.save_dng(raw_path)
+        logging.info(f"Image {i} dng took {time.time() - dng_start_time} to save")
         
         # Convert the captured raw image data into a frame that can be processed.
+        jpeg_start_time = time.time()
         frame = r.make_image("main")
-        frames.append(frame)
-        r.release()
-    
-    # Images processed after all of the capturing is complete
-    for i, frame in enumerate(frames, 1):
         image = process_frame(frame, args)
         filename = f"main_run_image_{(i):0{num_digits}d}_cslID_{args.camera_settings_link_id}.{args.format}"
         image.save(f"{args.directory_name}/{filename}", format=args.format)
+        logging.info(f"Image {i} {args.format} took {time.time() - jpeg_start_time} to save")
+        
+        r.release()
+    
+    # Images processed after all of the capturing is complete
+    # for i, frame in enumerate(frames, 1):
+    #     image = process_frame(frame, args)
+    #     filename = f"main_run_image_{(i):0{num_digits}d}_cslID_{args.camera_settings_link_id}.{args.format}"
+    #     image.save(f"{args.directory_name}/{filename}", format=args.format)
     
     logging.info(f"{args.num_of_images} images saved to directory.")
     return 1
@@ -246,7 +260,7 @@ def exclude_log_and_raw(tarinfo):
     return tarinfo
 
 
-def package_images_for_transfer(directory_path):
+def package_images_for_transfer(directory_path, start_time):
     """
     - Should check if all images taken?
     
@@ -260,12 +274,13 @@ def package_images_for_transfer(directory_path):
     
     with tarfile.open(archive_location, "w") as tar:
         tar.add(directory_path, archive_name, filter=exclude_log_and_raw)
-    logging.info(f"Tar archive created for {hostname}")
+    logging.info(f"Tar archive created for {hostname} at t = {get_relative_time(start_time)}")
     return 0
 
 
 def main_run(args):
     try:
+        start_time = time.time()
         check_directory_exists(args.directory_name)
         if args.logging:
             setup_logging(args.directory_name)
@@ -283,17 +298,18 @@ def main_run(args):
         picam2.set_controls({"AnalogueGain": args.gain,
                              "ColourGains": (1.0, 1.0),
                              "NoiseReductionMode": 0,
-                            #  "AfMode": controls.AfModeEnum.Manual,
-                            #  "LensPosition": args.lens_position, 
+                             "AfMode": controls.AfModeEnum.Manual,
+                             "LensPosition": args.lens_position,
                              "Contrast": 1.0,
                              "Saturation": 1.0,
                              "Sharpness": 1.0,
                              "FrameDurationLimits": (frame_duration, frame_duration),
                              "ExposureTime": int(frame_duration / 2),})
         picam2.start()
-        ret = take_main_run_images(picam2, args, frame_duration)
+        logging.info("Camera started at t = :", get_relative_time(start_time))
+        ret = take_main_run_images(picam2, args, frame_duration, start_time)
         if ret:
-            package_images_for_transfer(args.directory_name)
+            package_images_for_transfer(args.directory_name, start_time)
         print("Image capture complete")
         return 0
     
@@ -305,16 +321,17 @@ def main_run(args):
             picam2.stop()
 
 
-def take_test_run_images(picam2, args, frame_duration):
+def take_test_run_images(picam2, args, frame_duration, start_time):
 
     gains = args.gain_list
     num_of_images = len(gains)
     num_digits = len(str(num_of_images))
 
-    frames = [] 
-    successful_capture = [] # list of all cs_ids of captured images
+    # frames = [] 
+    # successful_capture = [] # list of all cs_ids of captured images
     for count, gain in enumerate(gains, start=1):
         print(f"Capturing image {count}")
+        logging.info(f"Image {count} capture started at t = : {get_relative_time(start_time)}")
         
         picam2.set_controls({"AnalogueGain": gain})
         picam2.start()
@@ -336,17 +353,17 @@ def take_test_run_images(picam2, args, frame_duration):
         
         # Convert the captured raw image data into a frame that can be processed.
         frame = r.make_image("main")
-        frames.append(frame)
+        image = process_frame(frame, args)
+        filename = f"test_run_image_cslID_{args.cs_id_array[count-1]}.{args.format}"
+        image.save(f"{args.directory_name}/{filename}", format=args.format)
         r.release()
         picam2.stop() # ready for controls to be updated again
-        successful_capture.append(args.cs_id_array[count-1])
     
     # Images processed after all of the capturing is complete
-    
-    for i, frame in enumerate(frames):
-        image = process_frame(frame, args)
-        filename = f"test_run_image_cslID_{successful_capture[i]}.{args.format}"
-        image.save(f"{args.directory_name}/{filename}", format=args.format)
+    # for i, frame in enumerate(frames):
+    #     image = process_frame(frame, args)
+    #     filename = f"test_run_image_cslID_{successful_capture[i]}.{args.format}"
+    #     image.save(f"{args.directory_name}/{filename}", format=args.format)
     
     logging.info(f"{num_of_images} images saved to directory.")
     
@@ -354,6 +371,7 @@ def take_test_run_images(picam2, args, frame_duration):
 
 def test_run(args):
     try:
+        start_time = time.time()
         check_directory_exists(args.directory_name)
         if args.logging:
             setup_logging(args.directory_name)
@@ -375,9 +393,10 @@ def test_run(args):
                             "FrameDurationLimits": (frame_duration, frame_duration),
                             "ExposureTime": int(frame_duration / 2)})
         
-        ret = take_test_run_images(picam2, args, frame_duration)
+        logging.info("Camera started at t = :", get_relative_time(start_time))
+        ret = take_test_run_images(picam2, args, frame_duration, start_time)
         if ret:
-            package_images_for_transfer(args.directory_name)
+            package_images_for_transfer(args.directory_name, start_time)
         print("Image capture complete")
         return 0
     

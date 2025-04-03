@@ -44,7 +44,7 @@ def trial_main_run_video_api():
     experiment_id = cdi.add_experiment("trial_main_run_video", current_time, setup_id)["id"]
     print(f"experiment_id: {experiment_id}")
     
-    camera_id = cdi.get_camera_id_from_username("lewisdean22")
+    camera_id = cdi.get_camera_id_from_username("raspi5n2")
     print(f"camera_id: {camera_id}")
     settings_id = cdi.add_settings(frame_rate=20, lens_position=5, gain=5)["id"]
     print(f"settings_id: {settings_id}")
@@ -57,10 +57,11 @@ def trial_main_run_video_api():
     camera_settings_link_id =  cdi.add_camera_settings_link_with_beam_run(camera_id, settings_id, beam_run_id)["id"]
     print(f"camera_settings_link_id: {camera_settings_link_id}")
     
-    photo_id_array = take_single_video_for_main_run(camera_settings_link_id)
+    photo_id_array = take_single_video_for_main_run(experiment_id, camera_settings_link_id)
     img_tags = ""
     for photo_id in photo_id_array:
         photo_bytes = cdi.get_photo_from_id(photo_id)
+        print(f"Image resolution: {get_image_bytestring_frame_size(photo_bytes)}")
         photo_base64 = base64.b64encode(photo_bytes).decode("utf-8")
         img_tags += f'<img src="data:image/png;base64,{photo_base64}" width="200px"><br>'
 
@@ -81,7 +82,7 @@ def trial_test_run_video_api():
                                    ESS_beam_energy=150, beam_current=100, 
                                    beam_current_unc=0.1, is_test=True).id
     
-    camera_id = cdi.get_camera_id_from_username("lewisdean22")
+    camera_id = cdi.get_camera_id_from_username("raspi5n2")
     print(f"camera_id: {camera_id}")
     
     # Create the camera settings link ids
@@ -93,12 +94,83 @@ def trial_test_run_video_api():
         camera_settings_link_id_array.append(camera_settings_link_id)
     
     print(f"camera_settings_link_id_array: {camera_settings_link_id_array}")
-    photo_id_array = take_single_video_for_test_run(camera_settings_link_id_array)
+    photo_id_array = take_single_video_for_test_run(experiment_id, camera_settings_link_id_array)
     img_tags = ""
     for photo_id in photo_id_array:
         photo_bytes = cdi.get_photo_from_id(photo_id)
         photo_base64 = base64.b64encode(photo_bytes).decode("utf-8")
         img_tags += f'<img src="data:image/png;base64,{photo_base64}" width="200px"><br>'
+
+    html_content = f"<html><body>{img_tags}</body></html>"
+    return HTMLResponse(content=html_content)
+
+
+@router.get("/trial_multiple_vid_test_run")
+def trial_multiple_vid_test_run_api():
+    
+    setup_id = 1
+    current_time = datetime.now(pytz.utc)
+    experiment_id = cdi.add_experiment("trial_multiple_vid_test_run", current_time, setup_id)["id"]
+    print(f"experiment_id: {experiment_id}")
+    
+    list_of_usernames = ["raspi4b3", "raspi5n2"]
+    
+    camera_ids = [cdi.get_camera_id_from_username(username) for username in list_of_usernames]
+    
+    beam_run_id = cdi.add_beam_run(experiment_id=experiment_id, beam_run_number=1, 
+                                   datetime_of_run=current_time, 
+                                   ESS_beam_energy=150, beam_current=1, 
+                                   beam_current_unc=0.1, is_test=False).id
+    
+    gain_list = np.arange(1, 11, 1).astype(float).tolist() # Will use same gains list for all cams here...
+    list_of_csl_id_lists = [[] for _ in range(len(list_of_usernames))]
+
+    for count, camera_id in enumerate(camera_ids):
+        for gain in gain_list:
+            settings_id = cdi.add_settings(frame_rate=20, lens_position=5, gain=gain)["id"]
+            camera_settings_link_id =  cdi.add_camera_settings_link_with_beam_run(camera_id, settings_id, beam_run_id)["id"]
+            list_of_csl_id_lists[count].append(camera_settings_link_id)
+    
+    results_dict = take_multiple_videos_for_test_run(experiment_id, list_of_csl_id_lists)
+    img_tags = ""
+    for photo_id_array in results_dict.values():
+        for photo_id in photo_id_array:
+            photo_bytes = cdi.get_photo_from_id(photo_id)
+            photo_base64 = base64.b64encode(photo_bytes).decode("utf-8")
+            img_tags += f'<img src="data:image/png;base64,{photo_base64}" width="200px"><br>'
+
+    html_content = f"<html><body>{img_tags}</body></html>"
+    return HTMLResponse(content=html_content)
+
+@router.get("/trial_multiple_vid_main_run")
+def trial_multiple_vid_main_run_api():
+    
+    setup_id = 1
+    current_time = datetime.now(pytz.utc)
+    experiment_id = cdi.add_experiment("trial_multiple_vid_main_run", current_time, setup_id)["id"]
+    print(f"experiment_id: {experiment_id}")
+    
+    beam_run_id = cdi.add_beam_run(experiment_id=experiment_id, beam_run_number=1, 
+                                   datetime_of_run=current_time, 
+                                   ESS_beam_energy=150, beam_current=1, 
+                                   beam_current_unc=0.1, is_test=False).id
+    
+    list_of_usernames = ["raspi4b3", "raspi5n2"]
+    
+    csl_id_array = []
+    camera_ids = [cdi.get_camera_id_from_username(username) for username in list_of_usernames]
+    for camera_id in camera_ids:
+        settings_id = cdi.add_settings(frame_rate=20, lens_position=5, gain=5)["id"]
+        camera_settings_link_id =  cdi.add_camera_settings_link_with_beam_run(camera_id, settings_id, beam_run_id)["id"]
+        csl_id_array.append(camera_settings_link_id)
+    
+    results_dict = take_multiple_videos_for_main_run(experiment_id, csl_id_array)
+    img_tags = ""
+    for photo_id_array in results_dict.values():
+        for photo_id in photo_id_array:
+            photo_bytes = cdi.get_photo_from_id(photo_id)
+            photo_base64 = base64.b64encode(photo_bytes).decode("utf-8")
+            img_tags += f'<img src="data:image/png;base64,{photo_base64}" width="200px"><br>'
 
     html_content = f"<html><body>{img_tags}</body></html>"
     return HTMLResponse(content=html_content)
