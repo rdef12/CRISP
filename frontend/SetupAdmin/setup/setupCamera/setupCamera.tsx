@@ -27,6 +27,7 @@ import {
   useCreateController,
   useDelete,
   useRefresh,
+  required,
 } from 'react-admin';
 import { Link, useParams } from 'react-router-dom';
 import HomograpyCalibration from './HomographyCalibration';
@@ -67,7 +68,7 @@ export const AddSetupCameraDropDown = ({ onSuccess }: { onSuccess: () => void })
 
   return (
     <Form onSubmit={handleSubmit}>
-      <SelectInput source="camera_id" optionText="username" choices={data}/>
+      <SelectInput source="camera_id" optionText="username" choices={data} validate={required()} />
       <Button> Add camera </Button>
     </Form>
   );
@@ -287,7 +288,7 @@ export const FarFaceTestContent = () => (
 
 export const EditSetupCamera = () => {
   const { setupCameraId } = useParams();
-  const { record, save, isPending } = useEditController({ resource: "setup-camera/calibration", id: setupCameraId, redirect: false })
+  const { record, save, isPending } = useEditController({ resource: "setup-camera/calibration", id: setupCameraId, redirect: false, mutationMode: "optimistic"})
   if (isPending) return null;
   console.log("RECORD.lens pos: ", record?.lens_position)
   return (

@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button"
 import { Form, useCreateController } from "react-admin";
 import { useParams } from "react-router-dom";
+import { FlagDisconnectedCameras } from "./FlagDisconnectedCameras";
 
 export const TakeRealData = () => {
   const { beamRunId } = useParams();
@@ -10,8 +11,11 @@ export const TakeRealData = () => {
   });
   if (isPending) return null;
   return (
+    <div>
     <Form onSubmit={save} >
       <Button> Start data collection </Button>
     </Form>
+    <FlagDisconnectedCameras />
+    </div>
   )
 }
