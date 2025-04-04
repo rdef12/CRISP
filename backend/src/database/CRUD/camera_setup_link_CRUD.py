@@ -7,7 +7,7 @@ import numpy as np
 from typing import List, Literal
 import pickle
 
-from src.database.models import Camera, CameraSetupLink, Experiment, Photo, Setup, OpticalAxisEnum, DepthDirectionEnum
+from src.database.models import BeamRun, Camera, CameraSettingsLink, CameraSetupLink, Experiment, Photo, Setup, OpticalAxisEnum, DepthDirectionEnum
 from src.classes.JSON_request_bodies import request_bodies as rb
 
 # Create
@@ -60,6 +60,23 @@ def get_cameras_in_experiment(experiment_id: int) -> list[Camera]:
         cameras = session.exec(statement).all()
         return cameras if cameras else []
 
+
+def get_scintillator_edges_by_photo_id(photo_id: int) -> tuple[int]:
+    with Session(engine) as session:
+        statement = (select(CameraSetupLink)
+                     .join(Setup)
+                     .join(Experiment)
+                     .join(BeamRun)
+                     .join(CameraSettingsLink)
+                     .join(Photo)
+                     .where(Photo.id == photo_id))
+        setup_camera = session.exec(statement).one()
+        horizontal_start = setup_camera.horizontal_scintillator_start
+        horizontal_end = setup_camera.horizontal_scintillator_end
+        vertical_start = setup_camera.vertical_scintillator_start
+        vertical_end = setup_camera.vertical_scintillator_end
+        return (horizontal_start, horizontal_end, vertical_start, vertical_end)
+    
 
 # def get_far_face_calibration_photo(camera_id:int, setup_id:int) -> bytes:
 #     with Session(engine) as session:

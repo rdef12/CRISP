@@ -169,27 +169,17 @@ def take_multiple_videos_for_test_run(experiment_id, list_of_csl_id_lists) -> Di
     Executes video recording for multiple users in parallel using ThreadPoolExecutor.
     Returns a dictionary where each username maps to their photo ID array.
     """
-    print("\n\n\nSEEEEEEEEEEEEEEE MEEEEEEEEEEEEEEEEEEE\n\n\n")
-    print(f"List of csl ids: {list_of_csl_id_lists} \n\n")
     results = {}
     with ThreadPoolExecutor() as executor:
-        print(f"\n I AM IN THE WITHHHHHHHHHHHHHHHH\n")
         # The executor is the key, the link id array is the value in the futures dict
         futures = {executor.submit(take_single_video_for_test_run, experiment_id, camera_settings_link_id_array): camera_settings_link_id_array 
                    for camera_settings_link_id_array in list_of_csl_id_lists}
-        print(f"\n I MADE IT PAST THE FUTUREEEES\n")
-        print(f"FURTURES: {futures} (other side of something hopefully)")
-        for future in futures:
-            print(f"\n I AM IN THE FORRRRRRRRRRRRRRRRRRR\n")
 
+        for future in futures:
             camera_settings_link_id_array = futures[future] # way to map futures.result() to a dict with username as the key
             try:
-                print(f"\n I AM IN THE TRYYYYYYYYYYYYYYYYY\n")
-
                 results[camera_settings_link_id_array[0]] = future.result()  # To acess the result of the test, the dict key is the csl_id of the first 
             except Exception as e:
-                print(f"\n IVE HAD AN EXCEPTIONNNNNNNNNNN\n")
-
                 print(f"Error in test run video capture for image with camera setting link id: {camera_settings_link_id_array}: {e}")
                 results[camera_settings_link_id_array[0]] = []  # Store an empty list in case of failure
     return results

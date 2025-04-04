@@ -105,19 +105,20 @@ def get_test_settings(beam_run_id: int, camera_id: int, response: Response):
 
 @router.put("/beam-run/test/{beam_run_id}/camera-settings/{camera_settings_id}")
 def update_is_optimal(beam_run_id: int, camera_settings_id: int):
-    with Session(engine) as session:
-        camera_settings_statement = select(CameraSettingsLink).where(CameraSettingsLink.beam_run_id == beam_run_id)
-        all_camera_settings = session.exec(camera_settings_statement).all()
-        for camera_settings in all_camera_settings:
-            if camera_settings.id == camera_settings_id:
-                print("\n\n I AM HERREEE \n\n")
-                camera_settings.is_optimal = True
-            else:
-                print("\n\n I AM IN THE ELSE \n\n")
+    # with Session(engine) as session:
+    #     camera_settings_statement = select(CameraSettingsLink).where(CameraSettingsLink.beam_run_id == beam_run_id)
+    #     all_camera_settings = session.exec(camera_settings_statement).all()
+    #     for camera_settings in all_camera_settings:
+    #         if camera_settings.id == camera_settings_id:
+    #             print("\n\n I AM HERREEE \n\n")
+    #             camera_settings.is_optimal = True
+    #         else:
+    #             print("\n\n I AM IN THE ELSE \n\n")
 
-                camera_settings.is_optimal = False
-        session.commit()
-        return rb.UpdateIsOptimalRequest(id=camera_settings_id)
+    #             camera_settings.is_optimal = False
+    #     session.commit()
+    result = cdi.update_is_optimal_by_camera_settings_id(camera_settings_id)
+    return rb.UpdateIsOptimalRequest(id=camera_settings_id)
 
 @router.get("/beam-run/real/{beam_run_id}/camera/{camera_id}")
 def get_real_settings(beam_run_id: int, camera_id: int):

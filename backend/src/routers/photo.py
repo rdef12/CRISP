@@ -4,6 +4,7 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 import pytz
 from sqlmodel import Session, select
+from src.gain_automation import set_optimal_settings
 from src.database.database import engine
 
 
@@ -276,11 +277,11 @@ def take_test_beam_run_images(beam_run_id: int):
         # experiment = session.exec(experiment_statement).one()
         # experiment_id = experiment.id
         # TODO Maybe have a try here and return with the issue as well as what was completed??
-        print("\n\n\n GONNA DO A THINGGY")
+        print("\n\n\n About to take pictures")
         results_dict = take_multiple_videos_for_test_run(experiment_id, grouped_camera_settings) #TODO SHOULD BE MULTIPLE PRESUMABLY
-        print("DONE A THINGY \n\n\n")
+        print(f"\n\n\n Pictures taken \n\n")
         
         for photo_id_array in results_dict.values():
-        
+            set_optimal_settings(photo_id_array, threshold=5)
         return rb.RealRunPhotoPostResponse(id=beam_run_id)
     
