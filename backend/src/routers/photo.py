@@ -14,7 +14,7 @@ from src.distortion_correction import distortion_calibration_test_for_gui, perfo
 from src.classes.JSON_request_bodies import request_bodies as rb
 
 
-from src.database.models import Camera, CameraSettingsLink, CameraSetupLink, Photo, Settings
+from src.database.models import BeamRun, Camera, CameraSettingsLink, CameraSetupLink, Experiment, Photo, Settings
 from src.classes import Camera as PiCamera #TODO This may be a bit awkward
 from src.database.CRUD import CRISP_database_interaction as cdi
 
@@ -22,6 +22,11 @@ router = APIRouter(
     prefix="/photo",
     tags=["photo"],
 )
+
+@router.delete("/{photo_id}")
+def delete_photo_by_id_api(photo_id: int):
+    cdi.delete_photo_by_id(photo_id)
+    return rb.PhotoDeleteResponse(id=photo_id)
 
 # @router.post("scintillator-edges/{setup_camera_id}")
 # def take_picture(setup_camera_id: str):
@@ -172,6 +177,24 @@ def take_picture(setup_camera_id: int):
                                                  message=calibration_results["message"])
     return response
 
+@router.post("/distortion-calibration/save/{setup_camera_id}")
+def save_distortion_image_to_database(setup_camera_id: int, distortion_photo_body: rb.DistortionCalibrationSaveRequest):
+    with Session(engine) as session:
+        setup_camera = session.get(CameraSetupLink, setup_camera_id)
+        camera_settings_id = setup_camera.distortion_calibration_camera_settings_link
+        photo_id = cdi.add_photo(camera_settings_id, distortion_photo_body.photo)["id"]
+    return rb.DistortionCalibrationSaveResponse(id=setup_camera_id)
+
+@router.get("/distortion-calibration/{setup_camera_id}")
+def get_all_distortion_calibration_images(setup_camera_id: int, response: Response):
+    with Session(engine) as session:
+        setup_camera = session.get(CameraSetupLink, setup_camera_id)
+        camera_settings_id = setup_camera.distortion_calibration_camera_settings_link
+        distortion_calibration_images = cdi.get_photo_from_camera_settings_link_id(camera_settings_id)
+        response.headers["Content-Range"] = str(len(distortion_calibration_images))
+        return distortion_calibration_images
+    
+
 
 @router.get("/beam-run/test/{beam_run_id}/camera-settings/{camera_settings_id}")
 def get_test_run_photo(beam_run_id: int, camera_settings_id: int):
@@ -199,5 +222,36 @@ def get_real_run_photo(beam_run_id: int, camera_id: int, response: Response):
         return photo_list
     
 
-# @router.post("/beam-run/")
+@router.post("/beam-run/real/{beam_run_id}")
+def take_real_beam_run_images(beam_run_id: int):
+    all_camera_settings_ids = []
+    
+    with Session(engine) as session:
+        camera_settings_statement = select(CameraSettingsLink).where(CameraSettingsLink.beam_run_id == beam_run_id)
+        all_camera_settings = session.exec(camera_settings_statement).all()
+        for camera_settings in all_camera_settings:
+            all_camera_settings_ids += [camera_settings.id]
+    # TODO Maybe have a try here and return with the issue as well as what was completed??
+    print("\n\n\n GONNA DO A THINGGY")
+    results = take_single_video_for_main_run(all_camera_settings_ids[0]) #TODO Temporary [0] and single video for a little test
+    print("DONE A THINGY \n\n\n")
+    return rb.RealRunPhotoPostResponse(id=beam_run_id)
+
+@router.post("/beam-run/test/{beam_run_id}")
+def take_test_beam_run_images(beam_run_id: int):
+    all_camera_settings_ids = []
+    
+    with Session(engine) as session:
+        camera_settings_statement = select(CameraSettingsLink).where(CameraSettingsLink.beam_run_id == beam_run_id)
+        all_camera_settings = session.exec(camera_settings_statement).all()
+        print(f"\n\n ALLLL CAMERA SETTTINGS {all_camera_settings}\n\n\n")
+        for camera_settings in all_camera_settings:
+            all_camera_settings_ids += [camera_settings.id]
+    # TODO Maybe have a try here and return with the issue as well as what was completed??
+    print("\n\n\n GONNA DO A THINGGY")
+    results = take_single_video_for_test_run(all_camera_settings_ids) #TODO SHOULD BE MULTIPLE PRESUMABLY
+    print("DONE A THINGY \n\n\n")
+    return rb.RealRunPhotoPostResponse(id=beam_run_id)
+
+
     

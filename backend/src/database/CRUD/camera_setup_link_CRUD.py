@@ -7,7 +7,7 @@ import numpy as np
 from typing import List, Literal
 import pickle
 
-from src.database.models import Camera, CameraSetupLink, Experiment, Setup, OpticalAxisEnum, DepthDirectionEnum
+from src.database.models import Camera, CameraSetupLink, Experiment, Photo, Setup, OpticalAxisEnum, DepthDirectionEnum
 from src.classes.JSON_request_bodies import request_bodies as rb
 
 # Create
@@ -1120,3 +1120,35 @@ def update_near_face_calibration_spacing_unc(camera_id:int, setup_id:int, near_f
         raise RuntimeError(f"An error occurred: {str(e)}")
     
 # Delete
+
+def delete_setup_camera(setup_camera_id: int):
+    with Session(engine) as session:
+        statement = select(CameraSetupLink).where(CameraSetupLink.id == setup_camera_id)
+        try:
+            result = session.exec(statement).one()
+            if result:
+                session.delete(result)
+                session.commit()
+                return {"message": f"Setup camera link with id {setup_camera_id} successfully deleted"}
+            else:
+                raise ValueError(f"Setup camera link with id {setup_camera_id} not found")
+        except Exception as e:
+            raise RuntimeError(f"An error occurred: {str(e)}")
+
+
+def reset_distortion_calibration(setup_camera_id: int):
+    with Session(engine) as session:
+        setup_camera = session.get(CameraSetupLink, setup_camera_id)
+        # Remove distortion photos
+        distortion_camera_settings_id = setup_camera.distortion_calibration_camera_settings_link
+        distortion_photos_statement = select(Photo).where(Photo.camera_settings_link_id == distortion_camera_settings_id)
+        distortion_photos = session.exec(distortion_photos_statement).all()
+        for distortion_photo in distortion_photos:
+            session.delete(distortion_photo)
+        session.delete(setup_camera)
+        setup_camera.distortion_calibration_camera_settings_link = None
+        session.commit()
+    return {"id": setup_camera_id,
+            "message": f"Distortion calibration for setup camera with id {setup_camera_id} successfully reset"}
+
+# def reset_far_face_calibration(setup_camera_id: int):

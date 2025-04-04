@@ -22,6 +22,11 @@ import {
   useListController,
   useShowController,
   BooleanInput,
+  Form,
+  useGetList,
+  useCreateController,
+  useDelete,
+  useRefresh,
 } from 'react-admin';
 import { Link, useParams } from 'react-router-dom';
 import HomograpyCalibration from './HomographyCalibration';
@@ -29,61 +34,125 @@ import HomograpyCalibration from './HomographyCalibration';
 import { DialogContent, DialogHeader } from '@/components/ui/dialog';
 import { Dialog, DialogDescription, DialogTitle, DialogTrigger } from '@radix-ui/react-dialog';
 import { CalibrationRouting } from './CalibrationRouting';
+import { FieldValues } from 'react-hook-form';
+import React from 'react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 
-export const AddSetupCameraDropDown = () => {
+export const AddSetupCameraDropDown = ({ onSuccess }: { onSuccess: () => void }) => {
   const { setupId } = useParams();
   console.log("Setup id")
   console.log(setupId)
+  const { data, isPending: pendingUnaddedCameras, refetch } = useGetList( `setup/unadded-cameras/${setupId}`)
+  const { save, isPending } = useCreateController({ resource: `setup/${setupId}`, redirect: false })
+  console.log("FASCINATING DATAAAA", data)
+  if (pendingUnaddedCameras) return null;
+
+  const handleSubmit = async (formData: FieldValues) => {
+    if (!save) return;
+    await save(formData);
+    refetch();
+    onSuccess();
+  };
+
   return (
-    <CreateBase resource={`setup/${setupId}`}>
-      <SimpleForm>
-        <ReferenceInput source="camera_id" reference="camera" label="Camera Id">
-            <SelectInput />
-        </ReferenceInput>
-      </SimpleForm>
-    </CreateBase>
+    <Form onSubmit={handleSubmit}>
+      <SelectInput source="camera_id" optionText="username" choices={data}/>
+      <Button> Add camera </Button>
+    </Form>
   );
 }
 
+const DeleteButton = ({ record }: { record: RaRecord }) => {
+  const [deleteOne] = useDelete();
+  const refresh = useRefresh();
+
+  const handleDelete = async (e: React.MouseEvent) => {
+    e.stopPropagation(); // Stop the event from bubbling up to the row
+    await deleteOne(
+      'setup-camera',
+      { id: record.id },
+      {
+        onSuccess: () => {
+          refresh();
+        },
+      }
+    );
+  };
+
+  return (
+    <AlertDialog>
+      <AlertDialogTrigger asChild>
+        <Button 
+          variant="destructive" 
+          className="h-8 px-2"
+          onClick={(e) => e.stopPropagation()}
+        >
+          Delete
+        </Button>
+      </AlertDialogTrigger>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+          <AlertDialogDescription>
+            This will remove the camera from the setup. This action cannot be undone.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel onClick={(e) => e.stopPropagation()}>Cancel</AlertDialogCancel>
+          <AlertDialogAction onClick={handleDelete}>Delete</AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+};
+
+const DeleteButtonField = () => {
+  const record = useRecordContext();
+  if (!record) return null;
+  return <DeleteButton record={record} />;
+};
+
 export const SetupCameraList = () => {
   const { setupId } = useParams();
-  const { resource, data, isPending } = useListController({ resource:`setup-camera/${setupId}`, queryOptions: {meta: { camera: "camera"}}})
+  const refresh = useRefresh();
+  const { resource, data, isPending } = useListController({ 
+    resource:`setup-camera/${setupId}`, 
+    queryOptions: {meta: { camera: "camera"}}
+  });
+  
   const cameraSetupRowClick = (id: Identifier, resource: string, record: RaRecord) =>
     `/setup/${record.setup_id}/setup-camera/${record.id}`
+
+  // Refresh when data changes
+  React.useEffect(() => {
+    if (data) {
+      refresh();
+    }
+  }, [data, refresh]);
+
   console.log("DATAAA: ", data)
   if (isPending) return null;
   return (
     <List resource={resource}>
       <Datagrid data={data} rowClick={cameraSetupRowClick} bulkActionButtons={false} >
-        {/* <TextField source="camera.id" /> */}
         <TextField source="camera.username" />
-        {/* <TextField source="setup_id" /> */}
+        <DeleteButtonField />
       </Datagrid>
     </List>
   );
 };
 
-
-export const BoxParametersContent = () => {
-  const record = useRecordContext();
-  if (!record) return null;
-  return (
-      <SimpleShowLayout >
-        <TextField source="name" />
-        <DateField source="date_created" />
-        <DateField source="date_last_edited" />
-        <NumberField source="block_x_dimension" />
-        <NumberField source="block_x_dimension_unc" />
-        <NumberField source="block_y_dimension" />
-        <NumberField source="block_y_dimension_unc" />
-        <NumberField source="block_z_dimension" />
-        <NumberField source="block_z_dimension_unc" />
-        <NumberField source="block_refractive_index" />
-        <NumberField source="block_refractive_index_unc" />
-      </SimpleShowLayout>
-  );
-}
 
 export const EditBoxParameters = () => {
   const { setupId } = useParams();
@@ -149,10 +218,19 @@ export const BoxParameters = () => {
 }
 
 export const SetupShow = () => {
+  const { setupId } = useParams();
+  const listController = useListController({ resource:`setup-camera/${setupId}`, queryOptions: {meta: { camera: "camera"}}});
+  const { refetch: refetchDropdown } = useGetList(`setup/unadded-cameras/${setupId}`);
+
+  const handleRefetch = () => {
+    listController.refetch();
+    refetchDropdown();
+  };
+
   return (
     <div>
       <Card>
-        <AddSetupCameraDropDown />
+        <AddSetupCameraDropDown onSuccess={handleRefetch} />
       </Card>
       <BoxParameters />
       <SetupCameraList />
@@ -162,29 +240,37 @@ export const SetupShow = () => {
 
 //BELOW SHOULD BE SOMEWHERE ELSE
 export const NearFaceCalibrationButton = () => (
-  <Button>
-    <Link to="near-face">Near Face Calibration</Link>
-  </Button>
+  <Link to="near-face">
+    <Button>
+      Near Face Calibration
+    </Button>
+  </Link>
 )
 
 
 export const FarFaceCalibrationButton = () => (
-  <Button>
-    <Link to="far-face">Far Face Calibration</Link>
-  </Button>
+  <Link to="far-face">
+    <Button>
+      Far Face Calibration
+    </Button>
+  </Link>
 )
 
 
 export const DistortionCalibrationButton = () => (
-  <Button>
-    <Link to="distortion-calibration">Distortion Calibration</Link>
-  </Button>
+  <Link to="distortion-calibration">
+    <Button>
+      Distortion Calibration
+    </Button>
+  </Link>
 )
 
 export const ScintillatorEdgeSelectionButton = () => (
-  <Button>
-    <Link to="scintillator-edges">Scintillator Edge Selection</Link>
-  </Button>
+  <Link to="scintillator-edges">
+    <Button>
+      Scintillator Edge Selection
+    </Button>
+  </Link>
 )
 
 
@@ -205,11 +291,24 @@ export const EditSetupCamera = () => {
   if (isPending) return null;
   console.log("RECORD.lens pos: ", record?.lens_position)
   return (
-    <Card>
-      <SimpleForm record={record} onSubmit={save}>
-        <NumberInput source="lens_position" required />
-        <BooleanInput source="do_distortion_calibration" />
-      </SimpleForm>
+    <Card className="p-6">
+      <div className="space-y-6">
+        <div>
+          <h2 className="text-lg font-semibold mb-4">Camera Setup Configuration</h2>
+          <p className="text-sm text-muted-foreground mb-4">Configure the lens position and calibration settings for this camera setup.</p>
+        </div>
+        <Form record={record} onSubmit={save} className="space-y-4">
+          <div className="space-y-2">
+            <NumberInput source="lens_position"/>
+          </div>
+          <div className="space-y-2">
+            <BooleanInput source="do_distortion_calibration" label="Enable Distortion Calibration" />
+          </div>
+          <div className="pt-4">
+            <Button className="w-full sm:w-auto">Continue</Button>
+          </div>
+        </Form>
+      </div>
     </Card>
   )
 }

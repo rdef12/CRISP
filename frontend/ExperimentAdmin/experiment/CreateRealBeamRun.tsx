@@ -1,11 +1,12 @@
 import { useParams } from "react-router-dom";
-import { required, Form, useCreateController, NumberInput } from "react-admin";
+import { required, Form, useCreateController, NumberInput, Identifier } from "react-admin";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 
 export const CreateRealBeamRun = () => {
   const { experimentId } = useParams();
-  const redirectOnSubmission = (record, id, data) =>  (`experiment/${experimentId}/beam-run/real/${id}`);
+  const redirectOnSubmission = (resource: string | undefined, id: Identifier | undefined) => 
+    `experiment/${experimentId}/beam-run/real/${id}`;
 
   const { save } = useCreateController({ resource: `beam-run/real/${experimentId}`, redirect: redirectOnSubmission })
 
@@ -32,4 +33,3 @@ export const CreateRealBeamRun = () => {
     </Dialog>
   )
 }
-

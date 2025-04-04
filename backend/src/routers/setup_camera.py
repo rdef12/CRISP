@@ -1,6 +1,7 @@
 from fastapi import Response, APIRouter
 from pydantic import BaseModel
 from sqlmodel import Session, select
+from src.distortion_correction import save_distortion_calibration_to_database
 from src.database.database import engine
 
 
@@ -8,7 +9,7 @@ from src.network_functions import *
 from src.camera_functions import *
 from src.connection_functions import *
 
-from src.database.models import Camera, CameraSetupLink, Settings, Setup
+from src.database.models import Camera, CameraSetupLink, Photo, Settings, Setup
 
 from src.database.CRUD import CRISP_database_interaction as cdi
 from src.classes.JSON_request_bodies import request_bodies as rb
@@ -135,6 +136,14 @@ async def add_distortion_calibration_settings(setup_camera_id: int, distortion_s
     response = rb.SetupCameraDistortionCalibrationGetRequest(id=setup_camera_id, camera_id=camera_id)
     return response
 
+@router.post("/distortion-calibration/save/{setup_camera_id}")
+async def add_distortion_calibration_settings(setup_camera_id: int):
+    save_distortion_calibration_to_database(setup_camera_id)
+    return rb.DistortionCalibrationSaveResponse(id=setup_camera_id)
+
+@router.delete("/distortion-calibration/reset/{setup_camera_id}")
+def reset_distortion_calibration(setup_camera_id: int):
+    distortion_result = cdi.reset_distortion_calibration(setup_camera_id)
 
 # @router.get("/{setup_camera_id}")
 # async def read_setup_camera(setup_camera_id: int) -> Setup:
@@ -155,6 +164,11 @@ async def patch_setup_camera(setup_camera_id: int, patch_request: rb.SetupCamera
     print("\n\n I DONE A PATCH \n\n")
     return {"message": "Successfully added calibration parameters",
             "id": setup_camera_id}
+
+@router.delete("/{setup_camera_id}")
+async def delete_setup_camera(setup_camera_id: int):
+    cdi.delete_setup_camera(setup_camera_id)
+    return rb.SetupCameraDeleteRequest(id=setup_camera_id)
 
     
 

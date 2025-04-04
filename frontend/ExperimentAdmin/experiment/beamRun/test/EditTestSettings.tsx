@@ -1,7 +1,5 @@
 import { useParams } from "react-router-dom";
-import { Form, NumberInput, RaRecord, SimpleForm, useEditController } from "react-admin"
-import { ListTestSettings } from './ListTestSettings'
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { Form, NumberInput, RaRecord, useEditController } from "react-admin"
 import { Button } from "@/components/ui/button";
 
 // interface TestSettingsData {

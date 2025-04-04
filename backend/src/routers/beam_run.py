@@ -87,11 +87,14 @@ def add_real_beam_run(experiment_id: int, beam_run_body: rb.CreateBeamRun):
             optimal_settings_statment = (select(Settings)
                                          .join(CameraSettingsLink)
                                          .join(BeamRun)
+                                         .join(Experiment)
                                          .where(BeamRun.ESS_beam_energy == ESS_beam_energy)
                                          .where(BeamRun.beam_current == beam_current)
                                          .where(BeamRun.is_test == True)
                                          .where(CameraSettingsLink.camera_id == camera.id)
-                                         .where(CameraSettingsLink.is_optimal == True))
+                                         .where(CameraSettingsLink.is_optimal == True)
+                                         .where(Experiment.id == experiment_id))
+
             try:
                 optimal_settings = session.exec(optimal_settings_statment).one()
                 cdi.add_camera_settings_link_with_beam_run_and_number_of_images(camera.id,
