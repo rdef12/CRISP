@@ -1,5 +1,6 @@
 import { useParams } from "react-router-dom";
-import { NumberInput, RaRecord, SimpleForm, useCreateController } from "react-admin"
+import { NumberInput, RaRecord, Form, useCreateController } from "react-admin"
+import { Button } from "@/components/ui/button";
 
 interface TestSettingsData {
   frame_rate: number;
@@ -38,12 +39,14 @@ export const CreateTestSettings = ({ record, onSave }: CreateTestSettingsProps) 
   };
 
   return(
-    <SimpleForm record={record} onSubmit={handleSubmit}>
+    <Form record={record} onSubmit={handleSubmit}>
       <NumberInput source="frame_rate" required/>
       <NumberInput source="lowest_gain" required/>
       <NumberInput source="highest_gain" required/>
       <NumberInput source="gain_increment" required/>
       {/* Other camera settings here */}
-    </SimpleForm>
+      <Button> Save </Button>
+
+    </Form>
   )
 }
