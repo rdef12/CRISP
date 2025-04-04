@@ -2,7 +2,7 @@ from src.database.database import engine
 from sqlmodel import Session, select
 from sqlalchemy.orm.exc import NoResultFound
 
-from src.database.models import CameraSettingsLink, BeamRun
+from src.database.models import CameraSettingsLink, BeamRun, Experiment, Photo
 
 # Create
 
@@ -98,6 +98,12 @@ def get_camera_settings_by_id(camera_settings_link_id: int):
         result = session.exec(statement).one()
         return result
 
+def get_camera_settings_by_photo_id(photo_id: int):
+    with Session(engine) as session:
+        statement = select(CameraSettingsLink).join(Photo).where(Photo.id == photo_id)
+        camera_settings = session.exec(statement).one()
+        return camera_settings
+
 def get_settings_id_by_camera_settings_id(camera_settings_id: int):
     with Session(engine) as session:
         camera_settings = session.get(CameraSettingsLink, camera_settings_id)
@@ -129,17 +135,82 @@ def get_beam_run_id_by_camera_settings_link_id(camera_settings_link_id: int):
 #         raise RuntimeError(f"An error occurred: {str(e)}")
 
 
-def update_is_optimal(beam_run_id: int, camera_id: int, settings_id: int, is_optimal: bool):
+# def update_is_optimal(beam_run_id: int, camera_id: int, settings_id: int, is_optimal: bool):
+#     try:
+#         with Session(engine) as session:
+#             statement = select(CameraSettingsLink).join(BeamRun).where(BeamRun.id == beam_run_id).where(CameraSettingsLink.camera_id == camera_id).where(CameraSettingsLink.settings_id == settings_id)
+#             result = session.exec(statement).one()
+#             result.is_optimal = is_optimal
+#             session.commit()
+#             return {"message": f"Camera settings link with beam_run_id: {beam_run_id} and camera_id: {camera_id} updated with settings_id: {settings_id}"}
+#     except NoResultFound:
+#         raise ValueError(f"No camera settings link found for beam_run_id={beam_run_id} and camera_id={camera_id}.")
+#     except Exception as e:
+#         raise RuntimeError(f"An error occurred: {str(e)}")
+
+def update_is_optimal(photo_id: int):
     try:
         with Session(engine) as session:
-            statement = select(CameraSettingsLink).join(BeamRun).where(BeamRun.id == beam_run_id).where(CameraSettingsLink.camera_id == camera_id).where(CameraSettingsLink.settings_id == settings_id)
-            result = session.exec(statement).one()
-            result.is_optimal = is_optimal
+            optimal_camera_settings_statement = (select(CameraSettingsLink)
+                                                 .join(Photo)
+                                                 .where(Photo.id == photo_id))
+            optimal_camera_settings = session.exec(optimal_camera_settings_statement).one()
+
+            beam_run_statement = (select(BeamRun)
+                                         .join(CameraSettingsLink)
+                                         .where(CameraSettingsLink.id == optimal_camera_settings.id))
+            beam_run = session.exec(beam_run_statement).one()
+
+            all_related_camera_settings_statement = (select(CameraSettingsLink)
+                                                     .join(BeamRun)
+                                                     .join(Experiment)
+                                                     .where(BeamRun.ESS_beam_energy == beam_run.ESS_beam_energy)
+                                                     .where(BeamRun.beam_current == beam_run.beam_current)
+                                                     .where(Experiment.id == beam_run.experiment_id))
+            all_related_camera_settings = session.exec(all_related_camera_settings_statement).all()
+            for camera_settings in all_related_camera_settings:
+                camera_settings.is_optimal = False
+            optimal_camera_settings.is_optimal = True
             session.commit()
-            return {"message": f"Camera settings link with beam_run_id: {beam_run_id} and camera_id: {camera_id} updated with settings_id: {settings_id}"}
+            return {"message": f"Camera settings {optimal_camera_settings.id} set to optimal"}
     except NoResultFound:
-        raise ValueError(f"No camera settings link found for beam_run_id={beam_run_id} and camera_id={camera_id}.")
+        raise ValueError(f"No camera settings link found for camera_settings_id {camera_settings.id}.")
     except Exception as e:
         raise RuntimeError(f"An error occurred: {str(e)}")
+
+
+def update_is_optimal_by_camera_settings_id(camera_settings_id: int):
+    try:
+        with Session(engine) as session:
+            optimal_camera_settings = session.get(CameraSettingsLink, camera_settings_id)
+            beam_run_statement = (select(BeamRun)
+                                  .join(CameraSettingsLink)
+                                  .where(CameraSettingsLink.id == camera_settings_id))
+            beam_run = session.exec(beam_run_statement).one()
+            all_related_camera_settings_statement = (select(CameraSettingsLink)
+                                                     .join(BeamRun)
+                                                     .join(Experiment)
+                                                     .where(BeamRun.ESS_beam_energy == beam_run.ESS_beam_energy)
+                                                     .where(BeamRun.beam_current == beam_run.beam_current)
+                                                     .where(Experiment.id == beam_run.experiment_id))
+            all_related_camera_settings = session.exec(all_related_camera_settings_statement).all()
+            for camera_settings in all_related_camera_settings:
+                camera_settings.is_optimal = False
+            optimal_camera_settings.is_optimal = True
+            session.commit()
+            return {"message": f"Camera settings {optimal_camera_settings.id} set to optimal"}
+    except NoResultFound:
+        raise ValueError(f"No camera settings link found for camera_settings_id {camera_settings.id}.")
+    except Exception as e:
+        raise RuntimeError(f"An error occurred: {str(e)}")
+
+def update_no_optimal_in_run(photo_ids: int):
+    with Session(engine) as session:
+        for photo_id in photo_ids:
+            statement = select(CameraSettingsLink).join(Photo).where(Photo.id == photo_id)
+            camera_settings = session.exec(statement).one()
+            camera_settings.is_optimal = False
+        session.commit()
+        return {"message": f"Photos with ids: {photo_ids} all set to not optimal camera settings"}
 
 # Delete

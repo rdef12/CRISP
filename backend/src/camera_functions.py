@@ -174,7 +174,7 @@ def take_multiple_videos_for_test_run(experiment_id, list_of_csl_id_lists) -> Di
         # The executor is the key, the link id array is the value in the futures dict
         futures = {executor.submit(take_single_video_for_test_run, experiment_id, camera_settings_link_id_array): camera_settings_link_id_array 
                    for camera_settings_link_id_array in list_of_csl_id_lists}
-        
+
         for future in futures:
             camera_settings_link_id_array = futures[future] # way to map futures.result() to a dict with username as the key
             try:

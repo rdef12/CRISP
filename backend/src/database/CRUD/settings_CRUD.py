@@ -1,6 +1,6 @@
 from src.database.database import engine
 from sqlmodel import Session, select
-from src.database.models import CameraSettingsLink, CameraSetupLink, Settings
+from src.database.models import CameraSettingsLink, CameraSetupLink, Photo, Settings
 
 from src.database.CRUD import CRISP_database_interaction as cdi
 
@@ -61,6 +61,12 @@ def get_settings_by_setup_camera_id_distortion_calibration(setup_camera_id: int)
         settings = get_settings_by_id(settings_id)
         return settings
 
+
+def get_gain_from_photo_id(photo_id: int):
+    with Session(engine) as session:
+        statement = select(Settings).join(CameraSettingsLink).join(Photo).where(Photo.id == photo_id)
+        settings = session.exec(statement).one()
+        return settings.gain
 
 # Update
 
