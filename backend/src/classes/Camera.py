@@ -103,8 +103,9 @@ class Camera():
 
     self.remote_root_directory = f"/home/{self.username}" 
     self.general_image_directory = f"{self.remote_root_directory}/general"
-    self.test_run_image_directory = f"{self.remote_root_directory}/experiment/test_beam_run_id_"
-    self.real_run_image_directory = f"{self.remote_root_directory}/experiment/real_beam_run_id_"
+    self.experiment_directory = f"{self.remote_root_directory}/experiment_id_"
+    self.test_run_image_directory = "/test_beam_run_id_"
+    self.real_run_image_directory = "/real_beam_run_id_"
     
     self.video_capture = None # Will be the cv2 video capture (such that cap can be released from any function, without global cap).
     self.stream_source = 'udp://{}:1234'.format(os.getenv("LOCAL_IP_ADDRESS"))
@@ -487,14 +488,14 @@ class Camera():
     settings = cdi.get_settings_by_id(settings_id)
     return settings.frame_rate, settings.lens_position, settings.gain
     
-  def run_main_run_script(self, beam_run_id, camera_settings_link_id: int):
+  def run_main_run_script(self, experiment_id, beam_run_id, camera_settings_link_id: int):
     """
     If script not found on pi, transfer script from here to the pi.
     Then run SSH command with flags from rb.VideoSettings
     """
     frame_rate, lens_position, gain = Camera.source_camera_settings(camera_settings_link_id)
-    directory_name = self.real_run_image_directory + str(beam_run_id)
-    num_of_images = 10
+    directory_name = self.experiment_directory + str(experiment_id) + self.real_run_image_directory + str(beam_run_id)
+    num_of_images = 25
     
     # -raw flag added under the assumption that we always wanna save the raw files too
     command = (f"python video_script.py -dir {directory_name} " +
@@ -518,7 +519,7 @@ class Camera():
     stdin.close()
     return None
 
-  def run_test_run_script(self, beam_run_id, camera_settings_link_id_array):
+  def run_test_run_script(self, experiment_id, beam_run_id, camera_settings_link_id_array):
     """
     If script not found on pi, transfer script from here to the pi.
     Then run SSH command with flags from rb.VideoSettings
@@ -527,13 +528,13 @@ class Camera():
     for id in camera_settings_link_id_array:
         frame_rate, lens_position, gain = Camera.source_camera_settings(id)
         gain_list.append(gain)
-        
-    directory_name = self.test_run_image_directory + str(beam_run_id)
+    
+    directory_name = self.experiment_directory + str(experiment_id) + self.test_run_image_directory + str(beam_run_id)
     
     # -raw flag added under the assumption that we always wanna save the raw files too
     
     command = (f"python video_script.py -dir {directory_name} " +
-            f"-lp {lens_position} -raw " + 
+            f"-lp {lens_position} " + 
             f"-c all -fr {frame_rate} " +
             f"-f jpeg -log -b 8 " +
             f"test_run --gain_list '{gain_list}' --cs_id_array '{camera_settings_link_id_array}'")
@@ -557,13 +558,13 @@ class Camera():
     match = re.search(r"cslID_(\d+)", filename)
     return int(match.group(1)) if match else None
   
-  def transfer_video_frames(self, beam_run_id, context=Literal["real", "test"], camera_settings_link_id: int|None=None):
+  def transfer_video_frames(self, experiment_id, beam_run_id, context=Literal["real", "test"]):
     try:
         print("\n\n\n\n\n The transfer has begun")
         if context == "real":
-            directory_name = self.real_run_image_directory + str(beam_run_id)
+            directory_name = self.experiment_directory + str(experiment_id) + self.real_run_image_directory + str(beam_run_id)
         elif context == "test":
-            directory_name = self.test_run_image_directory + str(beam_run_id)
+            directory_name = self.experiment_directory + str(experiment_id) + self.test_run_image_directory + str(beam_run_id)
         else:
             raise ValueError("Context argument can only be 'real' or 'test'")
         

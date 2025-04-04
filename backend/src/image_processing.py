@@ -1,8 +1,8 @@
 import cv2 as cv
 import numpy as np
 
-from distortion_correction import undistort_image
-from calibration_functions import determine_frame_size
+from src.distortion_correction import undistort_image
+from src.calibration_functions import determine_frame_size
 from src.camera_functions import load_image_byte_string_to_opencv
 import matplotlib.pyplot as plt
 from src.database.CRUD import CRISP_database_interaction as cdi
@@ -116,5 +116,18 @@ def rotate_input_image(image: np.ndarray[np.uint8], incident_beam_angle: float, 
     
     rotation_brightness_error = resiudal_std / 2 # Not dividing by root(2) because each rotation's error not independent
     return rotated_image, rotation_matrix, inverse_rotation_matrix, rotation_brightness_error
+
+
+def inverse_rotation_of_coords(array_of_coords, inverse_rotation_matrix):
+    homogenous_column = np.ones((array_of_coords.shape[0], 1))
+    homogenous_beam_center_coords = np.hstack((array_of_coords, homogenous_column))
+    
+    unrotated_coords = np.array([])
+    for rotated_coordinate in homogenous_beam_center_coords:
+        coordinate = (inverse_rotation_matrix @ rotated_coordinate.T).astype(int)
+        unrotated_coords = np.append(unrotated_coords, coordinate)
+    unrotated_coords = unrotated_coords.reshape(len(array_of_coords), 2)
+    return unrotated_coords
+
 
 
