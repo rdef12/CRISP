@@ -151,7 +151,6 @@ def reset_distortion_calibration_api(setup_id, username):
     
     cdi.update_camera_matrix(camera_id, setup_id, None)
     cdi.update_distortion_coefficients(camera_id, setup_id, None)
-    cdi.update_distortion_calibration_pattern_size(camera_id, setup_id, None)
     cdi.update_distortion_calibration_pattern_type(camera_id, setup_id, None)
     cdi.update_distortion_calibration_pattern_spacing(camera_id, setup_id, None)
     

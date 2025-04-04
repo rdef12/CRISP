@@ -237,6 +237,9 @@ def perform_homography_calibration(username: str, setup_id: int,
         
         # If distortion correction fields are not completely filled, set to False
         correct_for_distortion = cdi.check_for_distortion_correction_condition(camera_id, setup_id)
+        
+        print("\n\n pattern_size: ", pattern_size)
+        print("\n\n pattern_type: ", pattern_type)
 
         if bool(photo_bytes) == bool(photo_id):  # XNOR
             raise Exception("Only Image bytes or Photo ID must be entered")

@@ -8,6 +8,7 @@ from src.create_homographies import *
 from fastapi.responses import JSONResponse, FileResponse
 from src.homography_pinpointing import perform_homography_pinpointing_between_camera_pair_for_GUI
 import os
+import pickle
 
 router = APIRouter(
     prefix="/homography",
@@ -340,8 +341,6 @@ def populate_camera_setup_table_homography_config_api():
 @router.put("/populate_camera_setup_table_homography_matrices")
 def populate_camera_setup_table_homography_matrices_api():
     """
-    Must use first_username and second_username on GUI homepage
-    
     photo order
     1) side far
     2) side near
@@ -408,3 +407,124 @@ def homography_pinpointing_test_api():
     top_camera_id = 2
     perform_homography_pinpointing_between_camera_pair_for_GUI(setup_id, top_camera_id, side_camera_id)
     return {"message": "pinpointing complete"}
+
+
+@router.get("/add_homography_images_with_hq")
+def add_homography_images_with_hq_api():
+    
+    # Arbitrary settings choice because only interested in the images
+    # Use raspi4b3 for the username/camera ID
+    
+    added_settings = cdi.add_settings(frame_rate=5, lens_position=0.5, gain=1)
+    settings_id = added_settings["id"] # Do I need to make a uique one for each settings?
+    
+    first_camera_id = cdi.get_camera_id_from_username("first_camera") # SIDE ARDUCAM
+    second_camera_id = cdi.get_camera_id_from_username("second_camera") # TOP HQ
+    
+    side_far_photo_camera_settings_link = cdi.add_camera_settings_link(camera_id=first_camera_id, settings_id=settings_id) # same args so same link?
+    side_near_photo_camera_settings_link = cdi.add_camera_settings_link(camera_id=first_camera_id, settings_id=settings_id)
+    side_far_photo_camera_settings_link_id = side_far_photo_camera_settings_link["id"]
+    side_near_photo_camera_settings_link_id = side_near_photo_camera_settings_link["id"]
+    
+    with open("/code/src/calibration_testing_19_11_24/side_arducam_front_chessboard_calibration_20_by_10_spacing_10mm.jpeg", "rb") as img_file:
+        side_near_photo_bytes = img_file.read()
+    with open("/code/src/calibration_testing_19_11_24/side_arducam_back_chessboard_calibration_20_by_10_spacing_10mm.jpeg", "rb") as img_file:
+        side_far_photo_bytes = img_file.read()
+    
+    side_far_photo = cdi.update_photo(camera_settings_link_id=side_far_photo_camera_settings_link_id, photo=side_far_photo_bytes)
+    side_far_photo_id = side_far_photo["id"]
+    side_near_photo = cdi.update_photo(camera_settings_link_id=side_near_photo_camera_settings_link_id, photo=side_near_photo_bytes)
+    side_near_photo_id = side_near_photo["id"]
+    
+    top_far_photo_camera_settings_link = cdi.add_camera_settings_link(camera_id=second_camera_id, settings_id=settings_id) # same args so same link?
+    top_near_photo_camera_settings_link = cdi.add_camera_settings_link(camera_id=second_camera_id, settings_id=settings_id)
+    top_far_photo_camera_settings_link_id = top_far_photo_camera_settings_link["id"]
+    top_near_photo_camera_settings_link_id = top_near_photo_camera_settings_link["id"]
+    
+    with open("/code/src/calibration_testing_19_11_24/top_hq_front_chessboard_calibration_20_by_5_spacing_10mm.jpeg", "rb") as img_file:
+        top_near_photo_bytes = img_file.read()
+    with open("/code/src/calibration_testing_19_11_24/top_hq_back_chessboard_calibration_20_by_5_spacing_10mm.jpeg", "rb") as img_file:
+        top_far_photo_bytes = img_file.read()
+    
+    top_far_photo = cdi.update_photo(camera_settings_link_id=top_far_photo_camera_settings_link_id, photo=top_far_photo_bytes)
+    top_far_photo_id = top_far_photo["id"]
+    top_near_photo = cdi.update_photo(camera_settings_link_id=top_near_photo_camera_settings_link_id, photo=top_near_photo_bytes)
+    top_near_photo_id = top_near_photo["id"]
+    
+    return {"message": f"successfully saved images to database. Photo IDs are {side_far_photo_id, side_near_photo_id, top_far_photo_id, top_near_photo_id}"}
+
+
+@router.put("/populate_hq_distortion_params")
+def populate_hq_distortion_params_api():
+    
+    setup_id = 1 
+    top_hq_cam_id = 2
+    with open("/code/src/calibration_testing_19_11_24/top_hq_distortion_data/top_hq_camera_calibration.pkl", "rb") as data:
+        camera_matrix, distortion_coefficients = pickle.load(data)
+    
+    camera_matrix = pickle.dumps(camera_matrix)
+    distortion_coefficients = pickle.dumps(distortion_coefficients)
+    
+    setup_camera_id = cdi.get_setup_camera_id(top_hq_cam_id, setup_id)
+    cdi.update_distortion_calibration_pattern_size_z_dim(setup_camera_id, 1) # mock input
+    cdi.update_distortion_calibration_pattern_size_non_z_dim(setup_camera_id, 1) # mock input
+    cdi.update_distortion_calibration_pattern_type(setup_camera_id, "chessboard") # NOT USED YET
+    cdi.update_distortion_calibration_pattern_spacing(setup_camera_id,  1) # mock input
+    cdi.update_camera_matrix(top_hq_cam_id, setup_id, camera_matrix)
+    cdi.update_distortion_coefficients(top_hq_cam_id, setup_id, distortion_coefficients)
+    return {"message": "done"}
+
+
+@router.put("/populate_camera_setup_table_for_beam_analysis")
+def populate_camera_setup_table_for_beam_analysis_api():
+    """
+    photo order
+    1) side far
+    2) side near
+    3) top far
+    4) top near
+    """
+    # FAR SIDE CAM
+    far_side_photo_bytes = cdi.get_photo_from_id(1)
+    far_side_transform = ImagePointTransforms(horizontal_flip=False,
+                                      vertical_flip=False,
+                                      swap_axes=False)
+    perform_homography_calibration("first_camera", 1, "far", far_side_transform, photo_bytes=far_side_photo_bytes, save_overlayed_grid=True)
+    
+    # NEAR SIDE CAM
+    near_side_transform = ImagePointTransforms(horizontal_flip=True,
+                                               vertical_flip=True,
+                                               swap_axes=False)
+    near_side_photo_bytes = cdi.get_photo_from_id(2)
+    perform_homography_calibration("first_camera", 1, "near", near_side_transform, photo_bytes=near_side_photo_bytes, save_overlayed_grid=True)
+    
+    
+    # FAR TOP CAM
+    far_top_photo_bytes = cdi.get_photo_from_id(3)
+    top_transforms = ImagePointTransforms(horizontal_flip=True,
+                                      vertical_flip=False,
+                                      swap_axes=False)
+    perform_homography_calibration("second_camera", 1, "far", top_transforms, photo_bytes=far_top_photo_bytes, save_overlayed_grid=True)
+    
+    # NEAR TOP CAM
+    near_top_photo_bytes = cdi.get_photo_from_id(4)
+    perform_homography_calibration("second_camera", 1, "near", top_transforms, photo_bytes=near_top_photo_bytes, save_overlayed_grid=True)
+    return {"message": "done"}
+
+
+@router.put("/initialize_beam_analysis_homography_setup")
+def initialize_beam_analysis_homography_setup_api():
+    """
+    TODO - add prints to show progress along pipeline
+    """
+    add_mock_cameras_api()
+    add_homography_images_with_hq_api()
+    create_homography_test_setup_table_api()
+    add_two_cams_for_homography_test_api()
+    populate_setup_table_api()
+    populate_camera_setup_tables_api()
+    populate_hq_distortion_params_api()
+    populate_camera_setup_table_homography_config_api()
+    populate_camera_setup_table_for_beam_analysis_api()
+    
+    return {"message": "Homography setup initialized successfully!"}

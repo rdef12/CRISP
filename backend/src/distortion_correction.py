@@ -77,9 +77,9 @@ def undistort_image(camera_matrix, dist, frame_size, photo_id: int|None=None, im
     alpha: set to 1 in cv.undistort (sets scale of new camera matrix)
     """
     
-    if bool(image) == bool(photo_id): # XNOR
+    if (image is not None) == (photo_id is not None): # XNOR
         raise Exception("Only Image or Photo ID must be entered")
-    if photo_id:
+    if photo_id is not None:
         image_byte_string = cdi.get_photo_from_id(photo_id)
         image = load_image_byte_string_to_opencv(image_byte_string)
         
@@ -142,6 +142,8 @@ def perform_distortion_calibration_from_database(setup_id, camera):
                                                                 None, None)
     
     # SAVE TO DATABASE AS PICKLETYPE
+    camera_matrix = pickle.dumps(camera_matrix)
+    distortion_coefficients = pickle.dumps(distortion_coefficients)
     cdi.update_camera_matrix(camera_id, setup_id, camera_matrix)
     cdi.update_distortion_coefficients(camera_id, setup_id, distortion_coefficients)
 
