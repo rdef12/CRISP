@@ -88,6 +88,7 @@ class CameraSetupLink(SQLModel, table=True):
     # near_face_calibration_photo_id: Optional[int] = Field(default=None, foreign_key="photo.id")
     near_face_homography_matrix: Optional[bytes] = Field(default=None, sa_column=PickleType) # How do you show 2d shape? (3x3 array)
     near_face_homography_covariance_matrix: Optional[bytes] = Field(default=None, sa_column=PickleType) # How do you show 2d shape? (9x9 array)
+    near_face_z_shift: Optional[float] = Field(default=None)
     near_face_z_shift_unc: Optional[float] = Field(default=None)
     near_face_non_z_shift: Optional[float] = Field(default=None)
     near_face_non_z_shift_unc: Optional[float] = Field(default=None)

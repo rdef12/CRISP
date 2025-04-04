@@ -61,6 +61,23 @@ def get_cameras_in_experiment(experiment_id: int) -> list[Camera]:
         return cameras if cameras else []
 
 
+def get_cameras_in_experiment(experiment_id: int) -> list[Camera]:
+    with Session(engine) as session:
+        statement = select(Camera).join(Experiment).where(Experiment.id == experiment_id)
+        cameras = session.exec(statement).all()
+        return cameras if cameras else []
+
+
+def get_setup_camera_id(camera_id:int, setup_id:int) -> int:
+    with Session(engine) as session:
+        statement = select(CameraSetupLink).where(CameraSetupLink.camera_id == camera_id).where(CameraSetupLink.setup_id == setup_id)
+        result = session.exec(statement).one()
+        if result:
+            return result.id
+        else:
+            raise ValueError(f"Camera setup link not found for camera with id {camera_id} and setup with id {setup_id}.")
+
+
 # def get_far_face_calibration_photo(camera_id:int, setup_id:int) -> bytes:
 #     with Session(engine) as session:
 #         statement = select(CameraSetupLink).where(CameraSetupLink.camera_id == camera_id).where(CameraSetupLink.setup_id == setup_id)
@@ -351,7 +368,7 @@ def get_camera_matrix(camera_id:int, setup_id:int) -> np.ndarray:
         statement = select(CameraSetupLink).where(CameraSetupLink.camera_id == camera_id).where(CameraSetupLink.setup_id == setup_id)
         result = session.exec(statement).one()
         if result:
-            return result.camera_matrix
+            return pickle.loads(result.camera_matrix)
         else:
             raise ValueError(f"Camera matrix not found for camera with id {camera_id} and setup with id {setup_id}.")
   
@@ -361,7 +378,7 @@ def get_distortion_coefficients(camera_id:int, setup_id:int) -> np.ndarray:
         statement = select(CameraSetupLink).where(CameraSetupLink.camera_id == camera_id).where(CameraSetupLink.setup_id == setup_id)
         result = session.exec(statement).one()
         if result:
-            return result.distortion_coefficients
+            return pickle.loads(result.distortion_coefficients)
         else:
             raise ValueError(f"Distortion coefficients not found for camera with id {camera_id} and setup with id {setup_id}.")
         
@@ -400,7 +417,8 @@ def check_for_distortion_correction_condition(camera_id: int, setup_id: int) -> 
             return not any(getattr(result, field) is None for field in [
                 'camera_matrix', 
                 'distortion_coefficients', 
-                'distortion_calibration_pattern_size', 
+                'distortion_calibration_pattern_size_z_dim', 
+                'distortion_calibration_pattern_size_non_z_dim', 
                 'distortion_calibration_pattern_type', 
                 'distortion_calibration_pattern_spacing'
             ]) # Will return True if all fields are not None
@@ -951,7 +969,7 @@ def patch_setup_camera(setup_camera_id: int, patch: rb.SetupCameraPatchRequest):
     except Exception as e:
         raise RuntimeError(f"An error occurred: {str(e)}")
 
-def update_camera_matrix(camera_id:int, setup_id:int, camera_matrix: np.ndarray[float, float]|None):
+def update_camera_matrix(camera_id:int, setup_id:int, camera_matrix: PickleType):
     try:
         with Session(engine) as session:
             statement = select(CameraSetupLink).where(CameraSetupLink.camera_id == camera_id).where(CameraSetupLink.setup_id == setup_id)
@@ -964,7 +982,7 @@ def update_camera_matrix(camera_id:int, setup_id:int, camera_matrix: np.ndarray[
     except Exception as e:
         raise RuntimeError(f"An error occurred: {str(e)}")
 
-def update_distortion_coefficients(camera_id:int, setup_id:int, distortion_coefficients: np.ndarray[float]|None):
+def update_distortion_coefficients(camera_id:int, setup_id:int, distortion_coefficients: PickleType):
     try:
         with Session(engine) as session:
             statement = select(CameraSetupLink).where(CameraSetupLink.camera_id == camera_id).where(CameraSetupLink.setup_id == setup_id)
