@@ -244,14 +244,43 @@ def take_test_beam_run_images(beam_run_id: int):
     with Session(engine) as session:
         camera_settings_statement = select(CameraSettingsLink).where(CameraSettingsLink.beam_run_id == beam_run_id)
         all_camera_settings = session.exec(camera_settings_statement).all()
-        print(f"\n\n ALLLL CAMERA SETTTINGS {all_camera_settings}\n\n\n")
-        for camera_settings in all_camera_settings:
-            all_camera_settings_ids += [camera_settings.id]
-    # TODO Maybe have a try here and return with the issue as well as what was completed??
-    print("\n\n\n GONNA DO A THINGGY")
-    results = take_single_video_for_test_run(all_camera_settings_ids) #TODO SHOULD BE MULTIPLE PRESUMABLY
-    print("DONE A THINGY \n\n\n")
-    return rb.RealRunPhotoPostResponse(id=beam_run_id)
+        
+        first_camera_settings = all_camera_settings[0] #TODO SHOULD THIS BE MORE BOMB PROOF
+        experiment_statement = select(Experiment).join(BeamRun).join(CameraSettingsLink).where(CameraSettingsLink.id == first_camera_settings.id)
+        experiment = session.exec(experiment_statement).one()
+        experiment_id = experiment.id        
+        camera_and_settings_ids = np.empty((len(all_camera_settings), 2), dtype=int)
+        for count, camera_settings in enumerate(all_camera_settings):
+            camera_id = camera_settings.camera_id
+            camera_settings_id = camera_settings.id
+
+            camera_and_settings_ids[count, 0] = camera_id
+            camera_and_settings_ids[count, 1] = camera_settings_id
+
+        # Extract unique camera_ids
+        unique_camera_ids = np.unique(camera_and_settings_ids[:, 0])
+        print(f"\n\n\n camera_and_settings_ids : \n {camera_and_settings_ids} \n\n\n")
+        # Group settings_ids by camera_id
+        grouped_camera_settings = [camera_and_settings_ids[camera_and_settings_ids[:, 0] == cam_id, 1].tolist() for cam_id in unique_camera_ids]
+
+        print(f"\n grouped_settings : \n {grouped_camera_settings} \n\n\n")
 
 
+        # camera_settings_statement = select(CameraSettingsLink).where(CameraSettingsLink.beam_run_id == beam_run_id)
+        # all_camera_settings = session.exec(camera_settings_statement).all()
+        # print(f"\n\n ALLLL CAMERA SETTTINGS {all_camera_settings}\n\n\n")
+        # for camera_settings in all_camera_settings:
+        #     all_camera_settings_ids += [camera_settings.id]
+        # first_camera_settings = all_camera_settings[0] #TODO SHOULD THIS BE MORE BOMB PROOF
+        # experiment_statement = select(Experiment).join(BeamRun).join(CameraSettingsLink).where(CameraSettingsLink.id == first_camera_settings.id)
+        # experiment = session.exec(experiment_statement).one()
+        # experiment_id = experiment.id
+        # TODO Maybe have a try here and return with the issue as well as what was completed??
+        print("\n\n\n GONNA DO A THINGGY")
+        results_dict = take_multiple_videos_for_test_run(experiment_id, grouped_camera_settings) #TODO SHOULD BE MULTIPLE PRESUMABLY
+        print("DONE A THINGY \n\n\n")
+        
+        for photo_id_array in results_dict.values():
+        
+        return rb.RealRunPhotoPostResponse(id=beam_run_id)
     
