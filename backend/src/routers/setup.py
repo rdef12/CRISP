@@ -31,6 +31,20 @@ def get_setups_api(response: Response) -> list[Setup]:
 async def read_setup(setup_id: int) -> Setup:
   return cdi.get_setup_by_id(setup_id)
 
+@router.get("/unadded-cameras/{setup_id}")
+def get_list_unadded_cameras(setup_id: int, response: Response):
+    cameras_in_setup = cdi.get_cameras_in_setup(setup_id)
+    all_cameras = cdi.get_all_cameras()
+    # set_of_unadded_cameras = set(all_cameras) - set(cameras_in_setup)
+    set_of_unadded_camera_ids = {camera.id for camera in all_cameras} - {camera.id for camera in cameras_in_setup}
+    unadded_camera_ids = list(set_of_unadded_camera_ids)
+    unadded_cameras = []
+    for unadded_camera_id in unadded_camera_ids:
+        unadded_camera = cdi.get_camera_by_id(unadded_camera_id)
+        unadded_cameras += [unadded_camera]
+    response.headers["Content-Range"] = str(len(unadded_cameras))
+    return unadded_cameras
+
 
 @router.post("")
 async def create_setup(setup_name: rb.SetupCreateRequest):

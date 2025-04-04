@@ -10,10 +10,15 @@ import numpy as np
 import cv2 as cv
 import pickle
 import matplotlib.pyplot as plt
+from sqlmodel import Session, select
 from src.calibration_functions import *
 from src.camera_functions import load_image_byte_string_to_opencv
 from src.viewing_functions import show_image_in_window
 from src.database.CRUD import CRISP_database_interaction as cdi
+from src.database.database import engine
+from src.database.models import CameraSetupLink, Photo
+
+
 
 
 CRITERIA = (cv.TERM_CRITERIA_EPS + cv.TERM_CRITERIA_MAX_ITER, 30, 0.001)
@@ -139,3 +144,29 @@ def perform_distortion_calibration_from_database(setup_id, camera):
     # SAVE TO DATABASE AS PICKLETYPE
     cdi.update_camera_matrix(camera_id, setup_id, camera_matrix)
     cdi.update_distortion_coefficients(camera_id, setup_id, distortion_coefficients)
+
+def save_distortion_calibration_to_database(setup_camera_id: int):
+    with Session(engine) as session:
+        setup_camera = session.get(CameraSetupLink, setup_camera_id)
+        pattern_size_z_dim = setup_camera.distortion_calibration_pattern_size_z_dim
+        pattern_size_non_z_dim = setup_camera.distortion_calibration_pattern_size_non_z_dim
+        pattern_spacing = setup_camera.distortion_calibration_pattern_spacing
+        pattern_size = (pattern_size_z_dim, pattern_size_non_z_dim)
+
+        distortion_camera_settings_id = setup_camera.distortion_calibration_camera_settings_link
+        photos_statement = select(Photo).where(Photo.camera_settings_link_id == distortion_camera_settings_id)
+        photos = session.exec(photos_statement).all()
+        photo_ids = []
+        for photo in photos:
+            photo_ids += [photo.id]
+        print(f"\n\n\n PHOTO IDSSSSSSSS {photo_ids} \n\n\n")
+        
+        obj_points = generate_real_grid_positions(pattern_size, (pattern_spacing, pattern_spacing))
+        obj_points_array, img_points_array, frame_size = extract_corners_from_distorted_images(obj_points, photo_ids, pattern_size)
+        ret, camera_matrix, dist, rvecs, tvecs = cv.calibrateCamera(obj_points_array, img_points_array, frame_size,
+                                                                    None, None)
+        setup_id = setup_camera.setup_id
+        camera_id = setup_camera.camera_id
+        cdi.update_camera_matrix(camera_id, setup_id, camera_matrix)
+        #TODO Distortion coefficients should be added here!!!
+

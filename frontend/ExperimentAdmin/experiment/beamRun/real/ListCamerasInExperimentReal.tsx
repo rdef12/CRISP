@@ -14,10 +14,11 @@ type DialogMode = 'create' | 'view' | null;
 
 interface SettingsButtonProps {
   onSave: () => void;
+  refreshTrigger?: boolean;
 }
 
 
-const SettingsButton = ({ onSave }: SettingsButtonProps) => {
+const SettingsButton = ({ onSave, refreshTrigger }: SettingsButtonProps) => {
   const record = useRecordContext();
   const [dialogMode, setDialogMode] = useState<DialogMode>(null);
   const [isEditing, setIsEditing] = useState(false);
@@ -26,8 +27,10 @@ const SettingsButton = ({ onSave }: SettingsButtonProps) => {
 
   const { data: selectedCameraSettings } = useGetOne(
     record ? `settings/beam-run/real/${beamRunId}/camera` : '',
-    // { meta: { enabled: !!record } }
-    { id: record?.id }
+    { 
+      id: record?.id,
+      meta: { refresh: refreshTrigger }
+    }
   );
 
   useEffect(() => {
@@ -138,9 +141,9 @@ export const ListCamerasInExperimentReal = ({ dataTaken } : { dataTaken: boolean
       >
         <TextField source="username" />
         <TextField source="ip_address" />
-        <SettingsButton onSave={handleSave} />
+        <SettingsButton onSave={handleSave} refreshTrigger={refreshTrigger} />
       </Datagrid>
-      <MoveToRealRunButton />
+      <MoveToRealRunButton refreshTrigger={refreshTrigger} />
     </ListBase>
   );
 

@@ -43,6 +43,9 @@ class SetupCameraDistortionCalibrationPostRequest(BaseModel):
     distortion_calibration_pattern_type: str
     distortion_calibration_pattern_spacing: float
 
+class SetupCameraDistortionCalibrationSaveResponse(BaseModel):
+    id: int
+
 class SetupCameraPatchRequest(BaseModel):
 # Far face
     #Calibration pattern type here too?
@@ -85,3 +88,6 @@ class SetupCameraPatchRequest(BaseModel):
 # Others
     lens_position: Optional[float] = None
     # e_log_entry: #How is this going to be stored, surely theres a better way than just a string?
+
+class SetupCameraDeleteRequest(BaseModel):
+    id: int

@@ -593,7 +593,6 @@ class Camera():
                         image_bytes = extracted_file.read()
                         
                         # Not just using the inputted array incase some of the requested test images failed to be captured
-                        # if camera_settings_link_id is None:
                         camera_settings_link_id = Camera.extract_csl_id(member.name)
                             
                         added_photo = cdi.add_photo(camera_settings_link_id=camera_settings_link_id, photo=image_bytes)

@@ -13,9 +13,10 @@ type DialogMode = 'create' | 'edit' | null;
 
 interface SettingsButtonProps {
   onSave: () => void;
+  refreshTrigger?: boolean;
 }
 
-const SettingsButton = ({ onSave }: SettingsButtonProps) => {
+const SettingsButton = ({ onSave, refreshTrigger }: SettingsButtonProps) => {
   const record = useRecordContext();
   const [dialogMode, setDialogMode] = useState<DialogMode>(null);
   const [hasSettings, setHasSettings] = useState(false);
@@ -23,7 +24,7 @@ const SettingsButton = ({ onSave }: SettingsButtonProps) => {
 
   const { data: selectedCameraSettings } = useGetList(
     record ? `settings/beam-run/test/${beamRunId}/camera/${record.id}` : '',
-    // { meta: { enabled: !!record } }
+    { meta: { refresh: refreshTrigger } }
   );
 
   useEffect(() => {
@@ -45,7 +46,6 @@ const SettingsButton = ({ onSave }: SettingsButtonProps) => {
     console.log('SettingsButton: handleSave called');
     onSave();
     handleCloseDialog();
-
   };
 
   return (
@@ -85,7 +85,6 @@ const SettingsButton = ({ onSave }: SettingsButtonProps) => {
 };
 
 export const ListCamerasInExperimentTest = ({ dataTaken } : { dataTaken: boolean }) => {
-  // const dataProvider = useDataProvider();
   const { experimentId } = useParams();
   const [refreshTrigger, setRefreshTrigger] = useState(false);
   const { isPending, resource, record } = useShowController({ 
@@ -98,6 +97,7 @@ export const ListCamerasInExperimentTest = ({ dataTaken } : { dataTaken: boolean
   const handleSave = () => {
     setRefreshTrigger(!refreshTrigger);
   };
+
   if (!dataTaken) return (
     <ListBase resource={resource}>
       <Datagrid 
@@ -107,22 +107,23 @@ export const ListCamerasInExperimentTest = ({ dataTaken } : { dataTaken: boolean
       >
         <TextField source="username" />
         <TextField source="ip_address" />
-        <SettingsButton onSave={handleSave} />
+        <SettingsButton onSave={handleSave} refreshTrigger={refreshTrigger} />
       </Datagrid>
-      <MoveToTestRunButton />
+      <MoveToTestRunButton refreshTrigger={refreshTrigger} />
     </ListBase>
-  )
-  if (dataTaken) return (
+  );
+
+  return (
     <ListBase resource={resource}>
       <Datagrid 
-      data={record.cameras} 
-      bulkActionButtons={false}
-      expand={<ListTestSettings refreshTrigger={refreshTrigger} dataTaken={dataTaken} />}
+        data={record.cameras} 
+        bulkActionButtons={false}
+        expand={<ListTestSettings refreshTrigger={refreshTrigger} dataTaken={dataTaken} />}
       >
         <TextField source="username" />
         <TextField source="ip_address" />
       </Datagrid>
     </ListBase>
-  )
+  );
 }
 
