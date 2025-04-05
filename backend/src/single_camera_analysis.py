@@ -154,7 +154,7 @@ def get_beam_angle_and_bragg_peak_pixel(camera_analysis_id: int):
     
     except Exception as e:
         print("\n\nError when getting beam angle and bragg peak pixel: ", e)
-        return None
+        raise
     
 
 # TODO - decompose further so this is just a function for getting unrotated beam center coords and their errors
@@ -205,5 +205,5 @@ def get_beam_angle_and_bragg_peak_pixel(camera_analysis_id: int):
 #         return None
     
     except Exception as e:
-        print("Error when getting beam angle and bragg peak pixel: ", e)
-        return None
+        print("\n\nError when getting beam angle and bragg peak pixel: ", e)
+        raise

@@ -11,6 +11,8 @@ import os
 import pickle
 from src.single_camera_analysis import get_beam_angle_and_bragg_peak_pixel
 from src.scintillation_light_pinpointing import *
+from fastapi.exceptions import HTTPException
+
 
 router = APIRouter(
     prefix="/homography",
@@ -613,50 +615,54 @@ def initialize_beam_analysis_setup_api():
 @router.get("/test_beam_analysis")
 def test_beam_analysis_api():
     
-    side_camera_analysis_id = 1
-    top_camera_analysis_id = 2
-    side_camera_settings_link_id = cdi.get_camera_settings_link_id_by_camera_analysis_id(side_camera_analysis_id)
-    beam_run_id = cdi.get_beam_run_id_by_camera_settings_link_id(side_camera_settings_link_id)
+    try:
+        side_camera_analysis_id = 1
+        top_camera_analysis_id = 2
+        side_camera_settings_link_id = cdi.get_camera_settings_link_id_by_camera_analysis_id(side_camera_analysis_id)
+        beam_run_id = cdi.get_beam_run_id_by_camera_settings_link_id(side_camera_settings_link_id)
 
-    first_results = get_beam_angle_and_bragg_peak_pixel(side_camera_analysis_id)
-    print(f"\n\nBeam angle: {first_results['beam_angle']} +/- {first_results['beam_angle_error']}")
-    print(f"\n\nBragg peak pixel: {first_results['bragg_peak_pixel']} +/- {first_results['bragg_peak_pixel_error']}")
+        first_results = get_beam_angle_and_bragg_peak_pixel(side_camera_analysis_id)
+        print(f"\n\nBeam angle: {first_results['beam_angle']} +/- {first_results['beam_angle_error']}")
+        print(f"\n\nBragg peak pixel: {first_results['bragg_peak_pixel']} +/- {first_results['bragg_peak_pixel_error']}")
+        
+        second_results = get_beam_angle_and_bragg_peak_pixel(top_camera_analysis_id)
+        print(f"\n\nBeam angle: {second_results['beam_angle']} +/- {second_results['beam_angle_error']}")
+        print(f"\n\nBragg peak pixel: {second_results['bragg_peak_pixel']} +/- {second_results['bragg_peak_pixel_error']}")
+        
+        cdi.update_beam_angle(side_camera_analysis_id, float(first_results["beam_angle"]))
+        cdi.update_unc_beam_angle(side_camera_analysis_id, float(first_results["beam_angle_error"]))
+        # NOTE - Float trick below needed because np.float64 cannot be stored in DB
+        cdi.update_bragg_peak_pixel(side_camera_analysis_id, [float(x) for x in first_results["bragg_peak_pixel"].flatten()])
+        cdi.update_unc_bragg_peak_pixel(side_camera_analysis_id, [float(x) for x in first_results["bragg_peak_pixel_error"].flatten()])
+        
+        cdi.update_beam_angle(top_camera_analysis_id, float(second_results["beam_angle"]))
+        cdi.update_unc_beam_angle(top_camera_analysis_id, float(second_results["beam_angle_error"]))
+        cdi.update_bragg_peak_pixel(top_camera_analysis_id, [float(x) for x in second_results["bragg_peak_pixel"].flatten()])
+        cdi.update_unc_bragg_peak_pixel(top_camera_analysis_id, [float(x) for x in second_results["bragg_peak_pixel_error"].flatten()])
+        
+        # PINPOINTING STAGE
+        side_cam_bragg_peak_pixel, side_cam_bragg_peak_pixel_error = first_results["bragg_peak_pixel"], first_results["bragg_peak_pixel_error"]
+        top_cam_bragg_peak_pixel, top_cam_bragg_peak_pixel_error = second_results["bragg_peak_pixel"], second_results["bragg_peak_pixel_error"]
+        pinpoint_results = pinpoint_bragg_peak([side_camera_analysis_id, top_camera_analysis_id])
+        bragg_peak_3d_position, unc_bragg_peak_3d_position = pinpoint_results["bragg_peak_position"], pinpoint_results["bragg_peak_position_error"]
+        
+        cdi.update_bragg_peak_3d_position(beam_run_id, [float(x) for x in bragg_peak_3d_position.flatten()])
+        cdi.update_unc_bragg_peak_3d_position(beam_run_id, [float(x) for x in unc_bragg_peak_3d_position.flatten()])
+        
+        # PENETRATION DEPTH STAGE
+        bragg_peak_depth, unc_bragg_peak_depth = compute_bragg_peak_depth(beam_run_id, 
+                                                                        side_camera_analysis_id,
+                                                                        top_camera_analysis_id)
+        
+        print(f"\n\nBragg peak depth: {bragg_peak_depth} +/- {unc_bragg_peak_depth}")
+        
+        print(f"Saved plot keys: {first_results['plot_byte_strings'].keys()}")
+        plots = list(first_results["plot_byte_strings"].values()) + list(second_results["plot_byte_strings"].values())
+        img_tags = ""
+        for plot_base64 in plots:
+            img_tags += f'<img src="data:image/svg+xml;base64,{plot_base64}" width="200px"><br>' # SVG Plots
+        html_content = f"<html><body>{img_tags}</body></html>"
+        return HTMLResponse(content=html_content)
     
-    second_results = get_beam_angle_and_bragg_peak_pixel(top_camera_analysis_id)
-    print(f"\n\nBeam angle: {second_results['beam_angle']} +/- {second_results['beam_angle_error']}")
-    print(f"\n\nBragg peak pixel: {second_results['bragg_peak_pixel']} +/- {second_results['bragg_peak_pixel_error']}")
-    
-    cdi.update_beam_angle(side_camera_analysis_id, float(first_results["beam_angle"]))
-    cdi.update_unc_beam_angle(side_camera_analysis_id, float(first_results["beam_angle_error"]))
-    # NOTE - Float trick below needed because np.float64 cannot be stored in DB
-    cdi.update_bragg_peak_pixel(side_camera_analysis_id, [float(x) for x in first_results["bragg_peak_pixel"].flatten()])
-    cdi.update_unc_bragg_peak_pixel(side_camera_analysis_id, [float(x) for x in first_results["bragg_peak_pixel_error"].flatten()])
-    
-    cdi.update_beam_angle(top_camera_analysis_id, float(second_results["beam_angle"]))
-    cdi.update_unc_beam_angle(top_camera_analysis_id, float(second_results["beam_angle_error"]))
-    cdi.update_bragg_peak_pixel(top_camera_analysis_id, [float(x) for x in second_results["bragg_peak_pixel"].flatten()])
-    cdi.update_unc_bragg_peak_pixel(top_camera_analysis_id, [float(x) for x in second_results["bragg_peak_pixel_error"].flatten()])
-    
-    # PINPOINTING STAGE
-    side_cam_bragg_peak_pixel, side_cam_bragg_peak_pixel_error = first_results["bragg_peak_pixel"], first_results["bragg_peak_pixel_error"]
-    top_cam_bragg_peak_pixel, top_cam_bragg_peak_pixel_error = second_results["bragg_peak_pixel"], second_results["bragg_peak_pixel_error"]
-    pinpoint_results = pinpoint_bragg_peak([side_camera_analysis_id, top_camera_analysis_id])
-    bragg_peak_3d_position, unc_bragg_peak_3d_position = pinpoint_results["bragg_peak_position"], pinpoint_results["bragg_peak_position_error"]
-    
-    cdi.update_bragg_peak_3d_position(beam_run_id, [float(x) for x in bragg_peak_3d_position.flatten()])
-    cdi.update_unc_bragg_peak_3d_position(beam_run_id, [float(x) for x in unc_bragg_peak_3d_position.flatten()])
-    
-    # PENETRATION DEPTH STAGE
-    bragg_peak_depth, unc_bragg_peak_depth = compute_bragg_peak_depth(beam_run_id, 
-                                                                    side_camera_analysis_id,
-                                                                    top_camera_analysis_id)
-    
-    print(f"\n\nBragg peak depth: {bragg_peak_depth} +/- {unc_bragg_peak_depth}")
-    
-    print(f"Saved plot keys: {first_results['plot_byte_strings'].keys()}")
-    plots = list(first_results["plot_byte_strings"].values()) + list(second_results["plot_byte_strings"].values())
-    img_tags = ""
-    for plot_base64 in plots:
-        img_tags += f'<img src="data:image/svg+xml;base64,{plot_base64}" width="200px"><br>' # SVG Plots
-    html_content = f"<html><body>{img_tags}</body></html>"
-    return HTMLResponse(content=html_content)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

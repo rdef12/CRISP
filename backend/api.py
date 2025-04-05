@@ -1,6 +1,6 @@
 import uvicorn
-from fastapi import FastAPI, Response
-from fastapi.responses import StreamingResponse, FileResponse, JSONResponse
+from fastapi import FastAPI, Response, Request
+from fastapi.responses import StreamingResponse, FileResponse, JSONResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
@@ -60,6 +60,40 @@ app.add_middleware(
     allow_headers=["*"],
     expose_headers=["Content-Range"]
 )
+
+from fastapi.exception_handlers import http_exception_handler
+from starlette.exceptions import HTTPException as StarletteHTTPException
+def render_error_page(title: str, heading: str, detail: str, status_code: int) -> HTMLResponse:
+    return HTMLResponse(
+        content=f"""
+        <html>
+            <head>
+                <title>{title}</title>
+            </head>
+            <body style="margin: 0; font-family: Arial, sans-serif; background-color: #f2f2f2;">
+                <div style="display: flex; justify-content: center; align-items: center; height: 100vh;">
+                    <div style="background-color: white; padding: 40px; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); text-align: center; max-width: 600px;">
+                        <h1 style="color: #e74c3c; font-size: 36px; margin-bottom: 10px;">{heading}</h1>
+                        <p style="color: #555; font-size: 18px;">{detail}</p>
+                    </div>
+                </div>
+            </body>
+        </html>
+        """,
+        status_code=status_code,
+    )
+
+@app.exception_handler(StarletteHTTPException)
+async def custom_http_exception_handler(request: Request, exc: StarletteHTTPException):
+    if exc.status_code == 404:
+        return render_error_page("Page Not Found", "404 - Not Found", exc.detail, 404)
+    elif exc.status_code == 500:
+        return render_error_page("Internal Server Error", "500 - Internal Server Error", exc.detail, 500)
+    elif exc.status_code == 400:
+        return render_error_page("Bad Request", "400 - Bad Request", exc.detail, 400)
+    else:
+        return await http_exception_handler(request, exc)
+
 
 app.include_router(setup_router.router)
 app.include_router(setup_camera_router.router)
