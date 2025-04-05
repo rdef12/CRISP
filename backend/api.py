@@ -73,7 +73,7 @@ def render_error_page(endpoint: str, title: str, heading: str, detail: str, stat
             <body style="margin: 0; font-family: Arial, sans-serif; background-color: #f2f2f2;">
                 <div style="display: flex; justify-content: center; align-items: center; height: 100vh;">
                     <div style="background-color: white; padding: 40px; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); text-align: center; max-width: 600px;">
-                        <h1 style="color: #e74c3c; font-size: 36px; margin-bottom: 5px;">{heading}</h1>
+                        <h1 style="color: #e74c3c; font-size: 36px; margin-bottom: 3px;">{heading}</h1>
                         <h2 style="color: #555; font-size: 18px; margin-bottom: 10px; font-weight: bold;">{endpoint}</h2>
                         <p style="color: #555; font-size: 18px;">{detail}</p>
                     </div>

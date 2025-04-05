@@ -507,8 +507,8 @@ def populate_camera_setup_table_for_beam_analysis_api():
 
 def upload_averaged_image_api():
     
-    beam_energy = 90
-    # beam_energy = 150
+    # beam_energy = 90
+    beam_energy = 150
     # beam_energy = 180
     SIDE_AR_CAM_ID = 1
     TOP_HQ_CAM_ID = 2
@@ -532,12 +532,12 @@ def upload_averaged_image_api():
     top_HQ_analysis_id = cdi.add_camera_analysis(top_HQ_camera_settings_link_id, "blue")["id"]
     
     # 90 MEV
-    num_of_hq_images_in_average = 64
-    num_of_ar_images_in_average = 53
+    # num_of_hq_images_in_average = 64
+    # num_of_ar_images_in_average = 53
     
     # 150 MEV
-    # num_of_hq_images_in_average = 348
-    # num_of_ar_images_in_average = 67
+    num_of_hq_images_in_average = 348
+    num_of_ar_images_in_average = 67
     
     # 180 MEV
     # num_of_hq_images_in_average = 172
@@ -551,11 +551,11 @@ def upload_averaged_image_api():
         cdi.add_photo(camera_settings_link_id=top_HQ_camera_settings_link_id, photo=mock_bytestring)
     
     # FLOAT-16 PICKLED AVERAGED NUMPY ARRAYS
-    with open("/code/src/beam_averaged_images/90_mev_A1_averaged_image_float16.pkl", "rb") as file:
+    with open("/code/src/beam_averaged_images/150_mev_A1_averaged_image_float16.pkl", "rb") as file:
         pickled_side_AR__average_image = file.read()
     cdi.update_average_image(side_AR_analysis_id, pickled_side_AR__average_image)
     
-    with open("/code/src/beam_averaged_images/90_mev_HQ2_averaged_image_float16.pkl", "rb") as file:
+    with open("/code/src/beam_averaged_images/150_mev_HQ2_averaged_image_float16.pkl", "rb") as file:
         pickled_top_HQ_average_image = file.read()
     cdi.update_average_image(top_HQ_analysis_id, pickled_top_HQ_average_image)
     return None
@@ -650,6 +650,7 @@ def test_beam_analysis_api():
         cdi.update_unc_bragg_peak_3d_position(beam_run_id, [float(x) for x in unc_bragg_peak_3d_position.flatten()])
         
         # PENETRATION DEPTH STAGE
+        print(f"\n\nBragg peak 3D position: {bragg_peak_3d_position} +/- {unc_bragg_peak_3d_position}")
         bragg_peak_depth, unc_bragg_peak_depth = compute_bragg_peak_depth(beam_run_id, 
                                                                         side_camera_analysis_id,
                                                                         top_camera_analysis_id)

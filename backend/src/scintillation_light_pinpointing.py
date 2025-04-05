@@ -48,7 +48,7 @@ def build_directional_vector_of_beam_center(beam_run_id: int, side_camera_analys
     top_camera_settings_link_id = cdi.get_camera_settings_link_id_by_camera_analysis_id(top_camera_analysis_id)
     side_camera_id = cdi.get_camera_and_settings_ids(side_camera_settings_link_id)["camera_id"]
     top_camera_id = cdi.get_camera_and_settings_ids(top_camera_settings_link_id)["camera_id"]
-    beam_run_id = cdi.get_beam_run_id_by_camera_settings_link_id(side_camera_id)
+    beam_run_id = cdi.get_beam_run_id_by_camera_settings_link_id(side_camera_settings_link_id)
     experiment_id = cdi.get_experiment_id_from_beam_run_id(beam_run_id)
     setup_id = cdi.get_setup_id_from_experiment_id(experiment_id)
     side_camera_optical_axis = cdi.get_camera_optical_axis(side_camera_id, setup_id)
@@ -118,7 +118,7 @@ def compute_weighted_bragg_peak_depth(beam_run_id: int, side_camera_analysis_id_
             unc_bragg_peak_depth_list.append(unc_bragg_peak_depth)
         except Exception as e:
             print(f"Error when computing bragg peak depth for side camera {side_camera_analysis_id} and top camera {top_camera_analysis_id}: {e}")
-            
+    
     if num_pairings == 1:
         return bragg_peak_depth, unc_bragg_peak_depth
     

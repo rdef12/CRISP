@@ -328,28 +328,39 @@ def extract_incident_beam_angle(horizontal_coords, beam_center_vertical_coords, 
     horizontal_coords = horizontal_coords[0: end_of_angle_fitting_range]
     beam_center_vertical_coords = beam_center_vertical_coords[0: end_of_angle_fitting_range]
     beam_center_errors = beam_center_errors[0: end_of_angle_fitting_range]
-    
-    line_linspace = np.linspace(horizontal_coords[0], horizontal_coords[-1], 100)
+
     fitted_line_parameters, fitted_parameter_uncertainties = fitting_procedure(horizontal_coords, beam_center_vertical_coords, beam_center_errors)
     predicted_beam_centers = linear_function(horizontal_coords, fitted_line_parameters)  
     chi_squared_reduced = chi_squared_function(beam_center_vertical_coords, beam_center_errors, predicted_beam_centers) / (len(horizontal_coords) - 2)
     
-    fitted_beam_center_positions = linear_function(line_linspace, fitted_line_parameters)
+    fitted_beam_center_positions = linear_function(horizontal_coords, fitted_line_parameters)
     fitted_angle = np.arctan(fitted_line_parameters[0])
     fitted_tan_angle_uncertainty = fitted_parameter_uncertainties[0]
     unc_fitted_angle = fitted_tan_angle_uncertainty * np.cos(fitted_angle)**2
 
     fitted_angle, unc_fitted_angle = np.rad2deg(fitted_angle), np.rad2deg(unc_fitted_angle)
     
-    fitted_label = r"$\alpha = $" + "{0} +/- {1:.1g}".format(fitted_angle, unc_fitted_angle) + "\u00B0" + "\n" + r"Reduced $\chi^2$ = " + str(round(chi_squared_reduced, 2))
-    plt.plot(line_linspace, fitted_beam_center_positions, color="red", label=fitted_label)
+    fitted_label = r"$\alpha = $" + f"{fitted_angle:.3g}" + " \u00B1 " + f"{unc_fitted_angle:.3g}" + "\u00B0" + "\n" + r"Reduced $\chi^2$ = " + str(round(chi_squared_reduced, 2))
     
-    plt.errorbar(horizontal_coords, beam_center_vertical_coords, beam_center_errors, color="black", marker="x", label="Experimental Data",
+    
+    fig, axs = plt.subplots(2, 1, gridspec_kw={'height_ratios': [3, 1]}, figsize=(8, 6), sharex=True)
+    axs[0].plot(horizontal_coords, fitted_beam_center_positions, color="red", label=fitted_label)
+    
+    axs[0].errorbar(horizontal_coords, beam_center_vertical_coords, beam_center_errors, color="black", marker="x", label="Experimental Data",
                     ecolor="blue", ls="none")
-    plt.xlabel("Pixel's Horizonal Image Coordinate")
-    plt.ylabel("Vertical Coordinate of Beam Center Pixels")
-    plt.legend(**LEGEND_CONFIG)
+    axs[0].set_xlabel("Pixel's Horizonal Image Coordinate")
+    axs[0].set_ylabel("Vertical Coordinate of Beam Center Pixels")
+    axs[0].legend(**LEGEND_CONFIG)
     plt.grid()
+    
+    residuals = beam_center_vertical_coords - fitted_beam_center_positions
+    axs[1].scatter(horizontal_coords, residuals, color="black", s=8, label="Residuals")
+    axs[1].axhline(0, color='red', linestyle='dashed')
+    axs[1].set_xlabel("Pixel's Horizonal Image Coordinate")
+    axs[1].set_ylabel("Residuals")
+    axs[1].grid()
+    
+    fig.tight_layout()
     if save_angle_plot:
         plt.savefig("plots\incident_beam_angle_plot.png".format(), dpi=600)
     if show_angle_plot:
