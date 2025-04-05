@@ -96,7 +96,6 @@ def get_beam_angle_and_bragg_peak_pixel(camera_analysis_id: int):
     So, this contains the user-defined scintillator edges, the homography matrix, distortion correction
     camera matrices, etc.
     """
-    
     try:
         beam_energy, colour_channel, average_image, brightness_error, scintillator_edges = source_params_from_database(camera_analysis_id)
         average_rounded_image = average_image.astype(np.uint8) # could be moved inside automated roi function
