@@ -1,5 +1,6 @@
 import cv2 as cv
 import numpy as np
+import pickle
 
 from src.distortion_correction import undistort_image
 from src.calibration_functions import determine_frame_size
@@ -28,7 +29,7 @@ def select_image_colour_channel(image, input_colour: str):
     return channel
 
 def average_pixel_over_multiple_images(photo_id_array: list[int], camera_id: int, setup_id: int, 
-                                       input_colour: str, rotation_angle: float=0):
+                                       camera_analysis_id: int, input_colour: str, rotation_angle: float=0):
     """
     If this needs to be made simpler, we can make the script less general such that is applies
     specifically to one channel images, rather than the usual 3-channel coloured images. This
@@ -64,14 +65,22 @@ def average_pixel_over_multiple_images(photo_id_array: list[int], camera_id: int
         cumulative_pixel_val_sum += image_channel
     
     average_image = (cumulative_pixel_val_sum / num_of_images_used)
-    poisson_standard_error_on_mean = np.sqrt(average_image / num_of_images_used)
+    # poisson_standard_error_on_mean = np.sqrt(average_image / num_of_images_used)
+    
+    float_16_image = average_image.astype(np.float16)
+    serialized_float_16_image = pickle.dumps(float_16_image)
+    image_memory_size = len(serialized_float_16_image)
+    print(f"Memory size of the rounded serialized average image: {image_memory_size/10**6} MB")
+    cdi.update_average_image(camera_analysis_id, serialized_float_16_image)
+    
+    # with open(SAVE_DIRECTORY + saved_filename + "_float16.pkl", 'wb') as f:
+    #         pickle.dump(float_16_image, f, protocol=pickle.HIGHEST_PROTOCOL)
 
-    # The astype(np.uint8) is needed to convert to a format appropriate from OpenCV
-    average_rounded_image = average_image.astype(np.uint8) #  Maybe not a good idea - unecessary loss of data...
+    
 
     # TODO - save to backend container and file response to localhost:8000/docs to see if it works
 
-    return average_rounded_image, average_image, poisson_standard_error_on_mean
+    return average_image
 
 
 def rotate_input_image(image: np.ndarray[np.uint8], incident_beam_angle: float, h_bounds, v_bounds,

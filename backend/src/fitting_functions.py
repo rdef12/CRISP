@@ -6,12 +6,24 @@ import matplotlib.pyplot as plt
 from scipy.special import voigt_profile
 from itertools import product
 import math
+import io
+import base64
 
 from src.modified_pybragg import fitBP, bortfeld, fit_bortfeld_odr, bortfeld_for_odr
-from src.image_processing import inverse_rotation_of_coords
 from src.uncertainty_functions import *
+from src.image_processing import inverse_rotation_of_coords
 
 warnings.filterwarnings("ignore", category=OptimizeWarning)
+
+# GLOBAL PLOT SETTINGS
+plt.rc('font', family='serif')
+plt.rc('mathtext', fontset='cm')  # Computer Modern for math
+plt.rc('text', usetex=False)
+
+LEGEND_CONFIG = {
+    "fancybox": True,
+    "shadow": True,
+}
 
 def linear_function(x_coord, parameters):
     return parameters[0] * x_coord + parameters[1]
@@ -174,50 +186,71 @@ def fit_gaussian_to_beam_profile(pixel_vertical_coords, column_of_brightness_val
 
 def fit_beam_profile_along_full_roi(channel, channel_std, h_bounds, v_bounds, show_fit_qualities: bool=False,
                                     save_best_fit_data: bool=False):
-    
-    (background_brightness, _, _, _) = cv.minMaxLoc(channel[v_bounds[0]: v_bounds[1] + 1, h_bounds[0]: h_bounds[1] + 1])
-    
-    roi_horizontal_coords = np.arange(h_bounds[0], h_bounds[1], 1)
-    total_profile_brightness, unc_total_profile_brightness = [], []
+    try:
+        (background_brightness, _, _, _) = cv.minMaxLoc(channel[v_bounds[0]: v_bounds[1] + 1, h_bounds[0]: h_bounds[1] + 1])
+        
+        roi_horizontal_coords = np.arange(h_bounds[0], h_bounds[1], 1)
+        total_profile_brightness, unc_total_profile_brightness = [], []
 
-    fitted_parameters_array = np.empty((0, 4), float) # FOR GAUSSIAN FITTING
-    #fitted_parameters_array = np.empty((0, 5), float) # FOR VOIGT FITTING
-    beam_center_error_array = np.array([])
-    reduced_chi_squared_array = []
-    
-    failed_fits = []
-    for index, horizontal_coord in enumerate(roi_horizontal_coords):
-        pixel_vertical_coords, column_of_brightness_vals, column_of_brightness_errors = extract_beam_profile(channel, channel_std, horizontal_coord, v_bounds)
+        fitted_parameters_array = np.empty((0, 4), float) # FOR GAUSSIAN FITTING
+        #fitted_parameters_array = np.empty((0, 5), float) # FOR VOIGT FITTING
+        beam_center_error_array = np.array([])
+        reduced_chi_squared_array = []
         
-        fitted_parameters, error_on_beam_center, reduced_chi_squared, success = fit_gaussian_to_beam_profile(pixel_vertical_coords, column_of_brightness_vals,
-                                                                                                                column_of_brightness_errors, background_brightness)
-        if not success:
-            failed_fits.append(index)
-            continue # Should start from next index of for loop, not appending these beam center positions
+        failed_fits = []
+        for index, horizontal_coord in enumerate(roi_horizontal_coords):
+            pixel_vertical_coords, column_of_brightness_vals, column_of_brightness_errors = extract_beam_profile(channel, channel_std, horizontal_coord, v_bounds)
+            
+            fitted_parameters, error_on_beam_center, reduced_chi_squared, success = fit_gaussian_to_beam_profile(pixel_vertical_coords, column_of_brightness_vals,
+                                                                                                                    column_of_brightness_errors, background_brightness)
+            if not success:
+                failed_fits.append(index)
+                continue # Should start from next index of for loop, not appending these beam center positions
+            
+            reduced_chi_squared_array.append(reduced_chi_squared)
+            fitted_parameters_array = np.vstack((fitted_parameters_array, fitted_parameters))
+            beam_center_error_array = np.append(beam_center_error_array, error_on_beam_center)
+            total_profile_brightness.append(np.sum(column_of_brightness_vals))
+            unc_total_profile_brightness.append(normal_addition_in_quadrature(column_of_brightness_errors))
+            
+        roi_horizontal_coords = np.delete(roi_horizontal_coords, failed_fits) # Failed fits deleted from array - no data added when the fit failed (so would be differences in array lengths without this fix)
+        print("The number of Gaussian fits which failed is {}".format(len(failed_fits)))
         
-        reduced_chi_squared_array.append(reduced_chi_squared)
-        fitted_parameters_array = np.vstack((fitted_parameters_array, fitted_parameters))
-        beam_center_error_array = np.append(beam_center_error_array, error_on_beam_center)
-        total_profile_brightness.append(np.sum(column_of_brightness_vals))
-        unc_total_profile_brightness.append(normal_addition_in_quadrature(column_of_brightness_errors))
-        
-    roi_horizontal_coords = np.delete(roi_horizontal_coords, failed_fits) # Failed fits deleted from array - no data added when the fit failed (so would be differences in array lengths without this fix)
-    print("The number of Gaussian fits which failed is {}".format(len(failed_fits)))
-    
-    if show_fit_qualities:
-        plot_reduced_chi_squared_values(roi_horizontal_coords, reduced_chi_squared_array, save_data=False)
+        rcs_plot_bytes = plot_reduced_chi_squared_values(roi_horizontal_coords, reduced_chi_squared_array, save_data=False, show_plot=show_fit_qualities)
         
         index_of_worst_accepted_fit = np.argmax(reduced_chi_squared_array)
         index_of_best_accepted_fit = np.argmin(reduced_chi_squared_array)
         
-        plot_beam_profile(channel, channel_std, roi_horizontal_coords[index_of_best_accepted_fit], v_bounds, background_brightness, np.min(reduced_chi_squared_array), profile_type="Best Fit", save_best_fit_data=save_best_fit_data)
-        plot_beam_profile(channel, channel_std, roi_horizontal_coords[index_of_worst_accepted_fit], v_bounds, background_brightness, np.max(reduced_chi_squared_array), profile_type="Worst Fit")
+        best_fit_gaussian_plot_bytes = plot_beam_profile(channel, channel_std, roi_horizontal_coords[index_of_best_accepted_fit], v_bounds, background_brightness, np.min(reduced_chi_squared_array),
+                                                        profile_type="Best Fit", save_best_fit_data=save_best_fit_data, show_plot=show_fit_qualities)
+        worst_fit_gaussian_plot_bytes= plot_beam_profile(channel, channel_std, roi_horizontal_coords[index_of_worst_accepted_fit], v_bounds, background_brightness, np.max(reduced_chi_squared_array),
+                                                        profile_type="Worst Fit", show_plot=show_fit_qualities)
+        
+        best_fit_horizontal_coord = roi_horizontal_coords[index_of_best_accepted_fit]
+        worst_fit_horizontal_coord = roi_horizontal_coords[index_of_worst_accepted_fit]
+        overlayed_average_image_bytes = render_best_worst_fit_locations(channel, best_fit_horizontal_coord, worst_fit_horizontal_coord, v_bounds)
+        
+        plot_byte_strings = [rcs_plot_bytes, best_fit_gaussian_plot_bytes, worst_fit_gaussian_plot_bytes, overlayed_average_image_bytes]
+        return roi_horizontal_coords, fitted_parameters_array, beam_center_error_array, reduced_chi_squared_array, total_profile_brightness, unc_total_profile_brightness, plot_byte_strings
+    except Exception as e:
+        raise Exception("Error in fitting beam profile along full ROI: ", e)
     
-    return roi_horizontal_coords, fitted_parameters_array, beam_center_error_array, reduced_chi_squared_array, total_profile_brightness, unc_total_profile_brightness
+
+def render_best_worst_fit_locations(image, best_fit_horizontal_coord, worst_fit_horizontal_coord, v_bounds):
+    plt.imshow(image, cmap='gray')
+    plt.axvline(best_fit_horizontal_coord, color='green', alpha=0.5)
+    plt.axvline(worst_fit_horizontal_coord, color='red', alpha=0.5)
+    plt.axhline(v_bounds[0], color='blue', alpha=0.5)
+    plt.axhline(v_bounds[1], color='blue', alpha=0.5)
+    buf = io.BytesIO()  # Create an in-memory binary stream (buffer)
+    plt.savefig(buf, format="svg", dpi=600)  # Save the current plot to the buffer
+    plt.close()
+    buf.seek(0)  # Reset the buffer's position to the beginning - else will read from the end
+    return base64.b64encode(buf.read()).decode('utf-8')
 
 
 def plot_beam_profile(channel, channel_std, horizontal_coord, v_bounds, global_background_estimate, reduced_chi_squared, profile_type: str=None,
-                      save_best_fit_data: bool=False):
+                      save_best_fit_data: bool=False, show_plot: bool=False):
     
     pixel_vertical_coords, column_of_brightness_vals, column_of_brightness_errors = extract_beam_profile(channel, channel_std, horizontal_coord, v_bounds)
     fitted_parameters, _, reduced_chi_squared, _ = fit_gaussian_to_beam_profile(pixel_vertical_coords, column_of_brightness_vals, column_of_brightness_errors,
@@ -238,12 +271,13 @@ def plot_beam_profile(channel, channel_std, horizontal_coord, v_bounds, global_b
     fig, axs = plt.subplots(2, 1, gridspec_kw={'height_ratios': [3, 1]}, figsize=(8, 6), sharex=True)
     
     # Plot the beam profile with Gaussian fit
+    axs[0].step(pixel_vertical_coords, column_of_brightness_vals, color='black', zorder=9)
     axs[0].errorbar(pixel_vertical_coords, column_of_brightness_vals, yerr=column_of_brightness_errors, 
-                    color="black", label="Experimental Data", ms=5, ecolor="blue")
+                    color="black", label="Experimental Data", ms=5, ecolor="blue", zorder=10)
     axs[0].plot(pixel_height_linspace, fitted_pixel_values, color="red", label="Fitted Gaussian Profile \n" + r"$\chi^{2}_R = $" + "{:.3g}".format(reduced_chi_squared))
     axs[0].set_ylabel("Pixel Brightness Value")
     axs[0].set_title("Horizontal Coord = {}".format(horizontal_coord))
-    axs[0].legend()
+    axs[0].legend(**LEGEND_CONFIG)
     axs[0].grid()
     
     # Plot the residuals
@@ -254,26 +288,37 @@ def plot_beam_profile(channel, channel_std, horizontal_coord, v_bounds, global_b
     axs[1].grid()
     
     # Adjust layout and show
-    plt.tight_layout()
-    plt.show()
+    fig.tight_layout()
+    if show_plot:
+        plt.show()
     
-    return None
+    buf = io.BytesIO()  # Create an in-memory binary stream (buffer)
+    plt.savefig(buf, format="svg", dpi=600)  # Save the current plot to the buffer
+    plt.close()
+    buf.seek(0)  # Reset the buffer's position to the beginning - else will read from the end
+    return base64.b64encode(buf.read()).decode('utf-8')
 
 
-def plot_reduced_chi_squared_values(roi_horizontal_coords, reduced_chi_squared_array, save_data: bool=False):
+def plot_reduced_chi_squared_values(roi_horizontal_coords, reduced_chi_squared_array, save_data: bool=False, show_plot: bool=False):
     
     plt.xlabel("Horizontal Pixel Coordinate")
     plt.ylabel(r"Gaussian Profile $\chi^{2}_R$")
     plt.grid()
     label = r"Best $\chi^{2}_R$: " + "{:.3g} \n".format(np.min(reduced_chi_squared_array)) + r"Worst $\chi^{2}_R$: " + "{:.3g}".format(np.max(reduced_chi_squared_array))
     plt.scatter(roi_horizontal_coords, reduced_chi_squared_array, color="red", s=2, label=label)
-    plt.legend()
-    plt.show()
+    plt.legend(**LEGEND_CONFIG)
+    if show_plot:
+        plt.show()
     
     if save_data:
         data_array = np.column_stack((roi_horizontal_coords, reduced_chi_squared_array))
         np.savetxt("plotting_data/new_reduced_chi_squared_data.csv", data_array, delimiter=",", header="Horizontal Pixel Coord, Gaussian Reduced Chi Squared")
-    return None
+    
+    buf = io.BytesIO()  # Create an in-memory binary stream (buffer)
+    plt.savefig(buf, format="svg", dpi=600)  # Save the current plot to the buffer
+    plt.close()
+    buf.seek(0)  # Reset the buffer's position to the beginning - else will read from the end
+    return base64.b64encode(buf.read()).decode('utf-8')
 
 
 def extract_incident_beam_angle(horizontal_coords, beam_center_vertical_coords, beam_center_errors, 
@@ -296,22 +341,26 @@ def extract_incident_beam_angle(horizontal_coords, beam_center_vertical_coords, 
 
     fitted_angle, unc_fitted_angle = np.rad2deg(fitted_angle), np.rad2deg(unc_fitted_angle)
     
-    if show_angle_plot:
-        
-        fitted_label = r"$\alpha = $" + "{0} +/- {1:.1g}".format(fitted_angle, unc_fitted_angle) + "\u00B0" + "\n" + r"Reduced $\chi^2$ = " + str(round(chi_squared_reduced, 2))
-        plt.plot(line_linspace, fitted_beam_center_positions, color="red", label=fitted_label)
-        
-        plt.errorbar(horizontal_coords, beam_center_vertical_coords, beam_center_errors, color="black", marker="x", label="Experimental Data",
-                        ecolor="blue", ls="none")
-        plt.xlabel("Pixel's Horizonal Image Coordinate")
-        plt.ylabel("Vertical Coordinate of Beam Center Pixels")
-        plt.legend()
-        plt.grid()
-        if save_angle_plot:
-            plt.savefig("plots\incident_beam_angle_plot.png".format(), dpi=600)
-        plt.show()
+    fitted_label = r"$\alpha = $" + "{0} +/- {1:.1g}".format(fitted_angle, unc_fitted_angle) + "\u00B0" + "\n" + r"Reduced $\chi^2$ = " + str(round(chi_squared_reduced, 2))
+    plt.plot(line_linspace, fitted_beam_center_positions, color="red", label=fitted_label)
     
-    return fitted_angle, unc_fitted_angle
+    plt.errorbar(horizontal_coords, beam_center_vertical_coords, beam_center_errors, color="black", marker="x", label="Experimental Data",
+                    ecolor="blue", ls="none")
+    plt.xlabel("Pixel's Horizonal Image Coordinate")
+    plt.ylabel("Vertical Coordinate of Beam Center Pixels")
+    plt.legend(**LEGEND_CONFIG)
+    plt.grid()
+    if save_angle_plot:
+        plt.savefig("plots\incident_beam_angle_plot.png".format(), dpi=600)
+    if show_angle_plot:
+        plt.show()
+        
+    buf = io.BytesIO()  # Create an in-memory binary stream (buffer)
+    plt.savefig(buf, format="svg", dpi=600)  # Save the current plot to the buffer
+    plt.close()
+    buf.seek(0)  # Reset the buffer's position to the beginning - else will read from the end
+    plot_byte_string = base64.b64encode(buf.read()).decode('utf-8')
+    return fitted_angle, unc_fitted_angle, plot_byte_string
 
 
 ###### TODO - REFACTOR THE BELOW FUNCTIONS ##############
@@ -396,26 +445,27 @@ def locate_bragg_peak_in_image(x_positions, beam_center_positions, gaussian_back
     z = np.linspace(x_positions_slice[0], x_positions_slice[-1], 1000) # I have not passed z in cm here.
     curve = bortfeld(z, *bortfeld_fit['bortfeld_fit_p'])
 
-    if show_scintillation_plot:
-        
-        predicted_curve = bortfeld(x_positions_slice, *bortfeld_fit['bortfeld_fit_p'])
-        chi_squared = chi_squared_function(total_brightness_slice, unc_brightness_slice, predicted_curve)
-        reduced_chi_squared = chi_squared / (len(x_positions_slice) - 5)# 5 fitted parameters
-        print("Reduced Chi Squared = {}".format(reduced_chi_squared))
-        
-        fig, ax = plt.subplots()
-        ax.plot(z, curve, label="Bortfeld fit", color="red")
-        ax.errorbar(x_positions_slice, total_brightness_slice, yerr=unc_brightness_slice, label=f"Experimental Data \nReduced Chi Squared = {reduced_chi_squared}", ecolor="blue")
+    predicted_curve = bortfeld(x_positions_slice, *bortfeld_fit['bortfeld_fit_p'])
+    chi_squared = chi_squared_function(total_brightness_slice, unc_brightness_slice, predicted_curve)
+    reduced_chi_squared = chi_squared / (len(x_positions_slice) - 5) # 5 fitted parameters
     
-        # ax.set_title("{} Camera Bortfeld fit to Bragg curve".format(camera.type.capitalize()))
-        ax.axvline(initial_bragg_peak_horizontal_coord, color='green', linestyle='--', label='Initital Bragg Peak Estimate: {}'.format(initial_bragg_peak_horizontal_coord))
-        ax.set_xlabel("Horizonal Image Coordinate")
-        ax.set_ylabel("Total profile Brightness")
-        ax.legend()
-        plt.show(block=True)
-        plt.close()
-        
-    # return 1, 2 # TESTING
+    fig, ax = plt.subplots()
+    ax.plot(z, curve, color="red", label=("Bortfeld fit \n" + r"$\chi^{2}_R$ = " + f"{reduced_chi_squared:.1f}"))
+    ax.errorbar(x_positions_slice, total_brightness_slice, yerr=unc_brightness_slice, color="black", label="Experimental Data", ecolor="blue")
+
+    # ax.set_title("{} Camera Bortfeld fit to Bragg curve".format(camera.type.capitalize()))
+    ax.set_xlabel("Horizonal Image Coordinate")
+    ax.set_ylabel("Total profile Brightness")
+    ax.grid()
+    ax.legend(**LEGEND_CONFIG)
+    if show_scintillation_plot:
+        plt.show()
+    
+    buf = io.BytesIO()  # Create an in-memory binary stream (buffer)
+    plt.savefig(buf, format="svg", dpi=600)  # Save the current plot to the buffer
+    plt.close()
+    buf.seek(0)  # Reset the buffer's position to the beginning - else will read from the end
+    plot_byte_string = base64.b64encode(buf.read()).decode('utf-8')
     
     bortfeld_horizontal_coord = z[np.argmax(curve)]
     peak_bounds, _, = find_peak_position_uncertainty(x_positions, bortfeld_fit['bortfeld_fit_p'], bortfeld_fit_uncertainties, points_per_bin=100, number_of_stds=1)
@@ -432,4 +482,4 @@ def locate_bragg_peak_in_image(x_positions, beam_center_positions, gaussian_back
     print("PIXEL BORTFELD FIT PARAMS: {}".format(bortfeld_fit['bortfeld_fit_p']))
     print("PIXEL BORTFELD PARAM COVARIANCES: {}".format(fit_parameters_covariance))
     
-    return (bortfeld_horizontal_coord, bragg_peak_vertical_coord), (unc_bortfeld_horizontal_coord, unc_bragg_peak_vertical_coord) # Uncertainty not rounded appropriately yet, nor has horizontal coord itself.
+    return (bortfeld_horizontal_coord, bragg_peak_vertical_coord), (unc_bortfeld_horizontal_coord, unc_bragg_peak_vertical_coord), plot_byte_string # Uncertainty not rounded appropriately yet, nor has horizontal coord itself.

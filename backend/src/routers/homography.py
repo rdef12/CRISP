@@ -5,10 +5,12 @@ from src.classes.JSON_request_bodies import request_bodies as rb
 from src.database.CRUD import CRISP_database_interaction as cdi
 from src.classes.Camera import PhotoContext, CalibrationImageSettings
 from src.create_homographies import *
-from fastapi.responses import JSONResponse, FileResponse
+from fastapi.responses import JSONResponse, FileResponse, HTMLResponse
 from src.homography_pinpointing import perform_homography_pinpointing_between_camera_pair_for_GUI
 import os
 import pickle
+from src.single_camera_analysis import get_beam_angle_and_bragg_peak_pixel
+from src.scintillation_light_pinpointing import *
 
 router = APIRouter(
     prefix="/homography",
@@ -87,7 +89,6 @@ def flip_homography_origin_position_api(setup_id: str, username: str, plane_type
 
 ################ FOR TESTING HOMOGRAPHY PINPOINTING SCRIPT WORKS #############################
 
-@router.get("/add_mock_cameras")
 def add_mock_cameras_api():
     first_camera_id = cdi.add_camera(username="first_camera", ip_address=1, password=1, model=1)
     first_pi = Pi(inputted_username="first_camera",
@@ -103,7 +104,6 @@ def add_mock_cameras_api():
     return {"message": "cameras added"}
 
 
-@router.get("/add_mock_homography_images")
 def add_mock_homography_images_api():
     
     # Arbitrary settings choice because only interested in the images
@@ -198,7 +198,6 @@ def view_image():
 
 from datetime import datetime
 import pytz
-@router.put("/create_homography_test_setup_table")
 def create_homography_test_setup_table_api():
     datetime_of_creation = datetime.now(pytz.utc)
     setup_id = cdi.add_setup(setup_name="homography_test",
@@ -207,7 +206,6 @@ def create_homography_test_setup_table_api():
     return {"message": "Setup created!"}
 
 
-@router.put("/add_two_cams_for_homography_test")
 def add_two_cams_for_homography_test_api():
     
     setup_id = 1 # can check this is so
@@ -222,7 +220,6 @@ def add_two_cams_for_homography_test_api():
 
 # Just execute in /docs to fill in the table with vals in this handler
 # Done this way so I don't need to enter into setup entries each time - and can't see refractive index
-@router.put("/populate_setup_table")
 def populate_setup_table_api():
     
     setup_id = 1
@@ -240,7 +237,6 @@ def populate_setup_table_api():
     return {"message": "Setup patched!"}
 
 
-@router.put("/populate_camera_setup_tables")
 def populate_camera_setup_tables_api():
     """
     cam 1 Define as side Arducam
@@ -258,7 +254,6 @@ def populate_camera_setup_tables_api():
     return {"message": "OA and depth direction added"}
 
 
-@router.put("/populate_camera_setup_table_homography_config")
 def populate_camera_setup_table_homography_config_api():
     """
     run this before trying to build matrices - that script reads these in from db
@@ -338,7 +333,6 @@ def populate_camera_setup_table_homography_config_api():
     return {"message": "done"}
 
 
-@router.put("/populate_camera_setup_table_homography_matrices")
 def populate_camera_setup_table_homography_matrices_api():
     """
     photo order
@@ -409,7 +403,6 @@ def homography_pinpointing_test_api():
     return {"message": "pinpointing complete"}
 
 
-@router.get("/add_homography_images_with_hq")
 def add_homography_images_with_hq_api():
     
     # Arbitrary settings choice because only interested in the images
@@ -454,7 +447,6 @@ def add_homography_images_with_hq_api():
     return {"message": f"successfully saved images to database. Photo IDs are {side_far_photo_id, side_near_photo_id, top_far_photo_id, top_near_photo_id}"}
 
 
-@router.put("/populate_hq_distortion_params")
 def populate_hq_distortion_params_api():
     
     setup_id = 1 
@@ -475,7 +467,6 @@ def populate_hq_distortion_params_api():
     return {"message": "done"}
 
 
-@router.put("/populate_camera_setup_table_for_beam_analysis")
 def populate_camera_setup_table_for_beam_analysis_api():
     """
     photo order
@@ -512,10 +503,98 @@ def populate_camera_setup_table_for_beam_analysis_api():
     return {"message": "done"}
 
 
-@router.put("/initialize_beam_analysis_homography_setup")
-def initialize_beam_analysis_homography_setup_api():
+def upload_averaged_image_api():
+    
+    beam_energy = 90
+    # beam_energy = 150
+    # beam_energy = 180
+    SIDE_AR_CAM_ID = 1
+    TOP_HQ_CAM_ID = 2
+
+    current_time = datetime.now(pytz.utc)
+    setup_id = 1
+    experiment_id = cdi.add_experiment("beam_analysis_testing", current_time, setup_id)["id"]
+    beam_run_id = cdi.add_beam_run(experiment_id=experiment_id, beam_run_number=1,
+                                   datetime_of_run=current_time, 
+                                   ESS_beam_energy=beam_energy, beam_current=100, 
+                                   beam_current_unc=0.1, is_test=False).id
+    
+    # Make two test csl ids for the main run on the two cams
+    
+    side_AR_settings_id = cdi.add_settings(frame_rate=20, lens_position=5, gain=5)["id"]
+    top_HQ__settings_id = cdi.add_settings(frame_rate=20, lens_position=5, gain=5)["id"]
+    
+    side_AR_camera_settings_link_id = cdi.add_camera_settings_link_with_beam_run(SIDE_AR_CAM_ID, side_AR_settings_id, beam_run_id)["id"]
+    top_HQ_camera_settings_link_id = cdi.add_camera_settings_link_with_beam_run(TOP_HQ_CAM_ID, top_HQ__settings_id, beam_run_id)["id"]
+    side_AR_analysis_id = cdi.add_camera_analysis(side_AR_camera_settings_link_id, "blue")["id"]
+    top_HQ_analysis_id = cdi.add_camera_analysis(top_HQ_camera_settings_link_id, "blue")["id"]
+    
+    # 90 MEV
+    num_of_hq_images_in_average = 64
+    num_of_ar_images_in_average = 53
+    
+    # 150 MEV
+    # num_of_hq_images_in_average = 348
+    # num_of_ar_images_in_average = 67
+    
+    # 180 MEV
+    # num_of_hq_images_in_average = 172
+    # num_of_ar_images_in_average = 78
+    
+    # Adding mock images to test if cdi.get_num_of_successfully_captured_images_by_camera_settings_link_id() is working
+    mock_bytestring = pickle.dumps("lol")
+    for i in range(num_of_ar_images_in_average):
+        cdi.add_photo(camera_settings_link_id=side_AR_camera_settings_link_id, photo=mock_bytestring)
+    for i in range(num_of_hq_images_in_average):
+        cdi.add_photo(camera_settings_link_id=top_HQ_camera_settings_link_id, photo=mock_bytestring)
+    
+    # FLOAT-16 PICKLED AVERAGED NUMPY ARRAYS
+    with open("/code/src/beam_averaged_images/90_mev_A1_averaged_image_float16.pkl", "rb") as file:
+        pickled_side_AR__average_image = file.read()
+    cdi.update_average_image(side_AR_analysis_id, pickled_side_AR__average_image)
+    
+    with open("/code/src/beam_averaged_images/90_mev_HQ2_averaged_image_float16.pkl", "rb") as file:
+        pickled_top_HQ_average_image = file.read()
+    cdi.update_average_image(top_HQ_analysis_id, pickled_top_HQ_average_image)
+    return None
+
+
+def populate_scintillator_edges_api():
     """
-    TODO - add prints to show progress along pipeline
+    SIDE_ARDUCAM_SCINTILLATOR_EDGES = [(875, 3500), (530, 1650)]
+    TOP_HQ_SCINTILLATOR_EDGES = [(700, 3100), (990, 1400)] # Edges in undistorted image
+    """
+    
+    side_ar_cam_id = 1
+    top_hq_cam_id = 2
+    setup_id = 1
+    side_ar_setup_camera_id = cdi.get_setup_camera_id(side_ar_cam_id, setup_id)
+    top_hq_setup_camera_id = cdi.get_setup_camera_id(top_hq_cam_id, setup_id)
+    
+    side_ar_horizontal_scintillator_edges = [875, 3500]
+    side_ar_vertical_scintillator_edges = [530, 1650]
+    top_hq_horizontal_scintillator_edges = [700, 3100]
+    top_hq_vertical_scintillator_edges = [990, 1400]
+    
+    cdi.update_horizontal_scintillator_scintillator_start(side_ar_setup_camera_id, side_ar_horizontal_scintillator_edges[0])
+    cdi.update_horizontal_scintillator_scintillator_end(side_ar_setup_camera_id, side_ar_horizontal_scintillator_edges[1])
+    cdi.update_vertical_scintillator_scintillator_start(side_ar_setup_camera_id, side_ar_vertical_scintillator_edges[0])
+    cdi.update_vertical_scintillator_scintillator_end(side_ar_setup_camera_id, side_ar_vertical_scintillator_edges[1])
+    cdi.update_horizontal_scintillator_scintillator_start(top_hq_setup_camera_id, top_hq_horizontal_scintillator_edges[0])
+    cdi.update_horizontal_scintillator_scintillator_end(top_hq_setup_camera_id, top_hq_horizontal_scintillator_edges[1])
+    cdi.update_vertical_scintillator_scintillator_start(top_hq_setup_camera_id, top_hq_vertical_scintillator_edges[0])
+    cdi.update_vertical_scintillator_scintillator_end(top_hq_setup_camera_id, top_hq_vertical_scintillator_edges[1])
+    return None
+
+
+@router.put("/initialize_beam_analysis_setup")
+def initialize_beam_analysis_setup_api():
+    """
+    TO CHANGE PER ENERGY:
+    1) Uploaded average image 
+    2) Beam energy parameter
+    3) Number of images in average
+    
     """
     add_mock_cameras_api()
     add_homography_images_with_hq_api()
@@ -523,8 +602,61 @@ def initialize_beam_analysis_homography_setup_api():
     add_two_cams_for_homography_test_api()
     populate_setup_table_api()
     populate_camera_setup_tables_api()
+    populate_scintillator_edges_api()
     populate_hq_distortion_params_api()
     populate_camera_setup_table_homography_config_api()
     populate_camera_setup_table_for_beam_analysis_api()
-    
+    upload_averaged_image_api()
     return {"message": "Homography setup initialized successfully!"}
+
+
+@router.get("/test_beam_analysis")
+def test_beam_analysis_api():
+    
+    side_camera_analysis_id = 1
+    top_camera_analysis_id = 2
+    side_camera_settings_link_id = cdi.get_camera_settings_link_id_by_camera_analysis_id(side_camera_analysis_id)
+    beam_run_id = cdi.get_beam_run_id_by_camera_settings_link_id(side_camera_settings_link_id)
+
+    first_results = get_beam_angle_and_bragg_peak_pixel(side_camera_analysis_id)
+    print(f"\n\nBeam angle: {first_results['beam_angle']} +/- {first_results['beam_angle_error']}")
+    print(f"\n\nBragg peak pixel: {first_results['bragg_peak_pixel']} +/- {first_results['bragg_peak_pixel_error']}")
+    
+    second_results = get_beam_angle_and_bragg_peak_pixel(top_camera_analysis_id)
+    print(f"\n\nBeam angle: {second_results['beam_angle']} +/- {second_results['beam_angle_error']}")
+    print(f"\n\nBragg peak pixel: {second_results['bragg_peak_pixel']} +/- {second_results['bragg_peak_pixel_error']}")
+    
+    cdi.update_beam_angle(side_camera_analysis_id, float(first_results["beam_angle"]))
+    cdi.update_unc_beam_angle(side_camera_analysis_id, float(first_results["beam_angle_error"]))
+    # NOTE - Float trick below needed because np.float64 cannot be stored in DB
+    cdi.update_bragg_peak_pixel(side_camera_analysis_id, [float(x) for x in first_results["bragg_peak_pixel"].flatten()])
+    cdi.update_unc_bragg_peak_pixel(side_camera_analysis_id, [float(x) for x in first_results["bragg_peak_pixel_error"].flatten()])
+    
+    cdi.update_beam_angle(top_camera_analysis_id, float(second_results["beam_angle"]))
+    cdi.update_unc_beam_angle(top_camera_analysis_id, float(second_results["beam_angle_error"]))
+    cdi.update_bragg_peak_pixel(top_camera_analysis_id, [float(x) for x in second_results["bragg_peak_pixel"].flatten()])
+    cdi.update_unc_bragg_peak_pixel(top_camera_analysis_id, [float(x) for x in second_results["bragg_peak_pixel_error"].flatten()])
+    
+    # PINPOINTING STAGE
+    side_cam_bragg_peak_pixel, side_cam_bragg_peak_pixel_error = first_results["bragg_peak_pixel"], first_results["bragg_peak_pixel_error"]
+    top_cam_bragg_peak_pixel, top_cam_bragg_peak_pixel_error = second_results["bragg_peak_pixel"], second_results["bragg_peak_pixel_error"]
+    pinpoint_results = pinpoint_bragg_peak([side_camera_analysis_id, top_camera_analysis_id])
+    bragg_peak_3d_position, unc_bragg_peak_3d_position = pinpoint_results["bragg_peak_position"], pinpoint_results["bragg_peak_position_error"]
+    
+    cdi.update_bragg_peak_3d_position(beam_run_id, [float(x) for x in bragg_peak_3d_position.flatten()])
+    cdi.update_unc_bragg_peak_3d_position(beam_run_id, [float(x) for x in unc_bragg_peak_3d_position.flatten()])
+    
+    # PENETRATION DEPTH STAGE
+    bragg_peak_depth, unc_bragg_peak_depth = compute_bragg_peak_depth(beam_run_id, 
+                                                                    side_camera_analysis_id,
+                                                                    top_camera_analysis_id)
+    
+    print(f"\n\nBragg peak depth: {bragg_peak_depth} +/- {unc_bragg_peak_depth}")
+    
+    print(f"Saved plot keys: {first_results['plot_byte_strings'].keys()}")
+    plots = list(first_results["plot_byte_strings"].values()) + list(second_results["plot_byte_strings"].values())
+    img_tags = ""
+    for plot_base64 in plots:
+        img_tags += f'<img src="data:image/svg+xml;base64,{plot_base64}" width="200px"><br>' # SVG Plots
+    html_content = f"<html><body>{img_tags}</body></html>"
+    return HTMLResponse(content=html_content)

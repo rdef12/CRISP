@@ -2,7 +2,7 @@ from src.database.database import engine
 from sqlmodel import Session, select
 from sqlalchemy.orm.exc import NoResultFound
 
-from src.database.models import CameraSettingsLink, BeamRun
+from src.database.models import CameraSettingsLink, BeamRun, Photo
 
 # Create
 
@@ -109,6 +109,21 @@ def get_beam_run_id_by_camera_settings_link_id(camera_settings_link_id: int):
         camera_settings = session.get(CameraSettingsLink, camera_settings_link_id)
         beam_run_id = camera_settings.beam_run_id
         return beam_run_id
+    
+def get_num_of_successfully_captured_images_by_camera_settings_link_id(camera_settings_link_id: int):
+    """
+    Query photos table for all entries with camera_settings_link_id and return the number with Photo not None
+    
+    To get the number of images successfully taken, look for how many photos 
+    (photo_bytes must not be None) in Photo table with the camera_setttings_link_id
+    If simply using BeamRun's num_of_images_to_capture, cannot guarantee all taken/transferred to db
+    successfully
+    """
+    with Session(engine) as session:
+        # Bytes must be present to be included
+        statement = select(Photo).where(Photo.camera_settings_link_id == camera_settings_link_id).where(Photo.photo.isnot(None))
+        result = session.exec(statement).all()
+        return len(result)
 
 # Update
 
@@ -143,3 +158,4 @@ def update_is_optimal(beam_run_id: int, camera_id: int, settings_id: int, is_opt
         raise RuntimeError(f"An error occurred: {str(e)}")
 
 # Delete
+
