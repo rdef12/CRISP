@@ -4,6 +4,7 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 import pytz
 from sqlmodel import Session, select
+from src.gain_automation import set_optimal_settings
 from src.database.database import engine
 
 
@@ -225,33 +226,51 @@ def get_real_run_photo(beam_run_id: int, camera_id: int, response: Response):
 @router.post("/beam-run/real/{beam_run_id}")
 def take_real_beam_run_images(beam_run_id: int):
     all_camera_settings_ids = []
-    
     with Session(engine) as session:
         camera_settings_statement = select(CameraSettingsLink).where(CameraSettingsLink.beam_run_id == beam_run_id)
         all_camera_settings = session.exec(camera_settings_statement).all()
         for camera_settings in all_camera_settings:
             all_camera_settings_ids += [camera_settings.id]
-    # TODO Maybe have a try here and return with the issue as well as what was completed??
-    print("\n\n\n GONNA DO A THINGGY")
-    results = take_single_video_for_main_run(all_camera_settings_ids[0]) #TODO Temporary [0] and single video for a little test
-    print("DONE A THINGY \n\n\n")
-    return rb.RealRunPhotoPostResponse(id=beam_run_id)
+        
+        experiment_statement = select(Experiment).join(BeamRun).join(CameraSettingsLink).where(CameraSettingsLink.id == all_camera_settings_ids[0]) #TODO a bit janky with [0]
+        experiment = session.exec(experiment_statement).one()
+        experiment_id = experiment.id  
+
+        # TODO Maybe have a try here and return with the issue as well as what was completed??
+        print("\n\n\n GONNA DO A THINGGY in realllllll")
+        print(f"FOr my next trick i shall input experiment id {experiment_id} and all camera settings ids {all_camera_settings_ids}")
+        print(f"Settings of {cdi.get_settings_by_id(cdi.get_settings_id_by_camera_settings_id(all_camera_settings_ids[0]))}")
+        results_dict = take_multiple_videos_for_main_run(experiment_id, all_camera_settings_ids) #TODO Temporary [0] and single video for a little test
+        print("DONE A THINGY \n\n\n")
+        return rb.RealRunPhotoPostResponse(id=beam_run_id)
 
 @router.post("/beam-run/test/{beam_run_id}")
-def take_test_beam_run_images(beam_run_id: int):
-    all_camera_settings_ids = []
-    
+def take_test_beam_run_images(beam_run_id: int):  
     with Session(engine) as session:
         camera_settings_statement = select(CameraSettingsLink).where(CameraSettingsLink.beam_run_id == beam_run_id)
         all_camera_settings = session.exec(camera_settings_statement).all()
-        print(f"\n\n ALLLL CAMERA SETTTINGS {all_camera_settings}\n\n\n")
-        for camera_settings in all_camera_settings:
-            all_camera_settings_ids += [camera_settings.id]
-    # TODO Maybe have a try here and return with the issue as well as what was completed??
-    print("\n\n\n GONNA DO A THINGGY")
-    results = take_single_video_for_test_run(all_camera_settings_ids) #TODO SHOULD BE MULTIPLE PRESUMABLY
-    print("DONE A THINGY \n\n\n")
-    return rb.RealRunPhotoPostResponse(id=beam_run_id)
+        
+        first_camera_settings = all_camera_settings[0] #TODO SHOULD THIS BE MORE BOMB PROOF
+        experiment_statement = select(Experiment).join(BeamRun).join(CameraSettingsLink).where(CameraSettingsLink.id == first_camera_settings.id)
+        experiment = session.exec(experiment_statement).one()
+        experiment_id = experiment.id        
+        camera_and_settings_ids = np.empty((len(all_camera_settings), 2), dtype=int)
+        for count, camera_settings in enumerate(all_camera_settings):
+            camera_id = camera_settings.camera_id
+            camera_settings_id = camera_settings.id
 
+            camera_and_settings_ids[count, 0] = camera_id
+            camera_and_settings_ids[count, 1] = camera_settings_id
 
+        unique_camera_ids = np.unique(camera_and_settings_ids[:, 0])
+        grouped_camera_settings = [camera_and_settings_ids[camera_and_settings_ids[:, 0] == cam_id, 1].tolist() for cam_id in unique_camera_ids]
+
+        # TODO Maybe have a try here and return with the issue as well as what was completed??
+        print("\n\n\n About to take pictures")
+        results_dict = take_multiple_videos_for_test_run(experiment_id, grouped_camera_settings) #TODO SHOULD BE MULTIPLE PRESUMABLY
+        print(f"\n\n\n Pictures taken \n\n")
+        
+        for photo_id_array in results_dict.values():
+            set_optimal_settings(photo_id_array, threshold=5)
+        return rb.RealRunPhotoPostResponse(id=beam_run_id)
     

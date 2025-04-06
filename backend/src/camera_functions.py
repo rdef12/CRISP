@@ -132,13 +132,12 @@ def take_multiple_videos_for_main_run(experiment_id, camera_settings_link_id_arr
         # The executor is the key, the username is the value in the futures dict
         futures = {executor.submit(take_single_video_for_main_run, experiment_id, camera_settings_link_id): camera_settings_link_id 
                    for camera_settings_link_id in camera_settings_link_id_array}
-        
         for future in futures:
             camera_settings_link_id = futures[future] # way to map futures.result() to a dict with username as the key
             try:
                 results[camera_settings_link_id] = future.result()  # Store result in dictionary
             except Exception as e:
-                print(f"Error in test run video capture for image with camera setting link id: {camera_settings_link_id}: {e}")
+                print(f"Error in main run video capture for image with camera setting link id: {camera_settings_link_id}: {e}")
                 results[camera_settings_link_id] = []  # Store an empty list in case of failure
     return results
 
@@ -174,7 +173,7 @@ def take_multiple_videos_for_test_run(experiment_id, list_of_csl_id_lists) -> Di
         # The executor is the key, the link id array is the value in the futures dict
         futures = {executor.submit(take_single_video_for_test_run, experiment_id, camera_settings_link_id_array): camera_settings_link_id_array 
                    for camera_settings_link_id_array in list_of_csl_id_lists}
-        
+
         for future in futures:
             camera_settings_link_id_array = futures[future] # way to map futures.result() to a dict with username as the key
             try:

@@ -28,3 +28,22 @@ def get_all_cameras_api(response: Response) -> list[Camera]:
     response.headers["Content-Range"] = str(len(camera))
     return camera
 
+
+@router.get("/statuses")
+def get_pi_statuses(response: Response):
+    pi_status_array = get_raspberry_pi_statuses()
+    pi_status_response = []
+    for pi_status in pi_status_array:
+        camera_id = cdi.get_camera_id_from_username(pi_status.username)
+        pi_status_response += [
+                                rb.CameraStatusResponse(id=camera_id,
+                                                        username=pi_status.username,
+                                                        IPAddress=pi_status.IPAddress,
+                                                        connectionStatus=pi_status.connectionStatus,
+                                                        cameraModel=pi_status.cameraModel)
+                              ]
+
+    response.headers["Content-Range"] = str(len(pi_status_response))
+    return pi_status_response
+
+
