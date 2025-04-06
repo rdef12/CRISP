@@ -128,24 +128,17 @@ def take_multiple_videos_for_main_run(experiment_id, camera_settings_link_id_arr
     Returns a dictionary where each username maps to their photo ID array.
     """
     results = {}
-    print("\n\n\n I HAVVVVEEEEE ENTEREEEEEEEED take multi vids for main\n\n\n")
     with ThreadPoolExecutor() as executor:
         # The executor is the key, the username is the value in the futures dict
-        print("WITHINNNNNNNNNNNNN THE WITH\n")
         futures = {executor.submit(take_single_video_for_main_run, experiment_id, camera_settings_link_id): camera_settings_link_id 
                    for camera_settings_link_id in camera_settings_link_id_array}
-        print(f"IVE MADEI TOUT OF FUTURE: {futures}\n")
         for future in futures:
-            print(f"SUCESEFULLY ENTERED TGHE FOR\n")
             camera_settings_link_id = futures[future] # way to map futures.result() to a dict with username as the key
             try:
-                print(f"IN THE TRYYYYY WITH camera_settings_link {camera_settings_link_id} \n")
                 results[camera_settings_link_id] = future.result()  # Store result in dictionary
             except Exception as e:
-                print(f"\n\n IVE HAD AN EXCEPTIONNNNNNN \n\n")
                 print(f"Error in main run video capture for image with camera setting link id: {camera_settings_link_id}: {e}")
                 results[camera_settings_link_id] = []  # Store an empty list in case of failure
-    print(f"\n\n MY FINALL RESULTSSS: {results} \n\n")
     return results
 
 ############# TEST BEAM RUN #########################
