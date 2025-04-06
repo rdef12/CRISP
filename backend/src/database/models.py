@@ -303,6 +303,11 @@ class BeamRun(SQLModel, table=True):
     #Any other beam parameters?
 
     is_test: bool
+    
+    num_of_images_to_capture: Optional[int] = Field(default=None)
+    take_raw_images: Optional[bool] = Field(default=None)
+    bragg_peak_3d_position: Optional[List[float]] = Field(default=None, sa_column=Column(ARRAY(Float)))
+    unc_bragg_peak_3d_position: Optional[List[float]] = Field(default=None, sa_column=Column(ARRAY(Float)))
 
     experiment_id: int = Field(default=None, foreign_key="experiment.id")
     experiment: Experiment = Relationship(back_populates="beam_runs")
@@ -310,13 +315,26 @@ class BeamRun(SQLModel, table=True):
     # camera_settings_link_id: Optional[int] = Field(default=None, foreign_key="camerasettingslink.id")
     # camera_settings_link: Optional["CameraSettingsLink"] = Relationship(back_populates="beam_runs")
     camera_settings_links: List["CameraSettingsLink"] = Relationship(back_populates="beam_run")
-
-
-
+    
+    #camera_analyses: List["CameraAnalysis"] = Relationship(back_populates="beam_run")
 
 #     beam_run_camera_settings: list["BeamRunCameraSettings"] = Relationship(back_populates="beam_run_number")
 
-# class BeamRunCameraSettings(SQLModel, table=True):
+class CameraAnalysis(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    # beam_run_id: int = Field(default=None, foreign_key="beamrun.id") # not optional
+    # beam_run: "BeamRun" = Relationship(back_populates="camera_analyses")
+    camera_settings_id: int = Field(default=None, foreign_key="camerasettingslink.id") # not optional
+    
+    colour_channel: str = Field(default=None) # not optional
+    average_image: Optional[bytes] = Field(default=None, sa_column=PickleType)
+    beam_angle: Optional[float] = Field(default=None)
+    unc_beam_angle: Optional[float] = Field(default=None)
+    bragg_peak_pixel: Optional[List[float]] = Field(default=None, sa_column=Column(ARRAY(Float)))
+    unc_bragg_peak_pixel: Optional[List[float]] = Field(default=None, sa_column=Column(ARRAY(Float)))
+    
+    
+    # class BeamRunCameraSettings(SQLModel, table=True):
 #     id: Optional[int] = Field(default=None, primary_key=True)
 #     beam_run_number_id: int = Field(default=None, foreign_key="beamrunnumber.id")
 #     camera_id: int = Field(default=None, foreign_key="camera.id")

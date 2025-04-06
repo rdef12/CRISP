@@ -8,5 +8,6 @@ from src.database.CRUD.photo_CRUD import *
 from src.database.CRUD.settings_CRUD import *
 from src.database.CRUD.setup_CRUD import *
 from src.database.CRUD.experiment_CRUD import *
+from src.database.CRUD.camera_analysis_CRUD import *
 # from src.database.CRUD.test_beam_run_CRUD import *
 # from src.database.CRUD.test_beam_run_photo_CRUD import *

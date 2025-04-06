@@ -341,7 +341,7 @@ def get_horizontal_scintillator_limits(camera_id:int, setup_id:int) -> tuple[int
         statement = select(CameraSetupLink).where(CameraSetupLink.camera_id == camera_id).where(CameraSetupLink.setup_id == setup_id)
         result = session.exec(statement).one()
         if result:
-            return result.horizontal_scintillator_limits
+            return [result.horizontal_scintillator_start, result.horizontal_scintillator_end]
         else:
             raise ValueError(f"Initial horizontal ROI not found for camera with id {camera_id} and setup with id {setup_id}.")
 
@@ -350,7 +350,7 @@ def get_vertical_scintillator_limits(camera_id:int, setup_id:int) -> tuple[int, 
         statement = select(CameraSetupLink).where(CameraSetupLink.camera_id == camera_id).where(CameraSetupLink.setup_id == setup_id)
         result = session.exec(statement).one()
         if result:
-            return result.vertical_scintillator_limits
+            return [result.vertical_scintillator_start, result.vertical_scintillator_end]
         else:
             raise ValueError(f"Initial vertical ROI not found for camera with id {camera_id} and setup with id {setup_id}.")
 

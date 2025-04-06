@@ -2,6 +2,8 @@ import cv2 as cv
 import numpy as np
 import matplotlib.pyplot as plt
 from src.edge_detection_functions import find_beam_contour_extremes
+import base64
+import io
 
 # SIDE_SCINTILLATOR_HORIZONTAL_ROI = [875, 3500]
 # SIDE_SCINTILLATOR_VERTICAL_ROI = [530, 1650]
@@ -33,6 +35,8 @@ def roi_determination_inside_scintillator(image, scintillator_horizontal_roi, sc
     """
     
     horizontal_pixel_width, vertical_pixel_width = get_scintillator_pixel_dimensions(scintillator_horizontal_roi, scintillator_vertical_roi)
+    # print("\n\nHorizontal pixel width: ", horizontal_pixel_width)
+    # print("\n\nVertical pixel width: ", vertical_pixel_width)
     
     if verbose_output:
         background_brightness_value = np.min(image)
@@ -41,9 +45,6 @@ def roi_determination_inside_scintillator(image, scintillator_horizontal_roi, sc
     peak_brightness_value = np.max(image)
     mask = image > peak_brightness_value * fraction
     binary_image = (mask.astype(np.uint8)) * 255
-    
-    plt.imshow(binary_image)
-    plt.show()
     
     if use_edge_detection:
         x_bounds, y_bounds = find_beam_contour_extremes(binary_image, horizontal_pixel_width, vertical_pixel_width, show_image=show_plots)
@@ -67,15 +68,22 @@ def roi_determination_inside_scintillator(image, scintillator_horizontal_roi, sc
     
     return x_bounds, y_bounds
 
-def display_image_with_roi(image, horizontal_roi, vertical_roi):
+def get_image_with_roi(image, horizontal_roi, vertical_roi, show_plot: bool=False):
     rgb_image = cv.cvtColor(image, cv.COLOR_BGR2RGB)
     plt.imshow(rgb_image)
     plt.axvline(horizontal_roi[0], color='red')
     plt.axvline(horizontal_roi[1], color='red')
     plt.axhline(vertical_roi[0], color='red')
     plt.axhline(vertical_roi[1], color='red')
-    plt.show()
-    return
+    
+    if show_plot:
+        plt.show()
+
+    buf = io.BytesIO()  # Create an in-memory binary stream (buffer)
+    plt.savefig(buf, format="svg", dpi=600)  # Save the current plot to the buffer
+    plt.close()
+    buf.seek(0)  # Reset the buffer's position to the beginning - else will read from the end
+    return base64.b64encode(buf.read()).decode('utf-8')
 
 def get_automated_roi(image, scintillator_horizontal_roi, scintillator_vertical_roi, show_images: bool=False,
                       fraction: float=0.15):
@@ -83,23 +91,27 @@ def get_automated_roi(image, scintillator_horizontal_roi, scintillator_vertical_
     Expects an image with a single colour channel inputted (includes greyscale)
     """
     
-    # 5 pixel padding added around the user defined region of interests - visible scintillator edges will interfere with beam edge detection
-    scintillator_horizontal_roi = [scintillator_horizontal_roi[0] + 5, scintillator_horizontal_roi[1] - 5]
-    scintillator_vertical_roi = [scintillator_vertical_roi[0] + 5, scintillator_vertical_roi[1] - 5]
-    
-    if show_images:
-        display_image_with_roi(image, scintillator_horizontal_roi, scintillator_vertical_roi)
-    
-    scintillator_region = image[scintillator_vertical_roi[0]:scintillator_vertical_roi[-1], scintillator_horizontal_roi[0]:scintillator_horizontal_roi[-1]]
-    
-    x_bounds, y_bounds = roi_determination_inside_scintillator(scintillator_region, scintillator_horizontal_roi, scintillator_vertical_roi, 
-                                                              show_plots=show_images, fraction=fraction)
-    
-    print(x_bounds, y_bounds)
-    original_image_x_bounds = x_bounds + scintillator_horizontal_roi[0] 
-    original_image_y_bounds = y_bounds + scintillator_vertical_roi[0]
-    
-    if show_images:
-        display_image_with_roi(image, original_image_x_bounds, original_image_y_bounds)
-    
-    return original_image_x_bounds, original_image_y_bounds
+    try:
+        # 5 pixel padding added around the user defined region of interests - visible scintillator edges will interfere with beam edge detection
+        scintillator_horizontal_roi = [scintillator_horizontal_roi[0] + 5, scintillator_horizontal_roi[1] - 5]
+        scintillator_vertical_roi = [scintillator_vertical_roi[0] + 5, scintillator_vertical_roi[1] - 5]
+        
+        # print("\n\nScintillator horizontal ROI: ", scintillator_horizontal_roi)
+        # print("\n\nScintillator vertical ROI: ", scintillator_vertical_roi)
+        scintillator_region = image[scintillator_vertical_roi[0]:scintillator_vertical_roi[-1], scintillator_horizontal_roi[0]:scintillator_horizontal_roi[-1]]
+        
+        x_bounds, y_bounds = roi_determination_inside_scintillator(scintillator_region, scintillator_horizontal_roi, scintillator_vertical_roi, 
+                                                                show_plots=show_images, fraction=fraction)
+        # print("\n\nx bounds: ", x_bounds)
+        # print("\n\ny bounds: ", y_bounds)
+        
+        print(x_bounds, y_bounds)
+        original_image_x_bounds = x_bounds + scintillator_horizontal_roi[0] 
+        original_image_y_bounds = y_bounds + scintillator_vertical_roi[0]
+        
+        base64_roi_image = get_image_with_roi(image, original_image_x_bounds, original_image_y_bounds, show_plot=show_images)
+        
+        return (original_image_x_bounds, original_image_y_bounds), base64_roi_image
+    except Exception as e:
+        print(f"Error in get_automated_roi: {e}")
+        raise Exception("Error in get_automated_roi") from e

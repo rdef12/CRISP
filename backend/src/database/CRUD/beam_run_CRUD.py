@@ -36,6 +36,15 @@ def add_beam_run(experiment_id: int,
 
 # Read
 
+def get_experiment_id_from_beam_run_id(beam_run_id: int):
+    with Session(engine) as session:
+        statement = select(BeamRun).where(BeamRun.id == beam_run_id)
+        result = session.exec(statement).one()
+        if result:
+            return result.experiment_id
+        else:
+            raise ValueError(f"Beam run with id {beam_run_id} cannot be a found.")
+
 def get_beam_run_id_from_experiment_id_and_beam_run_number(experiment_id: int, beam_run_number: int):
     with Session(engine) as session:
         statement = select(BeamRun).where(BeamRun.experiment_id == experiment_id).where(BeamRun.beam_run_number == beam_run_number)
@@ -54,6 +63,33 @@ def get_beam_run_id_from_camera_settings_link_id(camera_settings_link_id: int) -
         else:
             raise ValueError(f"Beam run with camera_setup_link_id: {camera_settings_link_id} cannot be found.")
 
+def get_beam_run_ESS_beam_energy(beam_run_id: int) -> float:
+    with Session(engine) as session:
+        statement = select(BeamRun).where(BeamRun.id == beam_run_id)
+        result = session.exec(statement).one()
+        if result:
+            return result.ESS_beam_energy
+        else:
+            raise ValueError(f"Beam run with id {beam_run_id} cannot be found.")
+        
+def get_bragg_peak_3d_position(beam_run_id: int) -> list[float]:
+    with Session(engine) as session:
+        statement = select(BeamRun).where(BeamRun.id == beam_run_id)
+        result = session.exec(statement).one()
+        if result:
+            return result.bragg_peak_3d_position
+        else:
+            raise ValueError(f"Beam run with id {beam_run_id} cannot be found.")
+        
+def get_unc_bragg_peak_3d_position(beam_run_id: int) -> list[float]:
+    with Session(engine) as session:
+        statement = select(BeamRun).where(BeamRun.id == beam_run_id)
+        result = session.exec(statement).one()
+        if result:
+            return result.unc_bragg_peak_3d_position
+        else:
+            raise ValueError(f"Beam run with id {beam_run_id} cannot be found.")
+    
 # Update
 
 def update_beam_run_is_test(beam_run_id: int, is_test: bool):
@@ -92,6 +128,32 @@ def update_MSIC_beam_energy_unc(beam_run_id: int, MSIC_beam_energy_unc:float):
             result.MSIC_beam_energy_unc = MSIC_beam_energy_unc
             session.commit()
             return {"message": f"Beam run with id: {beam_run_id} updated with MSIC beam energy uncertainty: {MSIC_beam_energy_unc}"}
+    except NoResultFound:
+        raise ValueError(f"No beam run found for beam_run_id={beam_run_id}.")
+    except Exception as e:
+        raise RuntimeError(f"An error occurred: {str(e)}")
+    
+def update_bragg_peak_3d_position(beam_run_id: int, bragg_peak_3d_position: list[float]):
+    try:
+        with Session(engine) as session:
+            statement = select(BeamRun).where(BeamRun.id == beam_run_id)
+            result = session.exec(statement).one()
+            result.bragg_peak_3d_position = bragg_peak_3d_position
+            session.commit()
+            return {"message": f"Beam run with id: {beam_run_id} updated with BP 3D position: {bragg_peak_3d_position}"}
+    except NoResultFound:
+        raise ValueError(f"No beam run found for beam_run_id={beam_run_id}.")
+    except Exception as e:
+        raise RuntimeError(f"An error occurred: {str(e)}")
+    
+def update_unc_bragg_peak_3d_position(beam_run_id: int, unc_bragg_peak_3d_position: list[float]):
+    try:
+        with Session(engine) as session:
+            statement = select(BeamRun).where(BeamRun.id == beam_run_id)
+            result = session.exec(statement).one()
+            result.unc_bragg_peak_3d_position = unc_bragg_peak_3d_position
+            session.commit()
+            return {"message": f"Beam run with id: {beam_run_id} updated with BP 3D position error: {unc_bragg_peak_3d_position}"}
     except NoResultFound:
         raise ValueError(f"No beam run found for beam_run_id={beam_run_id}.")
     except Exception as e:

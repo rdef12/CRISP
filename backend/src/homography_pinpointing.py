@@ -708,6 +708,7 @@ def extract_weighted_average_3d_physical_position(list_of_camera_objects, list_o
     possible_pixel_combinations = list(itertools.combinations(list_of_pixels_containing_point, 2))
     possible_pixel_unc_combinations = list(itertools.combinations(list_of_pixel_uncertainties, 2))
     num_of_combinations = len(possible_camera_combinations)
+    print("finished combinations")
     
     intersection_point_array = []
     unc_intersection_point_array = []
