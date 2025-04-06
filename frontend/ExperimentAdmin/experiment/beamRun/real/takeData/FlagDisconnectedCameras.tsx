@@ -1,12 +1,6 @@
 import { useParams } from "react-router-dom";
-import { useGetList, RaRecord, useShowController, useListController } from "react-admin";
+import { RaRecord, useShowController, useListController } from "react-admin";
 
-interface ClientSidePiStatus extends RaRecord {
-  username: string;
-  IPAddress: string;
-  cameraModel: string;
-  connectionStatus: boolean;
-}
 
 interface ExperimentCamera extends RaRecord {
   id: number;
@@ -18,7 +12,10 @@ export const FlagDisconnectedCameras = () => {
   const { experimentId } = useParams();
   
   // Get all camera statuses
-  const { isPending: isPendingStatuses, data: cameraStatuses } = useListController({ resource: 'camera/statuses', queryOptions: { refetchInterval: 500 }});
+  const { isPending: isPendingStatuses, data: cameraStatuses } = useListController({
+    resource: 'camera/statuses',
+    queryOptions: { refetchInterval: 500 }
+  });
 
   // Get experiment cameras
   const { isPending: isPendingExperiment, record } = useShowController({ 
