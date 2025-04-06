@@ -43,7 +43,7 @@ const AdminApp = () => (
      {/*I think maybe these should be /settingsId cna maybe */}
     </Resource>
     <Resource options={{ label: 'Cameras' }} name="camera"/>
-    <Resource options={{ label: 'Camera and Settings' }} name="camera_settings" />
+    <Resource options={{ label: 'Camera and Settings' }} name="camera-settings" /> {/*changed from name=camera_settings*/}
     <Resource options={{ label: 'Settings' }} name="settings" />
     <Resource options={{ label: 'Photos' }} name="photo" />
   </Admin>

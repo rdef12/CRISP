@@ -22,7 +22,6 @@ interface EditRealSettingsProps {
 interface CameraSettings {
   gain: number;
   frame_rate: number;
-  number_of_images: number;
 }
 
 export const EditRealSettings = ({ record, onSave, onEditStateChange }: EditRealSettingsProps) => {
@@ -45,8 +44,7 @@ export const EditRealSettings = ({ record, onSave, onEditStateChange }: EditReal
     console.log('EditTestSettings: handleSubmit called');
     const settings: CameraSettings = {
       gain: Number(data.gain),
-      frame_rate: Number(data.frame_rate),
-      number_of_images: Number(data.number_of_images)
+      frame_rate: Number(data.frame_rate)
     };
     setFormData(settings);
     setShowConfirmDialog(true);
@@ -78,7 +76,6 @@ export const EditRealSettings = ({ record, onSave, onEditStateChange }: EditReal
             <NumberField source="lens_position" />
             <NumberField source="gain" />
             <NumberField source="frame_rate" />
-            <NumberField source="number_of_images" />
           </SimpleShowLayout>
           <div className="flex justify-end">
             <Button 
@@ -94,7 +91,6 @@ export const EditRealSettings = ({ record, onSave, onEditStateChange }: EditReal
           <div className="space-y-4">
             <NumberInput source="gain" />
             <NumberInput source="frame_rate" />
-            <NumberInput source="number_of_images" />
             <div className="flex justify-end gap-2">
               <Button 
                 type="button"

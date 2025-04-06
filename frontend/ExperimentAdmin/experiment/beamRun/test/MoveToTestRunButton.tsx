@@ -9,7 +9,7 @@ interface MoveToTestRunButtonProps {
 export const MoveToTestRunButton = ({ refreshTrigger }: MoveToTestRunButtonProps) => {
   const { beamRunId } = useParams();
   const { data, isPending } = useGetOne( 
-    `beam-run/settings-completed`, 
+    `beam-run/test/settings-completed`, 
     { 
       id: beamRunId,
       meta: { refresh: refreshTrigger }

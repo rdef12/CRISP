@@ -519,7 +519,7 @@ def upload_averaged_image_api():
     beam_run_id = cdi.add_beam_run(experiment_id=experiment_id, beam_run_number=1,
                                    datetime_of_run=current_time, 
                                    ESS_beam_energy=beam_energy, beam_current=100, 
-                                   beam_current_unc=0.1, is_test=False).id
+                                   is_test=False).id
     
     # Make two test csl ids for the main run on the two cams
     

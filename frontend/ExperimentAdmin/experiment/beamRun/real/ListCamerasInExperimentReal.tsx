@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { ShowRealRunPhoto } from "./ShowRealRunPhoto";
 import { MoveToRealRunButton } from "./MoveToRealRunButton";
+import { EditNumberOfImagesAndRaw } from "./EditNumberOfImagesAndRaw";
 
 type DialogMode = 'create' | 'view' | null;
 
@@ -16,7 +17,6 @@ interface SettingsButtonProps {
   onSave: () => void;
   refreshTrigger?: boolean;
 }
-
 
 const SettingsButton = ({ onSave, refreshTrigger }: SettingsButtonProps) => {
   const record = useRecordContext();
@@ -117,6 +117,106 @@ const SettingsButton = ({ onSave, refreshTrigger }: SettingsButtonProps) => {
   );
 };
 
+const NumberOfImagesButton = ({ onSave, refreshTrigger }: SettingsButtonProps) => {
+  const record = useRecordContext();
+  const [dialogMode, setDialogMode] = useState<DialogMode>(null);
+  const [hasSettings, setHasSettings] = useState(false);
+  const { beamRunId } = useParams();
+
+  const { data: selectedCameraSettings } = useGetOne(
+    record ? `settings/beam-run/real/${beamRunId}/camera` : '',
+    { 
+      id: record?.id,
+      meta: { refresh: refreshTrigger }
+    }
+  );
+
+  const { data: selectedNumberOfImages, refetch: refetchNumberOfImages } = useGetOne(
+    record ? `camera-settings/beam-run/real/${beamRunId}/camera` : '',
+    {
+      id: record?.id,
+      meta: { refresh: refreshTrigger }
+    }
+  );
+
+  useEffect(() => {
+    if (selectedCameraSettings?.has_settings) {
+      setHasSettings(true);
+    }
+    else setHasSettings(false)
+  }, [selectedCameraSettings]);
+
+  const handleCloseDialog = () => {
+    setDialogMode(null);
+  };
+
+  const handleSettingsClick = () => {
+    setDialogMode('view');
+  };
+
+  const handleSave = () => {
+    onSave();
+    refetchNumberOfImages();
+    handleCloseDialog();
+  };
+
+  return (
+    <>
+      <Dialog open={dialogMode !== null} onOpenChange={handleCloseDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              Edit Number of Images
+            </DialogTitle>
+          </DialogHeader>
+          <ScrollArea className="h-[60vh]">
+            {record && dialogMode === 'view' && (
+              <EditNumberOfImagesAndRaw 
+                record={record} 
+                onSave={handleSave} 
+                onEditStateChange={() => {}}
+                refreshTrigger={refreshTrigger}
+              />
+            )}
+          </ScrollArea>
+        </DialogContent>
+      </Dialog>
+
+      <div className="w-[140px]">
+        <HoverCard>
+          <HoverCardTrigger asChild>
+            <Button 
+              variant={selectedNumberOfImages?.has_settings ? "outline" : "red"}
+              onClick={(e) => {
+                e.stopPropagation();
+                if (hasSettings) {
+                  handleSettingsClick();
+                }
+              }}
+              className="w-full"
+              disabled={!hasSettings}
+            >
+              Edit Images
+            </Button>
+          </HoverCardTrigger>
+          <HoverCardContent variant={selectedNumberOfImages?.has_settings ? "default" : "red"} className="w-80">
+            <div className="space-y-1">
+              <h4 className="text-sm font-semibold">Image Settings</h4>
+              <p className="text-sm">
+                {!hasSettings 
+                  ? <>No camera settings found. Please create settings first.</>
+                  : selectedNumberOfImages?.has_settings 
+                    ? <>Edit the number of images and raw image settings for this camera</>
+                    : <>No image settings found. Click to set up image settings.</>}
+              </p>
+            </div>
+          </HoverCardContent>
+        </HoverCard>
+      </div>
+    </>
+  );
+};
+
 export const ListCamerasInExperimentReal = ({ dataTaken } : { dataTaken: boolean }) => {
   const { experimentId } = useParams();
   const [refreshTrigger, setRefreshTrigger] = useState(false);
@@ -126,10 +226,11 @@ export const ListCamerasInExperimentReal = ({ dataTaken } : { dataTaken: boolean
     queryOptions: { meta: { setup: "setup", cameras: "cameras" }}
   });
 
-  if (isPending) return null;
   const handleSave = () => {
     setRefreshTrigger(!refreshTrigger);
   };
+
+  if (isPending) return null;
 
   if (!dataTaken) return (
     <ListBase resource={resource}>
@@ -142,6 +243,10 @@ export const ListCamerasInExperimentReal = ({ dataTaken } : { dataTaken: boolean
         <TextField source="username" />
         <TextField source="ip_address" />
         <SettingsButton onSave={handleSave} refreshTrigger={refreshTrigger} />
+        <NumberOfImagesButton 
+          onSave={handleSave} 
+          refreshTrigger={refreshTrigger}
+        />
       </Datagrid>
       <MoveToRealRunButton refreshTrigger={refreshTrigger} />
     </ListBase>

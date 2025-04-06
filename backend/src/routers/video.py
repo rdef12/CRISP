@@ -52,7 +52,7 @@ def trial_main_run_video_api():
     beam_run_id = cdi.add_beam_run(experiment_id=experiment_id, beam_run_number=1, 
                                    datetime_of_run=current_time, 
                                    ESS_beam_energy=150, beam_current=100, 
-                                   beam_current_unc=0.1, is_test=False).id
+                                   is_test=False).id
     
     camera_settings_link_id =  cdi.add_camera_settings_link_with_beam_run(camera_id, settings_id, beam_run_id)["id"]
     print(f"camera_settings_link_id: {camera_settings_link_id}")
@@ -80,7 +80,7 @@ def trial_test_run_video_api():
     beam_run_id = cdi.add_beam_run(experiment_id=experiment_id, beam_run_number=1, 
                                    datetime_of_run=current_time, 
                                    ESS_beam_energy=150, beam_current=100, 
-                                   beam_current_unc=0.1, is_test=True).id
+                                   is_test=True).id
     
     camera_id = cdi.get_camera_id_from_username("raspi5n2")
     print(f"camera_id: {camera_id}")
@@ -120,7 +120,7 @@ def trial_multiple_vid_test_run_api():
     beam_run_id = cdi.add_beam_run(experiment_id=experiment_id, beam_run_number=1, 
                                    datetime_of_run=current_time, 
                                    ESS_beam_energy=150, beam_current=1, 
-                                   beam_current_unc=0.1, is_test=False).id
+                                   is_test=False).id
     
     gain_list = np.arange(1, 11, 1).astype(float).tolist() # Will use same gains list for all cams here...
     list_of_csl_id_lists = [[] for _ in range(len(list_of_usernames))]
@@ -153,7 +153,7 @@ def trial_multiple_vid_main_run_api():
     beam_run_id = cdi.add_beam_run(experiment_id=experiment_id, beam_run_number=1, 
                                    datetime_of_run=current_time, 
                                    ESS_beam_energy=150, beam_current=1, 
-                                   beam_current_unc=0.1, is_test=False).id
+                                   is_test=False).id
     
     list_of_usernames = ["raspi4b3", "raspi5n2"]
     

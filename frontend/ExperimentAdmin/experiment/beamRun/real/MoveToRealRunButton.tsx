@@ -9,7 +9,7 @@ interface MoveToRealRunButtonProps {
 export const MoveToRealRunButton = ({ refreshTrigger }: MoveToRealRunButtonProps) => {
   const { beamRunId } = useParams();
   const { data, isPending } = useGetOne( 
-    `beam-run/settings-completed`, 
+    `beam-run/real/settings-completed`, 
     { 
       id: beamRunId,
       meta: { refresh: refreshTrigger }
