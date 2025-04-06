@@ -162,7 +162,6 @@ def show_saturated_points(image: np.ndarray,
                                                                           vertical_start,
                                                                           vertical_end,
                                                                           colour_channel)
-    print(f"\n\n\n IAMMMM AN IMAGEEE WITRH SHAPEEE - {image.shape} \n\n")
     if colour_channel == ColourChannel.RED:
         skeleton_image[:,:,0] = 0 #blue channel
         skeleton_image[:,:,1] = 0 #green channel
@@ -180,7 +179,6 @@ def show_saturated_points(image: np.ndarray,
 
     else:
         skeleton_image = cv2.cvtColor(image, cv2.COLOR_GRAY2BGR)
-    print(f"\n\n I AMMMM SKELELTON IMAGFER WITH SHAPE: {skeleton_image.shape}")
     skeleton_image = overlay_scintillator_edges(skeleton_image,
                                        horizontal_start,
                                        horizontal_end,
