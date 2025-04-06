@@ -6,4 +6,4 @@ from src.classes.JSON_request_bodies.video_request_body import *
 from src.classes.JSON_request_bodies.experiment_request_bodies import *
 from src.classes.JSON_request_bodies.beam_run_request_bodies import *
 from src.classes.JSON_request_bodies.photo_request_bodies import *
-
+from src.classes.JSON_request_bodies.camera_request_bodies import *

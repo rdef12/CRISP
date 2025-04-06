@@ -66,9 +66,13 @@ import { Form, useCreateController } from "react-admin"
     // </div>
 
 export const TakeTestData = () => {
-  const { beamRunId } = useParams();
-  const { save, isPending } = useCreateController({ resource: `photo/beam-run/test/${beamRunId}`, redirect: false })
+  const { experimentId, beamRunId } = useParams();
+  const { save, saving, isPending } = useCreateController({
+    resource: `photo/beam-run/test/${beamRunId}`,
+    redirect: `/experiment/${experimentId}/beam-run/test/${beamRunId}`
+  })
   if (isPending) return null;
+  if (saving) return (<h1>Taking data</h1>);
   return (
     <Form onSubmit={save}>
       <Button>
