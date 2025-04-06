@@ -3,7 +3,6 @@ import cv2 as cv
 from scipy.optimize import curve_fit, OptimizeWarning
 import warnings
 import matplotlib.pyplot as plt
-from scipy.special import voigt_profile
 from itertools import product
 import math
 import io
@@ -69,22 +68,12 @@ def gaussian_with_background_noise(w, w0, a, sgm, background):
     return (a/sgm) * np.exp(-0.5 * ((w - w0)/sgm)**2) + background
 
 
-def voigt(w, w0, a, sgm, gamma):
-    '''
-    a = scale factor
-    sgm = standard deviation/sigma
-    gamma = Lorentzian HWHM
-    '''
-    return a * voigt_profile(w-w0, sgm, gamma)
+def super_gaussian(w, w0, a, sgm, n):
+    return (a/sgm) * np.exp(-(0.5 * ((w - w0)/sgm)**2)**n)
 
 
-def voigt_with_background_noise(w, w0, a, sgm, gamma, background):
-    '''
-    a = scale factor
-    sgm = standard deviation/sigma
-    gamma = Lorentzian HWHM
-    '''
-    return a * voigt_profile(w-w0, sgm, gamma) + background
+def super_gaussian_with_background_noise(w, w0, a, sgm, n, background):
+    return (a/sgm) * np.exp(-(0.5 * ((w - w0)/sgm)**2)**n) + background
 
 
 
@@ -109,79 +98,61 @@ def fit_gaussian_to_beam_profile(pixel_vertical_coords, column_of_brightness_val
     gaussian_sigma_estimate = np.std(column_of_brightness_vals)
     gaussian_scale_estimate = np.max(column_of_brightness_vals) * gaussian_sigma_estimate * np.sqrt(2*np.pi)
         
+    first_lower_bounds = [-np.inf,  # No lower bound for the 1st parameter (center)
+                    -np.inf,  # No lower bound for the 2nd parameter (scale)
+                    -np.inf,  # No lower bound for the 3rd parameter (sigma)
+                    1]      # lower bound for n
+
+    first_upper_bounds = [np.inf,   # No upper bound for the 1st parameter (center)
+                    np.inf,   # No upper bound for the 2nd parameter (scale)
+                    np.inf,   # No upper bound for the 3rd parameter (sigma)
+                    np.inf]  # upper bound for n (sub Gaussian or Gaussian only!)
+    
+    second_lower_bounds = [-np.inf,  # No lower bound for the 1st parameter (center)
+                    -np.inf,  # No lower bound for the 2nd parameter (scale)
+                    -np.inf,  # No lower bound for the 3rd parameter (sigma)
+                    1, # lower bound for n
+                    -np.inf] # No lower bound for the 5th parameter (background)
+
+    second_upper_bounds = [np.inf,   # No upper bound for the 1st parameter (center)
+                    np.inf,   # No upper bound for the 2nd parameter (scale)
+                    np.inf,   # No upper bound for the 3rd parameter (sigma)
+                    np.inf,  # upper bound for n (sub Gaussian or Gaussian only!)
+                    np.inf]  # No upper bound for the 5th parameter (background)
+
     try:
-        gaussian_paramters, parameter_cov = curve_fit(gaussian, pixel_vertical_coords, column_of_brightness_vals,
+        super_gauss_paramters, parameter_cov = curve_fit(super_gaussian, pixel_vertical_coords, column_of_brightness_vals,
                                             p0 = (gaussian_center_estimate,
                                                     gaussian_scale_estimate,
-                                                    gaussian_sigma_estimate),
+                                                    gaussian_sigma_estimate,
+                                                    1),
                                             sigma=column_of_brightness_errors,
-                                            absolute_sigma=True)
+                                            absolute_sigma=True,
+                                            bounds=(first_lower_bounds, first_upper_bounds))
         
         column_of_brightness_vals += background_estimate
-        gaussian_paramters, parameter_cov = curve_fit(gaussian_with_background_noise, pixel_vertical_coords, column_of_brightness_vals,
-                                            p0 = (gaussian_paramters[0],
-                                                    gaussian_paramters[1],
-                                                    gaussian_paramters[2],
+        super_gauss_paramters, parameter_cov = curve_fit(super_gaussian_with_background_noise, pixel_vertical_coords, column_of_brightness_vals,
+                                            p0 = (super_gauss_paramters[0],
+                                                    super_gauss_paramters[1],
+                                                    super_gauss_paramters[2],
+                                                    super_gauss_paramters[3],
                                                     background_estimate),
                                             sigma=column_of_brightness_errors,
-                                            absolute_sigma=True)
+                                            absolute_sigma=True,
+                                            bounds=(second_lower_bounds, second_upper_bounds))
         
-        error_on_gaussian_center = np.sqrt(parameter_cov[0, 0])
+        error_on_super_gaussian_center = np.sqrt(parameter_cov[0, 0])
         
-        num_of_dof = len(pixel_vertical_coords) - 4 # Because 4 fit parameters
-        fitted_pixel_values = gaussian_with_background_noise(pixel_vertical_coords, gaussian_paramters[0], gaussian_paramters[1], gaussian_paramters[2], gaussian_paramters[3])
+        num_of_dof = len(pixel_vertical_coords) - 5 # 5 fit params
+        fitted_pixel_values = super_gaussian_with_background_noise(pixel_vertical_coords, *super_gauss_paramters)
         reduced_chi_squared = chi_squared_function(column_of_brightness_vals, column_of_brightness_errors, fitted_pixel_values) / num_of_dof
         
-        #Check for Covariance estimation failure
-        if gaussian_paramters[2] <= 1: # Sketchy method for now
-            print("Covariance estimation failed")
-            successful_fit = False
-        else:
-            successful_fit = True
-        
-        return gaussian_paramters, error_on_gaussian_center, reduced_chi_squared, successful_fit
-    
+        successful_fit = True
+        return super_gauss_paramters, error_on_super_gaussian_center, reduced_chi_squared, successful_fit
+
     except RuntimeError as e:
         successful_fit = False
         return float("nan"), float("nan"), float("nan"),  successful_fit
-        
-    #     voigt_paramters, parameter_cov = curve_fit(voigt, pixel_vertical_coords, column_of_brightness_vals,
-    #                                         p0 = (gaussian_center_estimate,
-    #                                                 gaussian_scale_estimate,
-    #                                                 gaussian_sigma_estimate,
-    #                                                 0),
-    #                                         sigma=column_of_brightness_errors,
-    #                                         absolute_sigma=True)
-        
-    #     column_of_brightness_vals += background_estimate
-    #     voigt_paramters, parameter_cov = curve_fit(voigt_with_background_noise, pixel_vertical_coords, column_of_brightness_vals,
-    #                                         p0 = (voigt_paramters[0],
-    #                                                 voigt_paramters[1],
-    #                                                 voigt_paramters[2],
-    #                                                 voigt_paramters[3],
-    #                                                 background_estimate),
-    #                                         sigma=column_of_brightness_errors,
-    #                                         absolute_sigma=True)
-        
-    #     error_on_voigt_center = np.sqrt(parameter_cov[0, 0])
-        
-    #     num_of_dof = len(pixel_vertical_coords) - 5 # Because 4 fit parameters
-    #     fitted_pixel_values = voigt_with_background_noise(pixel_vertical_coords, voigt_paramters[0], voigt_paramters[1], voigt_paramters[2], voigt_paramters[3], voigt_paramters[4])
-    #     reduced_chi_squared = chi_squared_function(column_of_brightness_vals, column_of_brightness_errors, fitted_pixel_values) / num_of_dof
-        
-    #     # Check for Covariance estimation failure
-    #     if voigt_paramters[2] <= 1: # Sketchy method for now
-    #         print("Covariance estimation failed")
-    #         successful_fit = False
-    #         return float("nan"), float("nan"), float("nan"),  successful_fit
-    #     else:
-    #         successful_fit = True
-            
-    #         return voigt_paramters, error_on_voigt_center, reduced_chi_squared, successful_fit
-
-    # except RuntimeError as e:
-    #     successful_fit = False
-    #     return float("nan"), float("nan"), float("nan"),  successful_fit     
     
 
 def fit_beam_profile_along_full_roi(channel, channel_std, h_bounds, v_bounds, show_fit_qualities: bool=False,
@@ -192,8 +163,7 @@ def fit_beam_profile_along_full_roi(channel, channel_std, h_bounds, v_bounds, sh
         roi_horizontal_coords = np.arange(h_bounds[0], h_bounds[1], 1)
         total_profile_brightness, unc_total_profile_brightness = [], []
 
-        fitted_parameters_array = np.empty((0, 4), float) # FOR GAUSSIAN FITTING
-        #fitted_parameters_array = np.empty((0, 5), float) # FOR VOIGT FITTING
+        fitted_parameters_array = np.empty((0, 5), float) # FOR SUPER GAUSSIAN FITTING
         beam_center_error_array = np.array([])
         reduced_chi_squared_array = []
         
@@ -256,19 +226,17 @@ def plot_beam_profile(channel, channel_std, horizontal_coord, v_bounds, global_b
     fitted_parameters, _, reduced_chi_squared, _ = fit_gaussian_to_beam_profile(pixel_vertical_coords, column_of_brightness_vals, column_of_brightness_errors,
                                                                                                           global_background_estimate)
 
-    gaussian_center, scale_factor, sigma, background_noise = fitted_parameters
-    # gaussian_center, scale_factor, sigma, gamma, background_noise = fitted_parameters # FOR VOIGT FITTING
+    gaussian_center, scale_factor, sigma, n, background_noise = fitted_parameters # FOR SUPER GAUSSIAN FITTING
     
     pixel_height_linspace = np.linspace(pixel_vertical_coords[0], pixel_vertical_coords[-1] + 1, 1000)
-    fitted_pixel_values = gaussian_with_background_noise(pixel_height_linspace, gaussian_center, scale_factor, sigma, background_noise)
-    #fitted_pixel_values = voigt_with_background_noise(pixel_height_linspace, gaussian_center, scale_factor, sigma, gamma, background_noise) # FOR VOIGT FITTING
+    fitted_pixel_values = super_gaussian_with_background_noise(pixel_height_linspace, gaussian_center, scale_factor, sigma, n, background_noise) # FOR SUPER GAUSSIAN FITTING
     
     # Compute residuals
-    residuals = column_of_brightness_vals - gaussian_with_background_noise(pixel_vertical_coords, gaussian_center, scale_factor, sigma, background_noise)
-    # residuals = column_of_brightness_vals - voigt_with_background_noise(pixel_vertical_coords, gaussian_center, scale_factor, sigma, gamma, background_noise) # FOR VOIGT FITTING
+    residuals = column_of_brightness_vals - super_gaussian_with_background_noise(pixel_vertical_coords, gaussian_center, scale_factor, sigma, n, background_noise)
     
     # Create figure and subplots
     fig, axs = plt.subplots(2, 1, gridspec_kw={'height_ratios': [3, 1]}, figsize=(8, 6), sharex=True)
+    
     
     # Plot the beam profile with Gaussian fit
     axs[0].step(pixel_vertical_coords, column_of_brightness_vals, color='black', zorder=9)

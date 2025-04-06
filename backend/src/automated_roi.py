@@ -105,10 +105,27 @@ def get_automated_roi(image, scintillator_horizontal_roi, scintillator_vertical_
         # print("\n\nx bounds: ", x_bounds)
         # print("\n\ny bounds: ", y_bounds)
         
-        print(x_bounds, y_bounds)
         original_image_x_bounds = x_bounds + scintillator_horizontal_roi[0] 
         original_image_y_bounds = y_bounds + scintillator_vertical_roi[0]
         
+        automated_roi_restricted_region = image[original_image_y_bounds[0]:original_image_y_bounds[1], original_image_x_bounds[0]:original_image_x_bounds[1]]
+    
+        # inRange here gets all pixels between 0 and 1 pixel intensity
+        low_intensity_mask = cv.inRange(automated_roi_restricted_region, 0, 1/255) # image normalised by inRange
+        if low_intensity_mask is not None:
+            scintillator_mask = cv.bitwise_not(low_intensity_mask)
+            # Find rows that contain only 255s (i.e., no low intensity at all)
+            valid_rows = np.where(np.all(scintillator_mask == 255, axis=1))[0]
+
+            if len(valid_rows) > 0:
+                y_start, y_end = valid_rows[0], valid_rows[-1] + 1
+                cropped = automated_roi_restricted_region[y_start:y_end, :]
+            else:
+                raise ValueError("No valid rows found in the scintillator mask.")
+            
+            original_image_y_bounds[0] += y_start
+            original_image_y_bounds[1] = original_image_y_bounds[0] + (y_end - y_start)
+    
         base64_roi_image = get_image_with_roi(image, original_image_x_bounds, original_image_y_bounds, show_plot=show_images)
         
         return (original_image_x_bounds, original_image_y_bounds), base64_roi_image

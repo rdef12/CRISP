@@ -90,16 +90,17 @@ def source_params_from_database(camera_analysis_id: int):
                           cdi.get_vertical_scintillator_limits(camera_id, setup_id)]
     return beam_energy, colour_channel, average_image, unc_average_image, scintillator_edges
 
+
 def get_beam_angle_and_bragg_peak_pixel(camera_analysis_id: int):
     """
     At this point, assume camera objects have already been built and stored in system database.s
     So, this contains the user-defined scintillator edges, the homography matrix, distortion correction
     camera matrices, etc.
     """
+    image_store = ImageByteStrings()
     try:
         beam_energy, colour_channel, average_image, brightness_error, scintillator_edges = source_params_from_database(camera_analysis_id)
-        average_rounded_image = average_image.astype(np.uint8) # could be moved inside automated roi function
-        image_store = ImageByteStrings()
+        average_rounded_image = average_image.astype(np.uint8)  # could be moved inside automated roi function
         
         (h_bounds, v_bounds), base64_roi_image = get_automated_roi(average_rounded_image, scintillator_edges[0], scintillator_edges[1], 
                                                                    show_images=False, fraction=0.16)
@@ -126,6 +127,10 @@ def get_beam_angle_and_bragg_peak_pixel(camera_analysis_id: int):
         # brightness_error = np.sqrt(rotation_brightness_error**2 + brightness_error**2) # TODO - NOT WORKING ATM
         rotated_image = rotated_image.astype(np.float64) # TODO - temp fix - would need addressing in rotate function
         
+        rotated_rounded_image = rotated_image.astype(np.uint8)
+        (h_bounds, v_bounds), _ = get_automated_roi(rotated_rounded_image, scintillator_edges[0], scintillator_edges[1], 
+                                                    show_images=False, fraction=0.16)
+
         # Fit beam profile on rotated image
         (horizontal_coords, fit_parameters_array, beam_center_errors, _,  _, _,
          plot_byte_strings) = fit_beam_profile_along_full_roi(rotated_image, brightness_error,

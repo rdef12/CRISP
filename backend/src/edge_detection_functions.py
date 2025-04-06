@@ -29,9 +29,9 @@ def detect_edges(img):
   t = calculate_threshold(img)
   lower = int(max(0, t * 0.5))
   upper = int(min(255, t))
+  # print(f"Lower threshold: {lower}, Upper threshold: {upper}")
 
-  edges = cv2.Canny(img, lower, upper)
-
+  edges = cv2.Canny(img, lower, upper, apertureSize=5) # apertureSize = 3 is the default value
   return edges
 
 
@@ -57,6 +57,16 @@ def find_beam_contour_extremes(image, horizontal_pixel_width, vertical_pixel_wid
     Binary/greyscale image assumed as input. In our case, it is for the blue channel of the image.
     """
     
+    if show_image:
+      plt.hist(image.ravel(), bins=256)
+      t = calculate_threshold(image)
+      plt.axvline(x=t, color='r', label='Otsu threshold')
+      plt.axvline(x=int(max(0, t * 0.5)), color='g', label='Lower threshold')
+      plt.axvline(x=int(min(255, t)), color='orange', label='Upper threshold')
+      plt.title("Pixel Intensities with thresholds for Canny edge detection")
+      plt.show()
+      plt.close()
+    
     edges = detect_edges(image) # Could look at changing aperture size to smoothen edges further still
 
     if show_image:
@@ -66,7 +76,10 @@ def find_beam_contour_extremes(image, horizontal_pixel_width, vertical_pixel_wid
       plt.show()
     
     # Morphological Operations - dilation and erosion?
+    
+    # kernel = np.ones((3, 3), np.uint8)
     kernel = np.ones((5, 5), np.uint8)
+    # kernel = np.ones((21, 21), np.uint8)
     closed = cv2.morphologyEx(edges, cv2.MORPH_CLOSE, kernel)
     
     contours, _ = cv2.findContours(closed, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
@@ -79,31 +92,46 @@ def find_beam_contour_extremes(image, horizontal_pixel_width, vertical_pixel_wid
         plt.scatter(coords[:, 0], coords[:, 1], s=1, color='red')
       plt.show()
 
-    valid_contours = []
-    valid_minimum_perimeter = int(0.9 * min(horizontal_pixel_width, vertical_pixel_width)) # Still somewhat arbitrary - but now derived from scintillator dimensions
+    valid_contours = {} # key = perimeter, value = contour
+    
+    # This doesn't really work because the bumpy contours get very long relative to this "minimum" value
+    valid_minimum_perimeter = int(0.95 * min(horizontal_pixel_width, vertical_pixel_width)) # Still somewhat arbitrary - but now derived from scintillator dimensions
     for contour in contours:
         perimeter = cv2.arcLength(contour, False) # I think false here means the contour can be open
-        
         if perimeter > valid_minimum_perimeter: 
-            valid_contours.append(contour)
+            valid_contours[perimeter] = contour
+            
+    longest_perimeter = max(valid_contours.keys())
+    longest_contour = valid_contours[longest_perimeter]
+    
+    # epsilon = 0.5 * longest_perimeter # epsilon = how close the approximation is to the original contour
+    # longest_contour = cv2.approxPolyDP(longest_contour, epsilon, True) # smoothened out
             
     if show_image:
       plt.imshow(image)
       plt.title("Valid contours")
-      for contour in valid_contours:
+      for contour in valid_contours.values():
         coords = np.array([pt[0] for pt in contour])
+        if contour is longest_contour:
+          plt.scatter(coords[:, 0], coords[:, 1], s=1, color='green', label='Longest contour')
+          continue
         plt.scatter(coords[:, 0], coords[:, 1], s=1, color='red')
+      plt.legend()
       plt.show()
+    
+    # if longest_contour is None:
+    #     raise Exception("No valid beam contour found!")
+    # x_coords, y_coords = longest_contour[:, 0, 0], longest_contour[:, 0, 1]
 
     if valid_contours:
-        all_points = np.vstack(valid_contours) # Collect all x, y points from all valid contours
-        x_coords, y_coords = all_points[:, 0, 0], all_points[:, 0, 1]
+      all_points = np.vstack([contour.reshape(-1, 2) for contour in valid_contours.values()]) # Collect all x, y points from all valid contours
+      x_coords, y_coords = all_points[:, 0], all_points[:, 1]
     else:
         print("No valid beam contour found! Will try using contours without blemish detection")
-        exit()
+        raise Exception("No valid beam contour found!")
     
     x_min, x_max = np.min(x_coords), np.max(x_coords)
     y_min, y_max = np.min(y_coords), np.max(y_coords)
-      
+    
     return np.array([x_min, x_max]), np.array([y_min, y_max])
 
