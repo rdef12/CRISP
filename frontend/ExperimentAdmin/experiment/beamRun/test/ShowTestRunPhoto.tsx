@@ -1,8 +1,8 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { useGetOne, useDataProvider } from "react-admin";
-import { useEffect, useState } from "react";
+import { useDataProvider } from "react-admin";
 import { useParams } from "react-router-dom";
+import { ImageOverlayCarousel } from "./ImageOverlayCarousel";
 
 interface TestSetting {
   id: number;
@@ -21,26 +21,19 @@ interface ShowTestRunPhotoProps {
   onRefresh: () => void;
 }
 
+
+
 export const ShowTestRunPhoto = ({ isOpen, onOpenChange, selectedSetting, onSubmit, onRefresh }: ShowTestRunPhotoProps) => {
   const { beamRunId } = useParams();
-  const [imageUrl, setImageUrl] = useState<string | null>(null);
   const dataProvider = useDataProvider();
   
-  const { data: imageData, isLoading } = useGetOne(
-    `photo/beam-run/test/${beamRunId}/camera-settings`,
-    { id: selectedSetting?.camera_settings_id },
-    { enabled: !!selectedSetting && isOpen }
-  );
+  // const { data: imageData, isLoading } = useGetOne(
+  //   `photo/beam-run/test/${beamRunId}/camera-settings`,
+  //   { id: selectedSetting?.camera_settings_id },
+  //   { enabled: !!selectedSetting && isOpen }
+  // );
 
-  useEffect(() => {
-    console.log('Image Data:', imageData);
-    if (imageData?.photo) {
-      console.log('Setting image URL with data:', imageData.photo);
-      setImageUrl(`data:image/jpeg;base64,${imageData.photo}`);
-    } else {
-      console.log('No image data available');
-    }
-  }, [imageData]);
+
 
   const handleSubmit = async () => {
     if (!selectedSetting) return;
@@ -104,28 +97,31 @@ export const ShowTestRunPhoto = ({ isOpen, onOpenChange, selectedSetting, onSubm
             </table>
           )}
         </DialogHeader>
-        {selectedSetting && (
-          <div className="flex-1 overflow-y-auto space-y-4 mt-4">
-            {/* Image Display */}
-            <div className="w-full">
-              {isLoading ? (
-                <div className="text-center">Loading image...</div>
-              ) : imageUrl ? (
-                <div className="relative w-full overflow-hidden rounded-lg">
-                  <img 
-                    src={imageUrl} 
-                    alt="Test Run Photo"
-                    className="w-full object-contain"
-                    onError={(e) => console.error('Image loading error:', e)}
-                  />
-                </div>
-              ) : (
-                <div className="text-center text-gray-500">No image available</div>
-              )}
-            </div>
-          </div>
-        )}
+
+        <ImageOverlayCarousel selectedSetting={selectedSetting}/>
       </DialogContent>
     </Dialog>
   );
 }; 
+
+// {selectedSetting && (
+//   <div className="flex-1 overflow-y-auto space-y-4 mt-4">
+//     {/* Image Display */}
+//     <div className="w-full">
+//       {isLoading ? (
+//         <div className="text-center">Loading image...</div>
+//       ) : imageUrl ? (
+//         <div className="relative w-full overflow-hidden rounded-lg">
+//           <img 
+//             src={imageUrl} 
+//             alt="Test Run Photo"
+//             className="w-full object-contain"
+//             onError={(e) => console.error('Image loading error:', e)}
+//           />
+//         </div>
+//       ) : (
+//         <div className="text-center text-gray-500">No image available</div>
+//       )}
+//     </div>
+//   </div>
+// )}

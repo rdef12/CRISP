@@ -4,7 +4,7 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 import pytz
 from sqlmodel import Session, select
-from src.gain_automation import set_optimal_settings
+from src.gain_automation import ColourChannel, set_optimal_settings, show_saturated_points
 from src.database.database import engine
 
 
@@ -197,14 +197,44 @@ def get_all_distortion_calibration_images(setup_camera_id: int, response: Respon
     
 
 
+# @router.get("/beam-run/test/{beam_run_id}/camera-settings/{camera_settings_id}")
+# def get_test_run_photo(beam_run_id: int, camera_settings_id: int):
+#     with Session(engine) as session:
+#         photo_statement = select(Photo).where(Photo.camera_settings_link_id == camera_settings_id)
+#         photo = session.exec(photo_statement).one()
+#         horizontal_start, horizontal_end, vertical_start, vertical_end = cdi.get_scintillator_edges_by_photo_id(photo.id)
+#         image = load_image_byte_string_to_opencv(photo.photo)
+#         image = show_saturated_points(image,
+#                                         horizontal_start,
+#                                         horizontal_end,
+#                                         vertical_start,
+#                                         vertical_end,
+#                                         colour_channel=ColourChannel.RED)
+#         photo_base64 = base64.b64encode(image).decode("utf-8")
+#         return rb.TestRunPhotoGet(id=camera_settings_id,
+#                                   photo=photo_base64)
+    
+
 @router.get("/beam-run/test/{beam_run_id}/camera-settings/{camera_settings_id}")
-def get_test_run_photo(beam_run_id: int, camera_settings_id: int):
+def get_test_run_overlays(camera_settings_id: int, response: Response):
+    overlayed_images = [] 
     with Session(engine) as session:
         photo_statement = select(Photo).where(Photo.camera_settings_link_id == camera_settings_id)
         photo = session.exec(photo_statement).one()
-        photo_base64 = base64.b64encode(photo.photo).decode("utf-8")
-        return rb.TestRunPhotoGet(id=camera_settings_id,
-                                  photo=photo_base64)
+        horizontal_start, horizontal_end, vertical_start, vertical_end = cdi.get_scintillator_edges_by_photo_id(photo.id)
+        image = load_image_byte_string_to_opencv(photo.photo)
+        for count, colour_channel in enumerate(ColourChannel):
+            overlayed_image = show_saturated_points(image,
+                                        horizontal_start,
+                                        horizontal_end,
+                                        vertical_start,
+                                        vertical_end,
+                                        colour_channel=colour_channel)
+            overlayed_image_bytes = base64.b64encode(overlayed_image).decode("utf-8") 
+            overlayed_images += [rb.TestRunPhotoGet(id=count, photo=overlayed_image_bytes)]
+    response.headers["Content-Range"] = str(len(overlayed_images))
+    return overlayed_images
+            
 
 @router.get("/beam-run/real/{beam_run_id}/camera/{camera_id}")
 def get_real_run_photo(beam_run_id: int, camera_id: int, response: Response):
@@ -271,6 +301,6 @@ def take_test_beam_run_images(beam_run_id: int):
         print(f"\n\n\n Pictures taken \n\n")
         
         for photo_id_array in results_dict.values():
-            set_optimal_settings(photo_id_array, threshold=5)
+            set_optimal_settings(photo_id_array, threshold=5) #TODO Blue channel hardcoded currently
         return rb.RealRunPhotoPostResponse(id=beam_run_id)
     
