@@ -1,4 +1,4 @@
-"""
+b"""
 Takes camera objects as input (two at first - AR and HQ) - the general system
 should be ready to use the top AR cam at the Christie.
 

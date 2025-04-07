@@ -35,14 +35,56 @@ def pinpoint_bragg_peak(camera_analysis_id_list):
         print(f"Error when pinpointing bragg peak: {e}")
 
 
-def build_directional_vector_of_beam_center(side_camera_analysis_id: int, top_camera_analysis_id: int):
+def calculate_beam_incidence_and_directional_vector(
+    physical_bragg_peak_position, bragg_peak_error, top_cam_beam_angle, unc_top_cam_beam_angle,
+    side_cam_beam_angle, unc_side_cam_beam_angle):
+
+    x_b, y_b, z_b = physical_bragg_peak_position
+    unc_x_b, unc_y_b, unc_z_b = bragg_peak_error
+
+    theta_xz, theta_yz = np.deg2rad(top_cam_beam_angle), np.deg2rad(side_cam_beam_angle)
+    unc_theta_xz, unc_theta_yz = np.deg2rad(unc_top_cam_beam_angle), np.deg2rad(unc_side_cam_beam_angle)
+
+    # Calculate beam center incident position
+    beam_center_incident_position = np.array([
+        x_b + z_b * np.tan(theta_xz),
+        y_b - z_b * np.tan(theta_yz),
+        0
+    ])
+
+    # Calculate directional vector
+    directional_vector_x = z_b * np.tan(theta_xz)
+    directional_vector_y = -z_b * np.tan(theta_yz)
+    directional_vector_z = -z_b
+    beam_direction_vector = np.array([directional_vector_x, directional_vector_y, directional_vector_z])
+
+    # Calculate uncertainties
+    x_component_fractional_quadrature = fractional_addition_in_quadrature(
+        [z_b, theta_xz], [unc_z_b, unc_theta_xz], z_b * theta_xz
+    )
+    y_component_fractional_quadrature = fractional_addition_in_quadrature(
+        [z_b, theta_yz], [unc_z_b, unc_theta_yz], z_b * theta_yz
+    )
+    unc_beam_directional_vector = np.array([
+        x_component_fractional_quadrature,
+        y_component_fractional_quadrature,
+        unc_z_b
+    ])
+
+    unc_beam_center_incident_position_x = normal_addition_in_quadrature([x_component_fractional_quadrature, unc_x_b])
+    unc_beam_center_incident_position_y = normal_addition_in_quadrature([y_component_fractional_quadrature, unc_y_b])
+    unc_beam_center_incident_position = np.array([
+        unc_beam_center_incident_position_x,
+        unc_beam_center_incident_position_y,
+        0
+    ])
+
+    return beam_center_incident_position, unc_beam_center_incident_position, beam_direction_vector, unc_beam_directional_vector
+
+
+def build_directional_vector_of_beam_center_for_camera_pair(side_camera_analysis_id: int, top_camera_analysis_id: int):
     """
-    Physical Bragg position must be 3D
-    
-    The vector eqn should be understood as (3d_bragg_peak_position) + mu * (directional_vector)
-    0 <= mu <= 1. With the directional vector pointing from the Bragg peak to the incident beam position.
-    
-    Using unc_theta rather than unc_tan_theta by appeal to the small angle approximation
+    Physical Bragg position must be 3D.
     """
     side_camera_settings_link_id = cdi.get_camera_settings_link_id_by_camera_analysis_id(side_camera_analysis_id)
     top_camera_settings_link_id = cdi.get_camera_settings_link_id_by_camera_analysis_id(top_camera_analysis_id)
@@ -51,50 +93,85 @@ def build_directional_vector_of_beam_center(side_camera_analysis_id: int, top_ca
     beam_run_id = cdi.get_beam_run_id_by_camera_settings_link_id(side_camera_settings_link_id)
     experiment_id = cdi.get_experiment_id_from_beam_run_id(beam_run_id)
     setup_id = cdi.get_setup_id_from_experiment_id(experiment_id)
+
     side_camera_optical_axis = cdi.get_camera_optical_axis(side_camera_id, setup_id)
     top_camera_optical_axis = cdi.get_camera_optical_axis(top_camera_id, setup_id)
     if side_camera_optical_axis != "x":
         raise ValueError(f"Expected side camera optical axis to be 'x', but got '{side_camera_optical_axis}'")
     if top_camera_optical_axis != "y":
         raise ValueError(f"Expected top camera optical axis to be 'y', but got '{top_camera_optical_axis}'")
-    
-    
+
     physical_bragg_peak_position = cdi.get_bragg_peak_3d_position(beam_run_id)
     bragg_peak_error = cdi.get_unc_bragg_peak_3d_position(beam_run_id)
     top_cam_beam_angle, unc_top_cam_beam_angle = cdi.get_beam_angle(top_camera_analysis_id), cdi.get_unc_beam_angle(top_camera_analysis_id)
     side_cam_beam_angle, unc_side_cam_beam_angle = cdi.get_beam_angle(side_camera_analysis_id), cdi.get_unc_beam_angle(side_camera_analysis_id)
+
+    return calculate_beam_incidence_and_directional_vector(
+        physical_bragg_peak_position, bragg_peak_error, top_cam_beam_angle, unc_top_cam_beam_angle,
+        side_cam_beam_angle, unc_side_cam_beam_angle
+    )
     
-    x_b, y_b, z_b = physical_bragg_peak_position
-    unc_x_b, unc_y_b, unc_z_b = bragg_peak_error
+
+def build_directional_vector_of_beam_center_for_beam_run(beam_run_id: int, side_cam_beam_angle, unc_side_cam_beam_angle,
+                                                         top_cam_beam_angle, unc_top_cam_beam_angle):
+    """
+    Physical Bragg position must be 3D.
+    """
+    physical_bragg_peak_position = cdi.get_bragg_peak_3d_position(beam_run_id)
+    bragg_peak_error = cdi.get_unc_bragg_peak_3d_position(beam_run_id)
+
+    return calculate_beam_incidence_and_directional_vector(
+        physical_bragg_peak_position, bragg_peak_error, top_cam_beam_angle, unc_top_cam_beam_angle,
+        side_cam_beam_angle, unc_side_cam_beam_angle
+    )
     
-    theta_xz, theta_yz = np.deg2rad(top_cam_beam_angle), np.deg2rad(side_cam_beam_angle)
-    unc_theta_xz, unc_theta_yz = np.deg2rad(unc_top_cam_beam_angle), np.deg2rad(unc_side_cam_beam_angle)
+def compute_weighted_mean_of_array(array: np.ndarray, unc_array: np.ndarray):
+    numerator_array = np.sum(array / unc_array**2, axis=0)
+    denominator_array = np.sum(1 / unc_array**2, axis=0)
+    weighted_mean = numerator_array / denominator_array
+    unc_weighted_mean = np.sqrt(1 /denominator_array)
+    return weighted_mean, unc_weighted_mean
+
+def build_weighted_directional_vector_of_beam_center(side_camera_analysis_id_list: list[int], top_camera_analysis_id_list: list[int]):
     
-    beam_center_incident_position = np.array([x_b + z_b * np.tan(theta_xz),
-                                                y_b - z_b * np.tan(theta_yz), 0])
+    camera_settings_link_id = cdi.get_camera_settings_link_id_by_camera_analysis_id(side_camera_analysis_id_list[0])
+    beam_run_id = cdi.get_beam_run_id_by_camera_settings_link_id(camera_settings_link_id)
     
-    directional_vector_x = z_b * np.tan(theta_xz)
-    directional_vector_y = -z_b * np.tan(theta_yz)
-    directional_vector_z = -z_b
-    beam_direction_vector = np.array([directional_vector_x, directional_vector_y, directional_vector_z])
+    side_top_pairings = list(product(side_camera_analysis_id_list, top_camera_analysis_id_list))
+    num_pairings = len(side_top_pairings)
     
-    x_component_fractional_quadrature = fractional_addition_in_quadrature([z_b, theta_xz], [unc_z_b, unc_theta_xz], z_b * theta_xz)
-    y_component_fractional_quadrature = fractional_addition_in_quadrature([z_b, theta_yz], [unc_z_b, unc_theta_yz], z_b * theta_yz)
-    unc_beam_directional_vector = np.array([x_component_fractional_quadrature, y_component_fractional_quadrature, unc_z_b])
+    top_cam_beam_angle_array = np.zeros(num_pairings)
+    side_cam_beam_angle_array = np.zeros(num_pairings)
+    unc_top_cam_beam_angle_array = np.zeros(num_pairings)
+    unc_side_cam_beam_angle_array = np.zeros(num_pairings)
     
-    unc_beam_center_incident_position_x = normal_addition_in_quadrature([x_component_fractional_quadrature, unc_x_b])
-    unc_beam_center_incident_position_y = normal_addition_in_quadrature([y_component_fractional_quadrature, unc_y_b])
-    unc_beam_center_incident_position = np.array([unc_beam_center_incident_position_x, unc_beam_center_incident_position_y, 0])
+    for i, (side_camera_analysis_id, top_camera_analysis_id) in enumerate(side_top_pairings):
+        try:
+            top_cam_beam_angle_array[i] = cdi.get_beam_angle(top_camera_analysis_id)
+            unc_top_cam_beam_angle_array[i] = cdi.get_unc_beam_angle(top_camera_analysis_id)
+            side_cam_beam_angle_array[i] = cdi.get_beam_angle(side_camera_analysis_id)
+            unc_side_cam_beam_angle_array[i] = cdi.get_unc_beam_angle(side_camera_analysis_id)
+        except Exception as e:
+            print(f"Error when retrieving beam angles for side camera {side_camera_analysis_id} and top camera {top_camera_analysis_id}: {e}")
     
+    if num_pairings == 1:
+        return build_directional_vector_of_beam_center_for_beam_run(beam_run_id, side_cam_beam_angle_array[0], unc_side_cam_beam_angle_array[0],
+                                                                    top_cam_beam_angle_array[0], unc_top_cam_beam_angle_array[0])
     
-    return beam_center_incident_position, unc_beam_center_incident_position, beam_direction_vector, unc_beam_directional_vector
+    weighted_side_cam_beam_angle, unc_weighted_side_cam_beam_angle = compute_weighted_mean_of_array(side_cam_beam_angle_array, unc_side_cam_beam_angle_array)
+    weighted_top_cam_beam_angle, unc_weighted_top_cam_beam_angle = compute_weighted_mean_of_array(top_cam_beam_angle_array, unc_top_cam_beam_angle_array)
+    
+    # Beam vector constructed using weighted angles seen by side and top cameras
+    return build_directional_vector_of_beam_center_for_beam_run(beam_run_id, weighted_side_cam_beam_angle, unc_weighted_side_cam_beam_angle,
+                                                                weighted_top_cam_beam_angle, unc_weighted_top_cam_beam_angle)
+    
 
 
 def compute_bragg_peak_depth(beam_run_id: int, side_camera_analysis_id: int, top_camera_analysis_id: int):
     
     bragg_peak_3d_position = cdi.get_bragg_peak_3d_position(beam_run_id)
     unc_bragg_peak_3d_position = cdi.get_unc_bragg_peak_3d_position(beam_run_id)
-    beam_center_incident_position, unc_beam_center_incident_position, _, _ = build_directional_vector_of_beam_center(beam_run_id, side_camera_analysis_id, top_camera_analysis_id)
+    beam_center_incident_position, unc_beam_center_incident_position, _, _ = build_directional_vector_of_beam_center_for_camera_pair(side_camera_analysis_id, top_camera_analysis_id)
     
     bragg_peak_distance_inside_scintillator = calculate_3d_euclidian_distance(bragg_peak_3d_position - beam_center_incident_position)
     unc_bragg_peak_distance_inside_scintillator = calculate_3d_euclidian_distance(np.array([

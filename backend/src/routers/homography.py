@@ -623,6 +623,7 @@ def test_beam_analysis_api():
         beam_run_id = cdi.get_beam_run_id_by_camera_settings_link_id(side_camera_settings_link_id)
 
         first_results = get_beam_angle_and_bragg_peak_pixel(side_camera_analysis_id)
+        print("\n\n\nFINISHED\n\n\n")
         print(f"\n\nBeam angle: {first_results['beam_angle']} +/- {first_results['beam_angle_error']}")
         print(f"\n\nBragg peak pixel: {first_results['bragg_peak_pixel']} +/- {first_results['bragg_peak_pixel_error']}")
         
@@ -678,9 +679,13 @@ def test_beam_reconstruction_api():
         side_camera_settings_link_id = cdi.get_camera_settings_link_id_by_camera_analysis_id(side_camera_analysis_id)
         beam_run_id = cdi.get_beam_run_id_by_camera_settings_link_id(side_camera_settings_link_id)
 
-        # Beam vector construction - TODO - use average angles from all cameras of a given perspective to build a global beam path vector
+        # METHOD 1
+        # beam_center_incident_position, unc_beam_center_incident_position, \
+        # beam_direction_vector, unc_beam_direction_vector = build_directional_vector_of_beam_center_for_camera_pair(side_camera_analysis_id, top_camera_analysis_id)
+        
+        # METHOD 2 - produces weighted beam path vector
         beam_center_incident_position, unc_beam_center_incident_position, \
-        beam_direction_vector, unc_beam_direction_vector = build_directional_vector_of_beam_center(beam_run_id, side_camera_analysis_id, top_camera_analysis_id)
+        beam_direction_vector, unc_beam_direction_vector = build_weighted_directional_vector_of_beam_center([side_camera_analysis_id], [top_camera_analysis_id])
         
         # Get beam center coords in side cam image
         side_cam_beam_center_coords, unc_side_cam_beam_center_coords, \

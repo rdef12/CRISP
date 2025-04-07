@@ -321,7 +321,8 @@ def extract_incident_beam_angle(horizontal_coords, beam_center_vertical_coords, 
 
     fitted_angle, unc_fitted_angle = np.rad2deg(fitted_angle), np.rad2deg(unc_fitted_angle)
     
-    fitted_label = r"$\alpha = $" + f"{fitted_angle:.3g}" + " \u00B1 " + f"{unc_fitted_angle:.3g}" + "\u00B0" + "\n" + r"Reduced $\chi^2$ = " + str(round(chi_squared_reduced, 2))
+    fitted_label = r"$\alpha = $" + f"{fitted_angle:.3g}" + " \u00B1 " + f"{unc_fitted_angle:.3g}" + \
+    "\u00B0" + "\n" + r"Reduced $\chi^2$ = " + str(round(chi_squared_reduced, 2))
     
     
     fig, axs = plt.subplots(2, 1, gridspec_kw={'height_ratios': [3, 1]}, figsize=(8, 6), sharex=True)
