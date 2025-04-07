@@ -38,16 +38,16 @@ def average_pixel_over_multiple_images(camera_analysis_id: int):
     photo_id_array = cdi.get_successfully_captured_photo_ids_by_camera_settings_link_id(camera_settings_link_id)
     colour_channel = cdi.get_colour_channel(camera_analysis_id)
     
+    camera_id = (cdi.get_camera_and_settings_ids(camera_settings_link_id)["camera_id"])
+    beam_run_id = cdi.get_beam_run_id_by_camera_settings_link_id(camera_settings_link_id)
+    experiment_id = cdi.get_experiment_id_from_beam_run_id(beam_run_id)
+    setup_id = cdi.get_setup_id_from_experiment_id(experiment_id)
+    
     num_of_images_used = len(photo_id_array)
     test_photo_bytes = cdi.get_photo_from_id(photo_id_array[0])
     test_image = load_image_byte_string_to_opencv(test_photo_bytes)
     
     if correct_for_distortion := cdi.check_for_distortion_correction_condition(camera_id, setup_id):
-        camera_id = (cdi.get_camera_and_settings_ids(camera_settings_link_id)["camera_id"])
-        beam_run_id = cdi.get_beam_run_id_by_camera_settings_link_id(camera_settings_link_id)
-        experiment_id = cdi.get_experiment_id_from_beam_run_id(beam_run_id)
-        setup_id = cdi.get_setup_id_from_experiment_id(experiment_id)
-        
         camera_matrix = cdi.get_camera_matrix(camera_id, setup_id)
         distortion_coefficients = cdi.get_distortion_coefficients(camera_id, setup_id)
         original_frame_size = determine_frame_size(image=test_image)
