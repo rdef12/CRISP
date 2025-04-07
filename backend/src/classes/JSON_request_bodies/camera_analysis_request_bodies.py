@@ -10,7 +10,7 @@ class CameraAnalysisPostResponse(BaseModel):
     id: int
 
 
-class CameraAnalysisGetAveragedPhotoReponse(BaseModel):
+class CameraAnalysisGetReponse(BaseModel):
     id: int
     cameraSettingsId: Optional[int] = None
     colourChannel: Optional[str] = None
@@ -19,4 +19,5 @@ class CameraAnalysisGetAveragedPhotoReponse(BaseModel):
     beamAngleUncertainty: Optional[float] = None
     braggPeakPixel: Optional[List[float]] = None
     braggPeakPixelUncertainty: Optional[List[float]] = None
+    plots: Optional[List[str]] = None
     

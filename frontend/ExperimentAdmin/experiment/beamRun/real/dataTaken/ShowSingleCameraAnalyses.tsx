@@ -3,6 +3,7 @@ import { useGetOne, useRecordContext } from "react-admin";
 import { ShowAveragedPhoto } from "./ShowAveragedPhoto";
 import { useEffect, useState } from "react";
 import { ShowSingleCameraResults } from "./ShowSingleCameraResults";
+import { ShowSingleCameraAnalysisPlots } from "./ShowSingleCameraAnalysisPlots";
 
 export interface SingleCameraAnalyses {
   id: number;
@@ -13,16 +14,24 @@ export interface SingleCameraAnalyses {
   beamAngleUncertainty: number;
   braggPeakPixel: number[];
   braggPeakPixelUncertainty: number[];
+  plots: string[];
 }
 
-export const ShowSingleCameraAnalyses = () => {
+interface ShowSingleCameraAnalysesProps {
+  refreshTrigger: boolean;
+}
+
+export const ShowSingleCameraAnalyses = ({ refreshTrigger }: ShowSingleCameraAnalysesProps) => {
   const [imageUrl, setImageUrl] = useState<string>("");
 
   const { beamRunId } = useParams();
   const record = useRecordContext();
-  const { error, isPending, data: cameraAnalysis, refetch } = useGetOne(
+  const { data: cameraAnalysis, isPending } = useGetOne(
     `camera-analysis/beam-run/${beamRunId}/camera`,
-    { id: record?.id}
+    { 
+      id: record?.id,
+      meta: { refresh: refreshTrigger }
+    }
   );
   useEffect(() => {
     if (cameraAnalysis?.averageImage) {
@@ -32,10 +41,11 @@ export const ShowSingleCameraAnalyses = () => {
 
   if (isPending) return null;
   
-  const hasAllResults = cameraAnalysis?.beamAngle !== undefined && 
-                       cameraAnalysis?.beamAngleUncertainty !== undefined && 
-                       cameraAnalysis?.braggPeakPixel !== undefined && 
-                       cameraAnalysis?.braggPeakPixelUncertainty !== undefined;
+  const hasAllResults = cameraAnalysis?.beamAngle != null && 
+                       cameraAnalysis?.beamAngleUncertainty != null && 
+                       Array.isArray(cameraAnalysis?.braggPeakPixel) &&
+                       cameraAnalysis?.braggPeakPixel != null && 
+                       cameraAnalysis?.braggPeakPixelUncertainty != null;
   console.log("HASSS ALL RESULTDS: ", hasAllResults)
   console.log("Beam Angle", cameraAnalysis.beamAngle)
   console.log("Beam Angle unc", cameraAnalysis.beamAngleUncertainty)
@@ -58,6 +68,9 @@ export const ShowSingleCameraAnalyses = () => {
           braggPeakPixel={cameraAnalysis.braggPeakPixel}
           braggPeakPixelUncertainty={cameraAnalysis.braggPeakPixelUncertainty}
         />
+      )}
+      {cameraAnalysis?.plots && (
+        <ShowSingleCameraAnalysisPlots plots={cameraAnalysis.plots} />
       )}
     </div>
   )   

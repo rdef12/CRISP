@@ -6,6 +6,8 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 import pytz
 from sqlmodel import Session, select
+from src.single_camera_analysis import get_beam_angle_and_bragg_peak_pixel
+from src.image_processing import average_pixel_over_multiple_images
 from src.database.database import engine
 from PIL import Image
 
@@ -45,12 +47,17 @@ def create_camera_analysis(beam_run_id: int, camera_id: int, payload: rb.CameraA
         camera_settings_id = camera_settings.id
 
         camera_analysis_id = cdi.add_camera_analysis(camera_settings_id, colour_channel)["id"]
-
-
-    return
+        average_pixel_over_multiple_images(camera_analysis_id)
+        results = get_beam_angle_and_bragg_peak_pixel(camera_analysis_id)
+        cdi.update_beam_angle(camera_analysis_id, float(results["beam_angle"]))
+        cdi.update_unc_beam_angle(camera_analysis_id, float(results["beam_angle_error"]))
+        cdi.update_bragg_peak_pixel(camera_analysis_id, [float(x) for x in results["bragg_peak_pixel"].flatten()])
+        cdi.update_unc_bragg_peak_pixel(camera_analysis_id, [float(x) for x in results["bragg_peak_pixel_error"].flatten()])
+        cdi.update_plots(camera_analysis_id, results["plot_byte_strings"])
+    return rb.CameraAnalysisPostResponse(id=camera_analysis_id)
 
 @router.get("/beam-run/{beam_run_id}/camera/{camera_id}")
-def get_averaged_photo(beam_run_id: int, camera_id: int):
+def get_camera_analysis(beam_run_id: int, camera_id: int):
     with Session(engine) as session:
         camera_analysis_statement = (select(CameraAnalysis)
                                      .join(CameraSettingsLink)
@@ -59,7 +66,7 @@ def get_averaged_photo(beam_run_id: int, camera_id: int):
         try:
             camera_analysis = session.exec(camera_analysis_statement).one()
         except:
-            return rb.CameraAnalysisGetAveragedPhotoReponse(id=camera_id)
+            return rb.CameraAnalysisGetReponse(id=camera_id)
         unpickled_image = pickle.loads(camera_analysis.average_image)
         unpickled_image = unpickled_image.astype(np.uint8)
         pil_image = Image.fromarray(unpickled_image)
@@ -67,11 +74,30 @@ def get_averaged_photo(beam_run_id: int, camera_id: int):
         pil_image.save(buffered, format="JPEG")
         image_bytes = buffered.getvalue()
         averaged_photo = base64.b64encode(image_bytes).decode("utf-8")
-        return rb.CameraAnalysisGetAveragedPhotoReponse(id=camera_id,
-                                                        cameraSettingsId=camera_analysis.camera_settings_id,
-                                                        colourChannel=camera_analysis.colour_channel,
-                                                        averageImage=averaged_photo,
-                                                        beamAngle=camera_analysis.beam_angle,
-                                                        beamAngleUncertainty=camera_analysis.unc_beam_angle,
-                                                        braggPeakPixel=camera_analysis.bragg_peak_pixel,
-                                                        braggPeakPixelUncertainty=camera_analysis.unc_bragg_peak_pixel)
+        unpickled_plots = pickle.loads(camera_analysis.plots)
+        plots = list(unpickled_plots.values())
+                
+        return rb.CameraAnalysisGetReponse(id=camera_id,
+                                           cameraSettingsId=camera_analysis.camera_settings_id,
+                                           colourChannel=camera_analysis.colour_channel,
+                                           averageImage=averaged_photo,
+                                           beamAngle=camera_analysis.beam_angle,
+                                           beamAngleUncertainty=camera_analysis.unc_beam_angle,
+                                           braggPeakPixel=camera_analysis.bragg_peak_pixel,
+                                           braggPeakPixelUncertainty=camera_analysis.unc_bragg_peak_pixel,
+                                           plots=plots)
+
+# @router.get("/plots/beam-run/{beam_run_id}/camera/{camera_id}")
+# def get_beam_run_plots(beam_run_id: int, camera_id: int):
+#     with Session(engine) as session:
+#         camera_analysis_statement = (select(CameraAnalysis)
+#                                      .join(CameraSettingsLink)
+#                                      .where(CameraSettingsLink.beam_run_id == beam_run_id)
+#                                      .where(CameraSettingsLink.camera_id == camera_id))
+#         try:
+#             camera_analysis = session.exec(camera_analysis_statement).one()
+#         except:
+#             return rb.Camera(id=camera_id)
+
+#         results = get_beam_angle_and_bragg_peak_pixel(camera_analysis.id)
+    
