@@ -3,6 +3,7 @@ import { useGetList, useRecordContext } from "react-admin";
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { Card } from "@/components/ui/card";
 
 interface Photo {
   id: number;
@@ -40,7 +41,7 @@ export const ShowRealRunPhoto = () => {
   };
 
   return (
-    <div className="p-4 space-y-4">
+    <div className="p-4 flex flex-col items-start gap-4">
       <table className="w-full text-sm">
         <tbody>
           <tr>
@@ -58,51 +59,61 @@ export const ShowRealRunPhoto = () => {
       </table>
 
       {/* Image Display */}
-      <div className="w-full">
+      <Card className="inline-block p-4">
         {isLoading ? (
           <div className="text-center">Loading images...</div>
         ) : imageUrls.length > 0 ? (
-          <div className="relative w-full overflow-hidden rounded-lg border border-gray-200">
-            <div className="relative">
-              <img 
-                src={imageUrls[currentImageIndex]} 
-                alt={`Real Run Photo ${currentImageIndex + 1}`}
-                className="w-full object-contain"
-                onError={(e) => console.error('Image loading error:', e)}
-              />
-              {imageUrls.length > 1 && (
-                <div className="absolute inset-0 flex items-center justify-between p-4 z-10">
-                  <Button 
-                    onClick={previousImage} 
-                    variant="secondary"
-                    size="icon"
-                    className="bg-white hover:bg-gray-100 shadow-md"
-                  >
-                    <ChevronLeft className="h-6 w-6" />
-                  </Button>
-                  <Button 
-                    onClick={nextImage} 
-                    variant="secondary"
-                    size="icon"
-                    className="bg-white hover:bg-gray-100 shadow-md"
-                  >
-                    <ChevronRight className="h-6 w-6" />
-                  </Button>
-                </div>
-              )}
-              {imageUrls.length > 1 && (
-                <div className="absolute bottom-4 left-0 right-0 flex justify-center z-10">
-                  <span className="text-white bg-black px-4 py-2 rounded-full text-sm font-medium shadow-lg">
-                    {currentImageIndex + 1} / {imageUrls.length}
-                  </span>
-                </div>
-              )}
+          <div className="flex items-center gap-2">
+            {imageUrls.length > 1 && (
+              <Button 
+                onClick={previousImage} 
+                variant="secondary"
+                size="icon"
+                className="bg-white hover:bg-gray-100 shadow-md h-6 w-6 flex-shrink-0"
+              >
+                <ChevronLeft className="h-3 w-3" />
+              </Button>
+            )}
+            
+            <div style={{ width: '150px', height: '150px', maxWidth: '150px', maxHeight: '150px' }} className="relative overflow-hidden rounded-lg border border-gray-200">
+              <div className="relative h-full">
+                <img 
+                  src={imageUrls[currentImageIndex]} 
+                  alt={`Real Run Photo ${currentImageIndex + 1}`}
+                  style={{ width: '150px', height: '150px', objectFit: 'cover' }}
+                  className="w-full h-full"
+                  onError={(e) => console.error('Image loading error:', e)}
+                  onLoad={(e) => {
+                    const img = e.target as HTMLImageElement;
+                    console.log('Loaded image dimensions:', img.width, 'x', img.height);
+                  }}
+                />
+                {imageUrls.length > 1 && (
+                  <div className="absolute bottom-1 left-0 right-0 flex justify-center z-10">
+                    <span className="text-white bg-black px-2 py-1 rounded-full text-xs font-medium shadow-lg">
+                      {currentImageIndex + 1} / {imageUrls.length}
+                    </span>
+                  </div>
+                )}
+              </div>
             </div>
+
+            {imageUrls.length > 1 && (
+              <Button 
+                onClick={nextImage} 
+                variant="secondary"
+                size="icon"
+                className="bg-white hover:bg-gray-100 shadow-md h-6 w-6 flex-shrink-0"
+              >
+                <ChevronRight className="h-3 w-3" />
+              </Button>
+            )}        
           </div>
         ) : (
           <div className="text-center text-gray-500">No images available</div>
         )}
-      </div>
+      </Card>  
+
     </div>
   );
 }; 
