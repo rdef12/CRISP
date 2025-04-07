@@ -30,6 +30,7 @@ from src.routers import video as video_router
 from src.routers import experiment as experiment_router
 from src.routers import beam_run as beam_run_router
 from src.routers import homography as homography_router
+from src.routers import camera_analysis as camera_analysis_router
 
 from src.classes.JSON_request_bodies import request_bodies as rb
 
@@ -107,6 +108,7 @@ app.include_router(video_router.router)
 app.include_router(experiment_router.router)
 app.include_router(beam_run_router.router)
 app.include_router(homography_router.router)
+app.include_router(camera_analysis_router.router)
 
 @app.get("/get_pi_disk_space/{username}")
 def get_pi_disk_space_api(username: str):
