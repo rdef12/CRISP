@@ -142,7 +142,6 @@ def get_beam_angle_and_bragg_peak_pixel(camera_analysis_id: int):
         image_store.add_image("rotated_worst_gaussian_fit", plot_byte_strings[2])
         image_store.add_image("rotated_overlayed_beam", plot_byte_strings[3])
         
-        # TODO - am I missing a param?
         beam_center_vertical_coords, *fit_params = fit_parameters_array[:, :5].T
 
         # Locate Bragg peak - NOTE: performed on rotated data before "unrotated" to original coords for pinpointing

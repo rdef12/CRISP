@@ -12,7 +12,7 @@ import pickle
 from src.single_camera_analysis import get_beam_angle_and_bragg_peak_pixel, get_beam_center_coords
 from src.scintillation_light_pinpointing import *
 from fastapi.exceptions import HTTPException
-from src.fitting_functions import plot_scintillation_distribution_in_physical_units
+from src.fitting_functions import plot_physical_units_ODR_bortfeld
 
 
 router = APIRouter(
@@ -672,7 +672,6 @@ def test_beam_analysis_api():
 
 @router.get("/test_beam_reconstruction")
 def test_beam_reconstruction_api():
-    
     try:
         side_camera_analysis_id = 1
         top_camera_analysis_id = 2
@@ -697,11 +696,16 @@ def test_beam_reconstruction_api():
                                                                                                     unc_side_cam_beam_center_coords,
                                                                                                     [beam_center_incident_position, beam_direction_vector],
                                                                                                     [unc_beam_center_incident_position, unc_beam_direction_vector])
-        # NOTE - range calc should be in separate function to plotter.
         # Unc in range needs amending
-        plot_bytes = plot_scintillation_distribution_in_physical_units(distances_travelled_inside_scintillator, unc_distances_travelled_inside_scintillator, 
-                                                                       total_brightness_along_vertical_roi, unc_total_brightness_along_vertical_roi)
+        # TODO - put range computations in a separate function?
         
+        bragg_peak_depth, unc_bragg_peak_depth = compute_bragg_peak_depth(beam_run_id, 
+                                                                        side_camera_analysis_id,
+                                                                        top_camera_analysis_id)
+        
+        plot_bytes = plot_physical_units_ODR_bortfeld(bragg_peak_depth, distances_travelled_inside_scintillator, unc_distances_travelled_inside_scintillator, 
+                                                      total_brightness_along_vertical_roi, unc_total_brightness_along_vertical_roi, fit_window=1000)
+
         html_content = f'<html><body><img src="data:image/svg+xml;base64,{plot_bytes}" width="200px"><br></body></html>'
         return HTMLResponse(content=html_content)
     

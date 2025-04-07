@@ -8,9 +8,8 @@ import math
 import io
 import base64
 
-from src.modified_pybragg import fitBP, bortfeld, fit_bortfeld_odr, bortfeld_for_odr
+from src.modified_pybragg import *
 from src.uncertainty_functions import *
-from src.image_processing import inverse_rotation_of_coords
 
 warnings.filterwarnings("ignore", category=OptimizeWarning)
 
@@ -304,14 +303,16 @@ def extract_incident_beam_angle(horizontal_coords, beam_center_vertical_coords, 
     print("\n\ntan alpha = {}".format(fitted_line_parameters[0]))
     print("\n\nuncertainty in tan alpha = {}".format(fitted_parameter_uncertainties[0]))
     
-    beam_center_errors *= np.sqrt(chi_squared_reduced) # renormalisation of error bars!
-    # REPEAT CHI SQUARED MINIMISATION
-    fitted_line_parameters, fitted_parameter_uncertainties = least_squares_fitting_procedure(horizontal_coords, beam_center_vertical_coords, beam_center_errors)
-    predicted_beam_centers = linear_function(horizontal_coords, fitted_line_parameters)
-    chi_squared_reduced = chi_squared_function(beam_center_vertical_coords, beam_center_errors, predicted_beam_centers) / (len(horizontal_coords) - 2)
-    
-    print("\n\nUpdated tan alpha = {}".format(fitted_line_parameters[0]))
-    print("\n\nUpdated uncertainty in tan alpha = {}".format(fitted_parameter_uncertainties[0]))
+    # TODO - edit legend label to specify if error bars are renormalised or not
+    if chi_squared_reduced > 10:
+        beam_center_errors *= np.sqrt(chi_squared_reduced) # renormalisation of error bars! - clearly underestimated uncertainties
+        # REPEAT CHI SQUARED MINIMISATION
+        fitted_line_parameters, fitted_parameter_uncertainties = least_squares_fitting_procedure(horizontal_coords, beam_center_vertical_coords, beam_center_errors)
+        predicted_beam_centers = linear_function(horizontal_coords, fitted_line_parameters)
+        chi_squared_reduced = chi_squared_function(beam_center_vertical_coords, beam_center_errors, predicted_beam_centers) / (len(horizontal_coords) - 2)
+        
+        print("\n\nUpdated tan alpha = {}".format(fitted_line_parameters[0]))
+        print("\n\nUpdated uncertainty in tan alpha = {}".format(fitted_parameter_uncertainties[0]))
     
     fitted_angle = np.arctan(fitted_line_parameters[0])
     fitted_tan_angle_uncertainty = fitted_parameter_uncertainties[0]
@@ -354,62 +355,6 @@ def extract_incident_beam_angle(horizontal_coords, beam_center_vertical_coords, 
     buf.seek(0)  # Reset the buffer's position to the beginning - else will read from the end
     plot_byte_string = base64.b64encode(buf.read()).decode('utf-8')
     return fitted_angle, unc_fitted_angle, plot_byte_string
-
-
-###### TODO - REFACTOR THE BELOW FUNCTIONS ##############
-
-def find_peak_of_bortfeld(z_bins, bortfeld_parameters, points_per_bin=100):
-    """
-    If 100 points per bin, and a bin is a pixel, 0.01 pixel resolution.
-    """
-    z_length = len(z_bins) * points_per_bin
-    z_range = np.linspace(z_bins[0], z_bins[-1], z_length)
-    bortfeld_output = bortfeld(z_range, *bortfeld_parameters)
-    peak_argument = np.argmax(bortfeld_output)
-    peak_z_position = z_range[peak_argument]
-    return peak_argument, peak_z_position
-
-def round_to_precision(number, precision):
-    rounded_number = np.round(number / precision) * precision
-    return rounded_number
-
-def find_peak_position_uncertainty(z_bins, bortfeld_parameters, bortfeld_parameter_uncertainties, points_per_bin=1000, number_of_stds=1):
-    
-    best_fit_peak_argument, best_fit_peak = find_peak_of_bortfeld(z_bins, bortfeld_parameters, points_per_bin=points_per_bin)
-    lower_bound_parameters = bortfeld_parameters - number_of_stds*bortfeld_parameter_uncertainties
-    upper_bound_parameters = bortfeld_parameters + number_of_stds*bortfeld_parameter_uncertainties
-    all_parameter_combinations = list(product(*zip(lower_bound_parameters, upper_bound_parameters)))
-    possible_peak_positions = np.empty((len(all_parameter_combinations)))
-    
-    for count, parameter_combination in enumerate(all_parameter_combinations):
-        _, peak_position = find_peak_of_bortfeld(z_bins, parameter_combination, points_per_bin=points_per_bin)
-        possible_peak_positions[count] = peak_position
-    best_fit_z_bin_argument = math.ceil(best_fit_peak_argument / points_per_bin)
-    z_bin_width = z_bins[best_fit_z_bin_argument] - z_bins[best_fit_z_bin_argument - 1]
-    
-    uncertainty_order = z_bin_width / points_per_bin
-    
-    
-    lower_peak_index = np.argmin(possible_peak_positions)
-    upper_peak_index = np.argmax(possible_peak_positions)
-    lower_peak = possible_peak_positions[lower_peak_index]
-    upper_peak = possible_peak_positions[upper_peak_index]
-    lower_peak_associated_params = all_parameter_combinations[lower_peak_index]
-    upper_peak_associated_params = all_parameter_combinations[lower_peak_index]
-    
-    lower_bound = best_fit_peak - lower_peak
-    lower_bound = round_to_precision(lower_bound, uncertainty_order)
-    upper_bound = upper_peak - best_fit_peak
-    upper_bound = round_to_precision(upper_bound, uncertainty_order)
-    
-    lower_peak = np.min(possible_peak_positions)
-    upper_peak = np.max(possible_peak_positions)
-    lower_bound = best_fit_peak - lower_peak
-    lower_bound = round_to_precision(lower_bound, uncertainty_order)
-    upper_bound = upper_peak - best_fit_peak
-    upper_bound = round_to_precision(upper_bound, uncertainty_order)
-    
-    return [lower_bound, upper_bound], [lower_peak_associated_params, upper_peak_associated_params]
 
 
 def locate_bragg_peak_in_image(x_positions, beam_center_positions, beam_center_errors, fit_parameters,
@@ -477,137 +422,69 @@ def locate_bragg_peak_in_image(x_positions, beam_center_positions, beam_center_e
     return (bortfeld_horizontal_coord, bragg_peak_vertical_coord), (unc_bortfeld_horizontal_coord, unc_bragg_peak_vertical_coord), plot_byte_string # Uncertainty not rounded appropriately yet, nor has horizontal coord itself.
 
 
-def find_range(z_bins, bortfeld_parameters, factor_of_peak=0.5, points_per_bin=1000):
-    if factor_of_peak <= 0:
-        raise Exception("Factor of peak must be positive.")
-    if factor_of_peak >= 1:
-        raise Exception("Factor of peak must be less than 1.")
-    z_length = len(z_bins) * points_per_bin
-    z_range = np.linspace(z_bins[0], z_bins[-1], z_length)
-    heights = bortfeld(z_range, *bortfeld_parameters)
-    peak_argument, peak_position = find_peak_of_bortfeld(z_bins, bortfeld_parameters, points_per_bin=points_per_bin)
-    peak_height = bortfeld(peak_position, *bortfeld_parameters)
-    half_peak_height = peak_height * factor_of_peak
-    range_argument = np.where(heights > half_peak_height)[0][-1]
-    range = z_range[range_argument]
-    return range_argument, range
-
-
-def find_uncertainty_in_range(z_bins, bortfeld_parameters, bortfeld_parameter_uncertainties, factor_of_peak=0.5, points_per_bin=1000, number_of_stds=1):
-   """
-    TEST
-    [5.31319520e+04 1.69161644e+01 5.09609169e-01 1.29528710e+00
-    4.95922406e-10]
-    <class 'numpy.ndarray'>
-    Error: index 1955 is out of bounds for axis 0 with size 1955
-
-   """
-
-#    best_fit_range_argument, best_fit_range = find_range(z_bins, bortfeld_parameters, factor_of_peak=factor_of_peak, points_per_bin=points_per_bin)
-
-#    print(bortfeld_parameters)
-#    print(type(bortfeld_parameters))
-
-#    lower_bound_parameters = bortfeld_parameters - number_of_stds*bortfeld_parameter_uncertainties
-#    upper_bound_parameters = bortfeld_parameters + number_of_stds*bortfeld_parameter_uncertainties
-   
-
-#    all_parameter_combinations = list(product(*zip(lower_bound_parameters, upper_bound_parameters)))
-
-#    possible_range_positions = np.empty((len(all_parameter_combinations)))
-
-#    for count, parameter_combination in enumerate(all_parameter_combinations):
-
-#        _, range = find_range(z_bins, parameter_combination, factor_of_peak=factor_of_peak, points_per_bin=points_per_bin)
-
-#        possible_range_positions[count] = range
-
-
-#    best_fit_z_bin_argument = math.ceil(best_fit_range_argument / points_per_bin)
-
-#    z_bin_width = z_bins[best_fit_z_bin_argument] - z_bins[best_fit_z_bin_argument - 1]
-
-#    uncertainty_order = z_bin_width / points_per_bin
-
-
-#    lower_range = np.min(possible_range_positions)
-
-#    upper_range = np.max(possible_range_positions)
-
-
-#    lower_bound = best_fit_range - lower_range
-
-#    lower_bound = round_to_precision(lower_bound, uncertainty_order)
-
-#    upper_bound = upper_range - best_fit_range
-
-#    upper_bound = round_to_precision(upper_bound, uncertainty_order)
-
-   return [0.01, 0.01]
-
-
-#    return [lower_bound, upper_bound]
-
-
-def plot_scintillation_distribution_in_physical_units(distances_travelled_inside_scintillator, unc_distances_travelled_inside_scintillator, total_profile_brightness, 
-                                                      unc_total_profile_brightness):
-
-    # unique_distances_travelled_inside_scintillator, unique_indices = np.unique(distances_travelled_inside_scintillator, return_index=True)
-    # unique_unc_distances_travelled_inside_scintillator = unc_distances_travelled_inside_scintillator[unique_indices]    
-    # unique_total_profile_brightness = total_profile_brightness[unique_indices]    
-    # unique_unc_total_profile_brightness = unc_total_profile_brightness[unique_indices]
+def plot_physical_units_ODR_bortfeld(bragg_peak_depth, distances, distance_uncertainties, brightnesses, brightness_uncertainties,
+                                     fit_window: int):
+    """
+    Fit window is used to specify how tightly around the peak the ODR fit should be
+    """
     
-    # fit_parameters, fit_parameters_uncertainties = fit_bortfeld_odr(unique_distances_travelled_inside_scintillator / 10, unique_total_profile_brightness,
-    #                                                                 unique_unc_distances_travelled_inside_scintillator /10, unique_unc_total_profile_brightness,
-    #                                                                 use_non_ODR_estimates=True)
     
-    # # bortfeld_fit = fitBP(unique_distances_travelled_inside_scintillator, unique_total_profile_brightness,
-    # #                             unc_D=unique_unc_total_profile_brightness)
+    # Find index of where distances array element is closest to the bragg peak depth
+    bragg_peak_index = np.argmin(np.abs(distances - bragg_peak_depth))
+    # Apply plot_window around this index to fit around the peak
     
-    # # fit_parameters_covariance = bortfeld_fit['bortfeld_fit_cov']
-    # # fit_parameters_uncertainties = np.sqrt(np.diag(fit_parameters_covariance))
+    start_index = max(0, bragg_peak_index - fit_window)
+    end_index = min(len(distances), bragg_peak_index + fit_window + 1)
     
-    # z = np.linspace(distances_travelled_inside_scintillator[0] / 10, distances_travelled_inside_scintillator[-1] / 10, 1000)
-    # # curve = bortfeld(z, fit_parameters)
-    # curve = bortfeld_for_odr(list(fit_parameters), z)
-    # fitted_curve_for_csv = bortfeld_for_odr(list(fit_parameters), distances_travelled_inside_scintillator / 10)
+    distances = distances[start_index:end_index]
+    distance_uncertainties = distance_uncertainties[start_index:end_index]
+    brightnesses = brightnesses[start_index:end_index]
+    brightness_uncertainties = brightness_uncertainties[start_index:end_index]
     
-    # label = r"$E = $" + "{} MeV".format(beam_run.energy)
+    # Fit the Bortfeld function using ODR
+    fit_parameters, fit_parameters_uncertainties, true_uncertainties = fit_bortfeld_odr(
+        distances, brightnesses, distance_uncertainties, brightness_uncertainties
+    )
+
+    # Find the Bragg peak position and uncertainties
+    bragg_peak_position_arguement, bragg_peak_position = find_peak_of_bortfeld(distances, fit_parameters)
+    lower_uncertainty_peak_position, upper_uncertainty_peak_position = find_peak_position_uncertainty(
+        distances, fit_parameters, fit_parameters_uncertainties, points_per_bin=100
+    )
+    print(f"Bragg peak position {bragg_peak_position} + {upper_uncertainty_peak_position} - {lower_uncertainty_peak_position}")
+
+    # Find the range and uncertainties
+    range_argument, range = find_range(distances, fit_parameters, points_per_bin=100)
+    lower_uncertainty, upper_uncertainty = (0, 0)  # Placeholder for range uncertainty calculation
+    print(f"Range {range} + {upper_uncertainty} - {lower_uncertainty}")
+
+    # Generate fitted curve
+    fitted_distances = np.linspace(min(distances), max(distances), 1000)
+    fitted_brightnesses = bortfeld(fitted_distances, *fit_parameters)
+
+    # Plot the data with error bars and the fitted curve
+    plt.plot(fitted_distances, fitted_brightnesses, color='red', label='Fitted Bortfeld Function')
+    
+    plt.step(distances, brightnesses, where='mid')
+    # Suppress markers for error bars only
+    plt.errorbar(
+        distances, brightnesses, 
+        xerr=distance_uncertainties, yerr=brightness_uncertainties, 
+        fmt='', color='black', ecolor='blue', label='Experimental Data', ms=3
+    )
+    
+    # Add labels, legend, and grid
     plt.xlabel("Distance travelled through Scintillator (mm)")
     plt.ylabel("Total Profile Intensity")
-    plt.grid()
-    plt.errorbar(distances_travelled_inside_scintillator, total_profile_brightness, yerr=unc_total_profile_brightness,
-                 xerr=(unc_distances_travelled_inside_scintillator), ms=4,
-                color="black", ecolor="blue")
-    # plt.plot(z*10, curve, label="Bortfeld fit", color="red")
-    
-    # _, mean_range_depth = find_range(distances_travelled_inside_scintillator / 10, fit_parameters, factor_of_peak=0.5, points_per_bin=1000)
-    
-    #_, bortfeld_peak = find_peak_of_bortfeld(distances_travelled_inside_scintillator, bortfeld_fit['bortfeld_fit_p'], points_per_bin=1000)
-    # bortfeld_peak_errors,  bortfeld_extreme_params = find_peak_position_uncertainty(distances_travelled_inside_scintillator, fit_parameters, fit_parameters_uncertainties, points_per_bin=1000, number_of_stds=1)
-    #print(f"peak: {bortfeld_peak},  peak_error: {bortfeld_peak_errors}")
-    
-    # unc_bortfeld_peak_brightness = fit_parameters_uncertainties[0]
-    # print(unc_bortfeld_peak_brightness)
-    # upper_fraction_of_max_dose = (bortfeld_fit['bortfeld_fit_p'][0] + unc_bortfeld_peak_brightness) / (2 * bortfeld_fit['bortfeld_fit_p'][0])
-    # lower_fraction_of_max_dose = (bortfeld_fit['bortfeld_fit_p'][0] - unc_bortfeld_peak_brightness) / (2 * bortfeld_fit['bortfeld_fit_p'][0])
-    # print(lower_fraction_of_max_dose, upper_fraction_of_max_dose)
-    
-    # _, range_1 = find_range(distances_travelled_inside_scintillator, bortfeld_extreme_params[0], factor_of_peak=0.5, points_per_bin=1000)
-    # _, range_2 = find_range(distances_travelled_inside_scintillator, bortfeld_extreme_params[1], factor_of_peak=0.5, points_per_bin=1000)
-    # mean_range_unc = max(np.abs(mean_range_depth - range_1), np.abs(mean_range_depth - range_2))
-    
-    # mean_range_unc = find_uncertainty_in_range(distances_travelled_inside_scintillator / 10, fit_parameters, fit_parameters_uncertainties, factor_of_peak=0.5, points_per_bin=100, number_of_stds=1)
-    # mean_range_unc = max(mean_range_unc[0], mean_range_unc[1])
-    
-    # print("Mean range at {0} MeV is {1:.3f} +/- {2:.3f} mm!".format(beam_run.energy, mean_range_depth*10, mean_range_unc*10))
-    
     plt.legend(**LEGEND_CONFIG)
-    
+    plt.grid()
+
     buf = io.BytesIO()  # Create an in-memory binary stream (buffer)
     plt.savefig(buf, format="svg", dpi=600)  # Save the current plot to the buffer
     plt.close()
     buf.seek(0)  # Reset the buffer's position to the beginning - else will read from the end
     plot_byte_string = base64.b64encode(buf.read()).decode('utf-8')
-    
     return plot_byte_string
+    
+    
+    
