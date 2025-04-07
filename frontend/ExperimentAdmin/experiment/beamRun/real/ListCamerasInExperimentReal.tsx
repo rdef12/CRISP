@@ -3,13 +3,13 @@ import { Datagrid, ListBase, TextField, useRecordContext, useShowController, use
 import { useParams } from "react-router-dom";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { CreateRealSettings } from "./CreateRealSettings";
-import { EditRealSettings } from "./EditRealSettings";
+import { CreateRealSettings } from "./dataNotTaken/CreateRealSettings";
+import { EditRealSettings } from "./dataNotTaken/EditRealSettings";
 import { Button } from "@/components/ui/button";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
-import { ShowRealRunPhoto } from "./ShowRealRunPhoto";
-import { MoveToRealRunButton } from "./MoveToRealRunButton";
-import { EditNumberOfImagesAndRaw } from "./EditNumberOfImagesAndRaw";
+import { MoveToRealRunButton } from "./dataNotTaken/MoveToRealRunButton";
+import { EditNumberOfImagesAndRaw } from "./dataNotTaken/EditNumberOfImagesAndRaw";
+import { ShowCameraWithData } from "./dataTaken/ShowCameraWithData";
 
 type DialogMode = 'create' | 'view' | null;
 
@@ -257,7 +257,7 @@ export const ListCamerasInExperimentReal = ({ dataTaken } : { dataTaken: boolean
       <Datagrid 
         data={record.cameras} 
         bulkActionButtons={false}
-        expand={<ShowRealRunPhoto />}
+        expand={<ShowCameraWithData />}
       >
         <TextField source="username" />
         <TextField source="ip_address" />

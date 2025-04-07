@@ -1,5 +1,5 @@
 import { useParams } from "react-router-dom";
-import { BooleanField, BooleanInput, Form, NumberField, NumberInput, RaRecord, required, SimpleShowLayout, useCreateController, useEditController } from "react-admin";
+import { BooleanField, BooleanInput, Form, NumberField, NumberInput, RaRecord, SimpleShowLayout, useEditController } from "react-admin";
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 
