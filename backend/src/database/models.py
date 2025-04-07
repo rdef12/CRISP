@@ -15,7 +15,7 @@ class DepthDirectionEnum(int, Enum):
 
 # from sqlmodel import Field, SQLModel, PickleType, JSON, Column, ARRAY, Integer, LargeBinary, Relationship
 from sqlmodel import Field, SQLModel, PickleType, JSON, LargeBinary, Relationship
-from sqlalchemy import Column, ARRAY, Float, Integer
+from sqlalchemy import Column, ARRAY, Float, Integer, String
 
 class Setup(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
@@ -333,8 +333,44 @@ class CameraAnalysis(SQLModel, table=True):
     unc_beam_angle: Optional[float] = Field(default=None)
     bragg_peak_pixel: Optional[List[float]] = Field(default=None, sa_column=Column(ARRAY(Float)))
     unc_bragg_peak_pixel: Optional[List[float]] = Field(default=None, sa_column=Column(ARRAY(Float)))
-    
-    
+
+    camera_analysis_plots: List["CameraAnalysisPlot"] = Relationship(back_populates="camera_analysis")
+
+
+class CameraAnalysisPlot(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    camera_analysis_id: int = Field(default=None, foreign_key="cameraanalysis.id")
+
+    plot_type: str
+    plot_figure: bytes = Field(default=None, sa_column=Column(LargeBinary))
+    parameter_labels: Optional[List[str]] = Field(default=None, sa_column=Column(ARRAY(String)))
+    parameter_values: Optional[List[float]] = Field(default=None, sa_column=Column(ARRAY(Float)))
+    parameter_uncertainties: Optional[List[float]] = Field(default=None, sa_column=Column(ARRAY(Float)))
+
+    chi_squared: Optional[float] = Field(default=None)
+    number_of_data_points: Optional[int] = Field(default=None)
+
+    description: Optional[str] = Field(default=None)
+
+    camera_analysis: CameraAnalysis = Relationship(back_populates="camera_analysis_plots")
+
+# class BeamRunPlots(SQLModel, table=True):
+#     id: Optional[int] = Field(default=None, primary_key=True)
+#     beam_run_id: int = Field(default=None, foreign_key="cameraanalysis.id")
+
+#     plot_type: str
+#     plot_figure: bytes = Field(default=None, sa_column=Column(LargeBinary))
+#     parameter_labels: Optional[List[str]] = Field(default=None, sa_column=Column(ARRAY(String)))
+#     parameter_values: Optional[List[float]] = Field(default=None, sa_column=Column(ARRAY(Float)))
+#     parameter_uncertainties: Optional[List[float]] = Field(default=None, sa_column=Column(ARRAY(Float)))
+
+#     chi_squared: Optional[float] = Field(default=None)
+#     number_of_data_points: Optional[int] = Field(default=None)
+
+#     description: Optional[str] = Field(default=None)
+
+#     camera_analysis: CameraAnalysis = Relationship(back_populates="camera_analysis_plots")
+
     # class BeamRunCameraSettings(SQLModel, table=True):
 #     id: Optional[int] = Field(default=None, primary_key=True)
 #     beam_run_number_id: int = Field(default=None, foreign_key="beamrunnumber.id")
