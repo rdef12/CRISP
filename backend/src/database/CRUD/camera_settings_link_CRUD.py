@@ -116,6 +116,13 @@ def get_beam_run_id_by_camera_settings_link_id(camera_settings_link_id: int):
         beam_run_id = camera_settings.beam_run_id
         return beam_run_id
     
+def get_successfully_captured_photo_ids_by_camera_settings_link_id(camera_settings_link_id: int):
+    with Session(engine) as session:
+        # Bytes must be present to be included
+        statement = select(Photo.id).where(Photo.camera_settings_link_id == camera_settings_link_id).where(Photo.photo.isnot(None))
+        photo_id_list = session.exec(statement).all()
+        return photo_id_list
+    
 def get_num_of_successfully_captured_images_by_camera_settings_link_id(camera_settings_link_id: int):
     """
     Query photos table for all entries with camera_settings_link_id and return the number with Photo not None

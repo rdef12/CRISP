@@ -28,22 +28,26 @@ def select_image_colour_channel(image, input_colour: str):
             raise Exception('{} is not a valid colour channel. The options are ["red", "green", "blue", "grey", "gray"]'.format(input_colour))
     return channel
 
-def average_pixel_over_multiple_images(photo_id_array: list[int], camera_id: int, setup_id: int, 
-                                       camera_analysis_id: int, input_colour: str, rotation_angle: float=0):
+def average_pixel_over_multiple_images(camera_analysis_id: int):
     """
-    If this needs to be made simpler, we can make the script less general such that is applies
-    specifically to one channel images, rather than the usual 3-channel coloured images. This
-    would cut the averaging time by 2/3 (clearly worth considering this simplification).
-    
     In the semester one script (image_analysis_v3), there is functionality for plotting
     histograms of a given pixel's value for the three different colour channels. That code can
     be added here later if need be.
     """
+    camera_settings_link_id = cdi.get_camera_settings_link_id_by_camera_analysis_id(camera_analysis_id)
+    photo_id_array = cdi.get_successfully_captured_photo_ids_by_camera_settings_link_id(camera_settings_link_id)
+    colour_channel = cdi.get_colour_channel(camera_analysis_id)
+    
     num_of_images_used = len(photo_id_array)
     test_photo_bytes = cdi.get_photo_from_id(photo_id_array[0])
     test_image = load_image_byte_string_to_opencv(test_photo_bytes)
     
     if correct_for_distortion := cdi.check_for_distortion_correction_condition(camera_id, setup_id):
+        camera_id = (cdi.get_camera_and_settings_ids(camera_settings_link_id)["camera_id"])
+        beam_run_id = cdi.get_beam_run_id_by_camera_settings_link_id(camera_settings_link_id)
+        experiment_id = cdi.get_experiment_id_from_beam_run_id(beam_run_id)
+        setup_id = cdi.get_setup_id_from_experiment_id(experiment_id)
+        
         camera_matrix = cdi.get_camera_matrix(camera_id, setup_id)
         distortion_coefficients = cdi.get_distortion_coefficients(camera_id, setup_id)
         original_frame_size = determine_frame_size(image=image)
@@ -55,31 +59,23 @@ def average_pixel_over_multiple_images(photo_id_array: list[int], camera_id: int
     shape = (frame_size[0], frame_size[1])
     cumulative_pixel_val_sum = np.zeros(shape, dtype=np.float64)
     
-    for index, photo_id in enumerate(photo_id_array):
+    for photo_id in photo_id_array:
         photo_bytes = cdi.get_photo_from_id(photo_id)
         image = load_image_byte_string_to_opencv(photo_bytes)
         if correct_for_distortion:
             image = undistort_image(camera_matrix, distortion_coefficients, original_frame_size, image=image)
         
-        image_channel = select_image_colour_channel(image, input_colour)
+        image_channel = select_image_colour_channel(image, colour_channel)
         cumulative_pixel_val_sum += image_channel
     
     average_image = (cumulative_pixel_val_sum / num_of_images_used)
     # poisson_standard_error_on_mean = np.sqrt(average_image / num_of_images_used)
     
     float_16_image = average_image.astype(np.float16)
-    serialized_float_16_image = pickle.dumps(float_16_image)
+    serialized_float_16_image = pickle.dumps(float_16_image, protocol=pickle.HIGHEST_PROTOCOL)
     image_memory_size = len(serialized_float_16_image)
     print(f"Memory size of the rounded serialized average image: {image_memory_size/10**6} MB")
     cdi.update_average_image(camera_analysis_id, serialized_float_16_image)
-    
-    # with open(SAVE_DIRECTORY + saved_filename + "_float16.pkl", 'wb') as f:
-    #         pickle.dump(float_16_image, f, protocol=pickle.HIGHEST_PROTOCOL)
-
-    
-
-    # TODO - save to backend container and file response to localhost:8000/docs to see if it works
-
     return average_image
 
 

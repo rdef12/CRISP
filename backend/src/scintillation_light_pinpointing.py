@@ -4,7 +4,7 @@ producing homographies!
 
 I also think the beam edge detection should be applied to undistorted images only
 """
-from src.homography_pinpointing import AbstractCamera, extract_weighted_average_3d_physical_position, calculate_3d_euclidian_distance
+from src.homography_pinpointing import AbstractCamera, extract_weighted_average_3d_physical_position, calculate_3d_euclidian_distance, extract_beam_center_position
 from src.database.CRUD import CRISP_database_interaction as cdi
 from src.uncertainty_functions import *
 from itertools import product
@@ -35,7 +35,7 @@ def pinpoint_bragg_peak(camera_analysis_id_list):
         print(f"Error when pinpointing bragg peak: {e}")
 
 
-def build_directional_vector_of_beam_center(beam_run_id: int, side_camera_analysis_id: int, top_camera_analysis_id: int):
+def build_directional_vector_of_beam_center(side_camera_analysis_id: int, top_camera_analysis_id: int):
     """
     Physical Bragg position must be 3D
     
@@ -76,6 +76,7 @@ def build_directional_vector_of_beam_center(beam_run_id: int, side_camera_analys
     directional_vector_x = z_b * np.tan(theta_xz)
     directional_vector_y = -z_b * np.tan(theta_yz)
     directional_vector_z = -z_b
+    beam_direction_vector = np.array([directional_vector_x, directional_vector_y, directional_vector_z])
     
     x_component_fractional_quadrature = fractional_addition_in_quadrature([z_b, theta_xz], [unc_z_b, unc_theta_xz], z_b * theta_xz)
     y_component_fractional_quadrature = fractional_addition_in_quadrature([z_b, theta_yz], [unc_z_b, unc_theta_yz], z_b * theta_yz)
@@ -85,7 +86,8 @@ def build_directional_vector_of_beam_center(beam_run_id: int, side_camera_analys
     unc_beam_center_incident_position_y = normal_addition_in_quadrature([y_component_fractional_quadrature, unc_y_b])
     unc_beam_center_incident_position = np.array([unc_beam_center_incident_position_x, unc_beam_center_incident_position_y, 0])
     
-    return beam_center_incident_position, unc_beam_center_incident_position, np.array([directional_vector_x, directional_vector_y, directional_vector_z]), unc_beam_directional_vector
+    
+    return beam_center_incident_position, unc_beam_center_incident_position, beam_direction_vector, unc_beam_directional_vector
 
 
 def compute_bragg_peak_depth(beam_run_id: int, side_camera_analysis_id: int, top_camera_analysis_id: int):
@@ -133,4 +135,54 @@ def compute_weighted_bragg_peak_depth(beam_run_id: int, side_camera_analysis_id_
     return weighted_mean_bragg_peak_depth, unc_weighted_bragg_peak_depth
 
 
+def convert_beam_center_coords_to_penetration_depths(camera_analysis_id: int, unrotated_beam_center_coords: np.ndarray[float],
+                                                     unc_on_beam_center_coords, beam_center_line_vectors, unc_camera_line_vectors):
+    """
+    The unrotated beam center coords is stressed because homography will only work when the image has the orientation
+    it was calibrated to work with.
+    
+    Does this work for top cam as well as side cam?
+    """
+    unc_beam_center_initial_position, unc_beam_center_directional_vector = unc_camera_line_vectors
+    
+    # Create camera object
+    camera_settings_link_id = cdi.get_camera_settings_link_id_by_camera_analysis_id(camera_analysis_id)
+    camera_id = cdi.get_camera_and_settings_ids(camera_settings_link_id)["camera_id"]
+    beam_run_id = cdi.get_beam_run_id_by_camera_settings_link_id(camera_settings_link_id)
+    experiment_id = cdi.get_experiment_id_from_beam_run_id(beam_run_id)
+    setup_id = cdi.get_setup_id_from_experiment_id(experiment_id)
+    camera = AbstractCamera.setup(camera_id, setup_id)
+    
+    # Pinpoint beam centers
+    physical_3d_beam_centers = np.array([])
+    unc_physical_3d_beam_centers = np.array([])
+    distance_of_closest_approach_list = []
+    for beam_center_pixel, unc_beam_center_pixel in zip(unrotated_beam_center_coords, unc_on_beam_center_coords):
+        
+        beam_center, beam_center_uncertainty, \
+        distance_of_closest_approach = extract_beam_center_position(camera, tuple(beam_center_pixel), tuple(unc_beam_center_pixel), beam_center_line_vectors, 
+                                                                    unc_beam_center_initial_position, unc_beam_center_directional_vector)
+        
+        physical_3d_beam_centers = np.vstack([physical_3d_beam_centers, beam_center]) if physical_3d_beam_centers.size else np.array([beam_center])
+        unc_physical_3d_beam_centers = np.vstack([unc_physical_3d_beam_centers, beam_center_uncertainty]) if unc_physical_3d_beam_centers.size else np.array([beam_center_uncertainty])
+        distance_of_closest_approach_list.append(distance_of_closest_approach)
+    
+    beam_center_incident_position = beam_center_line_vectors[0]
+    print("\n\n Minimum distance of closest approach", np.min(distance_of_closest_approach_list))
+    print("\n\n Maximum distance of closest approach", np.max(distance_of_closest_approach_list))
+    
+    # Convert to depths
+    distances_travelled_inside_scintillator = np.array(
+        [calculate_3d_euclidian_distance(physical_beam_center_position - beam_center_incident_position) for physical_beam_center_position in physical_3d_beam_centers])
+    
+    unc_distances_travelled_inside_scintillator = [
+        calculate_3d_euclidian_distance(
+        np.array([
+            normal_addition_in_quadrature([unc_incident_component, unc_center_component])
+            for unc_incident_component, unc_center_component in zip(unc_beam_center_initial_position, unc_physical_beam_center_position)
+        ])
+        )
+        for unc_physical_beam_center_position in unc_physical_3d_beam_centers
+    ]
 
+    return distances_travelled_inside_scintillator, unc_distances_travelled_inside_scintillator

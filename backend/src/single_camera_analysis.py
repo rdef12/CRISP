@@ -108,7 +108,7 @@ def get_beam_angle_and_bragg_peak_pixel(camera_analysis_id: int):
         
         # Fit initial beam profile
         (horizontal_coords, fit_parameters_array, beam_center_errors, _, 
-         total_brightness_along_vertical_roi, unc_total_brightness_along_vertical_roi, 
+         _, _, 
          plot_byte_strings) = fit_beam_profile_along_full_roi(average_image, brightness_error,
                                                                                 h_bounds, v_bounds, show_fit_qualities=False)
         image_store.add_image("original_chi_squared_values", plot_byte_strings[0])
@@ -118,7 +118,8 @@ def get_beam_angle_and_bragg_peak_pixel(camera_analysis_id: int):
         beam_center_vertical_coords = fit_parameters_array[:, 0]
         
         # Calculate incident beam angle
-        incident_beam_angle, beam_angle_error, angle_plot_byte_string = extract_incident_beam_angle(horizontal_coords, beam_center_vertical_coords, beam_center_errors, show_angle_plot=False)
+        incident_beam_angle, beam_angle_error, angle_plot_byte_string = extract_incident_beam_angle(horizontal_coords, beam_center_vertical_coords,
+                                                                                                    beam_center_errors, show_angle_plot=False)
         image_store.add_image("incident_beam_angle", angle_plot_byte_string)
 
         # Rotate image for analysis
@@ -132,7 +133,8 @@ def get_beam_angle_and_bragg_peak_pixel(camera_analysis_id: int):
                                                     show_images=False, fraction=0.16)
 
         # Fit beam profile on rotated image
-        (horizontal_coords, fit_parameters_array, beam_center_errors, _,  _, _,
+        (horizontal_coords, fit_parameters_array, beam_center_errors, _,  
+         total_brightness_along_vertical_roi, unc_total_brightness_along_vertical_roi,
          plot_byte_strings) = fit_beam_profile_along_full_roi(rotated_image, brightness_error,
                                                             h_bounds, v_bounds, show_fit_qualities=False)
         image_store.add_image("rotated_chi_squared_values", plot_byte_strings[0])
@@ -140,13 +142,12 @@ def get_beam_angle_and_bragg_peak_pixel(camera_analysis_id: int):
         image_store.add_image("rotated_worst_gaussian_fit", plot_byte_strings[2])
         image_store.add_image("rotated_overlayed_beam", plot_byte_strings[3])
         
-        beam_center_vertical_coords, *fit_params = fit_parameters_array[:, :4].T
-        beam_scale_values, beam_sigma_values, background_noise_array = fit_params
+        # TODO - am I missing a param?
+        beam_center_vertical_coords, *fit_params = fit_parameters_array[:, :5].T
 
         # Locate Bragg peak - NOTE: performed on rotated data before "unrotated" to original coords for pinpointing
-        rotated_bragg_peak_coord, error_on_fitted_bragg_peak, bortfeld_byte_string = locate_bragg_peak_in_image(horizontal_coords, beam_center_vertical_coords, background_noise_array, beam_scale_values, beam_center_errors,
-                                                                                        beam_sigma_values, total_brightness_along_vertical_roi, unc_total_brightness_along_vertical_roi, save_data=True,
-                                                                                        show_scintillation_plot=False)
+        rotated_bragg_peak_coord, error_on_fitted_bragg_peak, bortfeld_byte_string = locate_bragg_peak_in_image(horizontal_coords, beam_center_vertical_coords, beam_center_errors,
+                                                                                                                fit_params, total_brightness_along_vertical_roi, unc_total_brightness_along_vertical_roi)
         image_store.add_image("fitted_bortfeld", bortfeld_byte_string)
         
         # NOTE - uncertainties may now be too small such that pinpointing fails!
@@ -161,53 +162,46 @@ def get_beam_angle_and_bragg_peak_pixel(camera_analysis_id: int):
         raise
     
 
-# TODO - decompose further so this is just a function for getting unrotated beam center coords and their errors
-# def get_3d_beam_path(beam_run_id: int, first_camera_id: int, second_camera_id: int, setup_id: int):
-#     """
-#     At this point, assume camera objects have already been built and stored in system database.s
-#     So, this contains the user-defined scintillator edges, the homography matrix, distortion correction
-#     camera matrices, etc.
-#     """
-#     try:
-#         ########## DATABASE SOURCED ##########
-#         beam_energy = 150
-#         scintillator_edges = CAMERA_SCINTILLATOR_EDGES.get("side_arducam") # [horizontal_roi_dimensions, vertical_roi_dimensions]
-#         average_image, brightness_error = AVERAGED_IMAGE, AVERAGED_IMAGE_BRIGHTNESS_ERROR # float64 images being used here
-#         average_image = average_image[:, :, 0] # Only the blue channel - TODO - fix in backend version
+def get_beam_center_coords(beam_run_id: int, camera_analysis_id: int):
+    """
+    At this point, assume camera objects have already been built and stored in system database.s
+    So, this contains the user-defined scintillator edges, the homography matrix, distortion correction
+    camera matrices, etc.
+    """
+    try:
+        #### DB Readingg #####
+        beam_energy, colour_channel, average_image, brightness_error, scintillator_edges = source_params_from_database(camera_analysis_id)
+        beam_angle = cdi.get_beam_angle(camera_analysis_id)
+        ######################
         
-#         bragg_peak_position = (0, 0, 0) # pinpointing will have already been done
-#         beam_angle_1 = None # first camera angle
-#         beam_angle_2 = None # second camera angle
-#         ######################################
+        average_rounded_image = average_image.astype(np.uint8) # could be moved inside automated roi function
+        (h_bounds, v_bounds), _ = get_automated_roi(average_rounded_image, scintillator_edges[0], scintillator_edges[1], show_images=False, fraction=0.16)
         
-#         average_rounded_image = average_image.astype(np.uint8) # could be moved inside automated roi function
+        rotated_image, _, inverse_rotation_matrix, rotation_brightness_error = image_processing.rotate_input_image(average_image, beam_angle,
+                                                                                                                   h_bounds, v_bounds, show_residuals=False)
         
-#         h_bounds, v_bounds = get_automated_roi(average_rounded_image, scintillator_edges[0], scintillator_edges[1], show_images=False, fraction=0.16)
+        rotated_rounded_image = rotated_image.astype(np.uint8)
+        (h_bounds, v_bounds), _ = get_automated_roi(average_rounded_image, scintillator_edges[0], scintillator_edges[1], 
+                                                                   show_images=False, fraction=0.16)
         
-#         # Rotate image for analysis - NOTE: beam angle 1 assumed to be cam which the beam-axis distribution is being computed for
-#         rotated_image, _, inverse_rotation_matrix, rotation_brightness_error = image_processing.rotate_input_image(average_image, beam_angle_1,
-#                                                                                                                    h_bounds, v_bounds, show_residuals=False)
+        rotated_image = rotated_image.astype(np.float64)
         
-#         # brightness_error = np.sqrt(rotation_brightness_error**2 + brightness_error**2) # TODO - NOT WORKING ATM
-#         rotated_image = rotated_image.astype(np.float64) # TODO - temp fix - would need addressing in rotate function
+        # Fit beam profile on rotated image
+        (horizontal_coords, fit_parameters_array, beam_center_errors, _,
+         total_brightness_along_vertical_roi, unc_total_brightness_along_vertical_roi, _) = fit_beam_profile_along_full_roi(rotated_image, brightness_error,
+                                                                                                                            h_bounds, v_bounds, show_fit_qualities=False)
+        beam_center_vertical_coords, *fit_params = fit_parameters_array[:, :5].T
+        # beam_scale_values, beam_sigma_values, sub_gauss_exponent_values, background_noise_values = fit_params
         
-#         # Fit beam profile on rotated image
-#         (horizontal_coords, fit_parameters_array, beam_center_errors, _,  _, _) = fit_beam_profile_along_full_roi(rotated_image, brightness_error,
-#                                                                                                                   h_bounds, v_bounds, show_fit_qualities=True)
+        beam_center_coords = np.vstack((horizontal_coords, beam_center_vertical_coords)).T
+        unrotated_beam_center_coords = image_processing.inverse_rotation_of_coords(beam_center_coords, inverse_rotation_matrix)
+        beam_center_error_vectors = np.vstack((np.full(len(beam_center_errors), 0), beam_center_errors)).T # vertical error in angle-corrected image
         
-#         beam_center_vertical_coords, *fit_params = fit_parameters_array[:, :4].T
-#         beam_scale_values, beam_sigma_values, background_noise_array = fit_params
+        # TODO - update rotation of error vectors to that done to the bragg peak pixel error (only 2x2 rotation matrix needed)
+        unrotated_beam_center_error_vectors = image_processing.inverse_rotation_of_coords(beam_center_error_vectors, inverse_rotation_matrix) # rotated to original coords to introduce horizontal and vertical error
         
-#         beam_center_coords = np.vstack((horizontal_coords, beam_center_vertical_coords)).T
-#         unrotated_beam_center_coords = image_processing.inverse_rotation_of_coords(beam_center_coords, inverse_rotation_matrix)
-#         beam_center_error_vectors = np.vstack((np.full(len(beam_center_errors), 0), beam_center_errors)).T # vertical error in angle-corrected image
-        
-#         # TODO - update rotation of error vectors to that done to the bragg peak pixel error (only 2x2 rotation matrix needed)
-#         unrotated_beam_center_error_vectors = image_processing.inverse_rotation_of_coords(beam_center_error_vectors, inverse_rotation_matrix) # rotated to original coords to introduce horizontal and vertical error
-
-#         # Next I need to calculate the beam path in 3D space - allows pinpointing between these line and one camera view
-#         return None
+        return unrotated_beam_center_coords, unrotated_beam_center_error_vectors, total_brightness_along_vertical_roi, unc_total_brightness_along_vertical_roi,
     
     except Exception as e:
-        print("\n\nError when getting beam angle and bragg peak pixel: ", e)
+        print("\n\nError when getting beam center coords: ", e)
         raise

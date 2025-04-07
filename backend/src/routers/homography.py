@@ -9,9 +9,10 @@ from fastapi.responses import JSONResponse, FileResponse, HTMLResponse
 from src.homography_pinpointing import perform_homography_pinpointing_between_camera_pair_for_GUI
 import os
 import pickle
-from src.single_camera_analysis import get_beam_angle_and_bragg_peak_pixel
+from src.single_camera_analysis import get_beam_angle_and_bragg_peak_pixel, get_beam_center_coords
 from src.scintillation_light_pinpointing import *
 from fastapi.exceptions import HTTPException
+from src.fitting_functions import plot_scintillation_distribution_in_physical_units
 
 
 router = APIRouter(
@@ -508,8 +509,8 @@ def populate_camera_setup_table_for_beam_analysis_api():
 def upload_averaged_image_api():
     
     # beam_energy = 90
-    # beam_energy = 150
-    beam_energy = 180
+    beam_energy = 150
+    # beam_energy = 180
     SIDE_AR_CAM_ID = 1
     TOP_HQ_CAM_ID = 2
 
@@ -536,12 +537,12 @@ def upload_averaged_image_api():
     # num_of_ar_images_in_average = 53
     
     # 150 MEV
-    # num_of_hq_images_in_average = 348
-    # num_of_ar_images_in_average = 67
+    num_of_hq_images_in_average = 348
+    num_of_ar_images_in_average = 67
     
     # 180 MEV
-    num_of_hq_images_in_average = 172
-    num_of_ar_images_in_average = 78
+    # num_of_hq_images_in_average = 172
+    # num_of_ar_images_in_average = 78
     
     # Adding mock images to test if cdi.get_num_of_successfully_captured_images_by_camera_settings_link_id() is working
     mock_bytestring = pickle.dumps("lol")
@@ -551,11 +552,11 @@ def upload_averaged_image_api():
         cdi.add_photo(camera_settings_link_id=top_HQ_camera_settings_link_id, photo=mock_bytestring)
     
     # FLOAT-16 PICKLED AVERAGED NUMPY ARRAYS
-    with open("/code/src/beam_averaged_images/180_mev_A1_averaged_image_float16.pkl", "rb") as file:
+    with open("/code/src/beam_averaged_images/150_mev_A1_averaged_image_float16.pkl", "rb") as file:
         pickled_side_AR__average_image = file.read()
     cdi.update_average_image(side_AR_analysis_id, pickled_side_AR__average_image)
     
-    with open("/code/src/beam_averaged_images/180_mev_HQ2_averaged_image_float16.pkl", "rb") as file:
+    with open("/code/src/beam_averaged_images/150_mev_HQ2_averaged_image_float16.pkl", "rb") as file:
         pickled_top_HQ_average_image = file.read()
     cdi.update_average_image(top_HQ_analysis_id, pickled_top_HQ_average_image)
     return None
@@ -663,6 +664,40 @@ def test_beam_analysis_api():
         for plot_base64 in plots:
             img_tags += f'<img src="data:image/svg+xml;base64,{plot_base64}" width="200px"><br>' # SVG Plots
         html_content = f"<html><body>{img_tags}</body></html>"
+        return HTMLResponse(content=html_content)
+    
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/test_beam_reconstruction")
+def test_beam_reconstruction_api():
+    
+    try:
+        side_camera_analysis_id = 1
+        top_camera_analysis_id = 2
+        side_camera_settings_link_id = cdi.get_camera_settings_link_id_by_camera_analysis_id(side_camera_analysis_id)
+        beam_run_id = cdi.get_beam_run_id_by_camera_settings_link_id(side_camera_settings_link_id)
+
+        # Beam vector construction - TODO - use average angles from all cameras of a given perspective to build a global beam path vector
+        beam_center_incident_position, unc_beam_center_incident_position, \
+        beam_direction_vector, unc_beam_direction_vector = build_directional_vector_of_beam_center(beam_run_id, side_camera_analysis_id, top_camera_analysis_id)
+        
+        # Get beam center coords in side cam image
+        side_cam_beam_center_coords, unc_side_cam_beam_center_coords, \
+        total_brightness_along_vertical_roi, unc_total_brightness_along_vertical_roi = get_beam_center_coords(beam_run_id, side_camera_analysis_id)
+        
+        distances_travelled_inside_scintillator, \
+        unc_distances_travelled_inside_scintillator = convert_beam_center_coords_to_penetration_depths(side_camera_analysis_id,
+                                                                                                    side_cam_beam_center_coords,
+                                                                                                    unc_side_cam_beam_center_coords,
+                                                                                                    [beam_center_incident_position, beam_direction_vector],
+                                                                                                    [unc_beam_center_incident_position, unc_beam_direction_vector])
+        # NOTE - range calc should be in separate function to plotter.
+        # Unc in range needs amending
+        plot_bytes = plot_scintillation_distribution_in_physical_units(distances_travelled_inside_scintillator, unc_distances_travelled_inside_scintillator, 
+                                                                       total_brightness_along_vertical_roi, unc_total_brightness_along_vertical_roi)
+        
+        html_content = f'<html><body><img src="data:image/svg+xml;base64,{plot_bytes}" width="200px"><br></body></html>'
         return HTMLResponse(content=html_content)
     
     except Exception as e:
