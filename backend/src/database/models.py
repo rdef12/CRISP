@@ -270,6 +270,7 @@ class CameraSettingsLink(SQLModel, table=True):
     # beam_run_id: Optional
     is_optimal: Optional[bool] = Field(default=None) # Set true/false when associated with a test beam run left Null otherwise
     number_of_images: Optional[int] = Field(default=None)
+    take_raw_images: Optional[bool] = Field(default=None)
 
     camera: "Camera" = Relationship(back_populates="settings_links")
     settings: "Settings" = Relationship(back_populates="camera_links")
@@ -295,17 +296,17 @@ class BeamRun(SQLModel, table=True):
     beam_run_number: int
     datetime_of_run: datetime
     ESS_beam_energy: float
+    beam_current: float
     # ESS_beam_energy_unc: float #????
     MSIC_beam_energy: Optional[float] = Field(default=None)
     MSIC_beam_energy_unc: Optional[float] = Field(default=None)
-    beam_current: float
-    beam_current_unc: float
+
     #Any other beam parameters?
 
     is_test: bool
     
-    num_of_images_to_capture: Optional[int] = Field(default=None)
-    take_raw_images: Optional[bool] = Field(default=None)
+    # num_of_images_to_capture: Optional[int] = Field(default=None)
+    # take_raw_images: Optional[bool] = Field(default=None)
     bragg_peak_3d_position: Optional[List[float]] = Field(default=None, sa_column=Column(ARRAY(Float)))
     unc_bragg_peak_3d_position: Optional[List[float]] = Field(default=None, sa_column=Column(ARRAY(Float)))
 

@@ -1,5 +1,5 @@
 import { useParams } from "react-router-dom";
-import { Form, NumberInput, RaRecord, useCreateController } from "react-admin";
+import { Form, NumberInput, RaRecord, required, useCreateController } from "react-admin";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -16,7 +16,6 @@ import {
 interface CameraSettings {
   gain: number;
   frame_rate: number;
-  number_of_images: number;
 }
 
 interface CreateRealSettingsProps {
@@ -37,8 +36,7 @@ export const CreateRealSettings = ({ record, onSave }: CreateRealSettingsProps) 
     console.log('CreateRealSettings: handleSubmit called');
     const settings: CameraSettings = {
       gain: Number(data.gain),
-      frame_rate: Number(data.frame_rate),
-      number_of_images: Number(data.number_of_images)
+      frame_rate: Number(data.frame_rate)
     };
     setFormData(settings);
     setShowConfirmDialog(true);
@@ -65,9 +63,8 @@ export const CreateRealSettings = ({ record, onSave }: CreateRealSettingsProps) 
     <div className="space-y-4">
       <Form onSubmit={handleSubmit}>
         <div className="space-y-4">
-          <NumberInput source="gain" />
-          <NumberInput source="frame_rate" />
-          <NumberInput source="number_of_images" />
+          <NumberInput source="gain" validate={required()}/>
+          <NumberInput source="frame_rate" validate={required()}/>
           <div className="flex justify-end">
             <Button type="submit">Create Settings</Button>
           </div>

@@ -122,6 +122,7 @@ export const ListCamerasInExperimentTest = ({ dataTaken } : { dataTaken: boolean
       >
         <TextField source="username" />
         <TextField source="ip_address" />
+        {/* <ResetOptimalField /> */}
       </Datagrid>
     </ListBase>
   );

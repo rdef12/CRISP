@@ -32,18 +32,18 @@ def add_camera_settings_link_with_beam_run(camera_id: int, settings_id: int, bea
         return {"message": f"Camera added to setup.",
                 "id": camera_setup_link.id}
 
-def add_camera_settings_link_with_beam_run_and_number_of_images(camera_id: int, settings_id: int, beam_run_id: int, number_of_images: int):
-    try:
-        camera_setup_link = CameraSettingsLink(camera_id=camera_id, settings_id=settings_id, beam_run_id=beam_run_id, number_of_images=number_of_images)
-    except TypeError as e:
-        raise TypeError(f"TypeError: {e}") from e
-    except ValueError as e:
-        raise ValueError(f"ValueError: {e}") from e
-    with Session(engine) as session:
-        session.add(camera_setup_link)
-        session.commit()
-        return {"message": f"Camera added to setup.",
-                "id": camera_setup_link.id}
+# def add_camera_settings_link_with_beam_run_and_number_of_images(camera_id: int, settings_id: int, beam_run_id: int, number_of_images: int, take_raw_images: bool):
+#     try:
+#         camera_setup_link = CameraSettingsLink(camera_id=camera_id, settings_id=settings_id, beam_run_id=beam_run_id, number_of_images=number_of_images, take_raw_images=take_raw_images)
+#     except TypeError as e:
+#         raise TypeError(f"TypeError: {e}") from e
+#     except ValueError as e:
+#         raise ValueError(f"ValueError: {e}") from e
+#     with Session(engine) as session:
+#         session.add(camera_setup_link)
+#         session.commit()
+#         return {"message": f"Camera added to setup.",
+#                 "id": camera_setup_link.id}
 
 
 # Read

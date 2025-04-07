@@ -29,7 +29,6 @@ export const CreateTestBeamRun = () => {
         <NumberInput source="beam_run_number" validate={required()} label="Beam run number" />
         <NumberInput source="ESS_beam_energy" validate={required()} label="ESS beam energy" />
         <NumberInput source="beam_current" validate={required()} label="Beam current" />
-        <NumberInput source="beam_current_unc" validate={required()} label="Beam current uncertainty" />
         <Button>
           Create
         </Button>

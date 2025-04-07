@@ -12,7 +12,6 @@ def add_beam_run(experiment_id: int,
                         datetime_of_run: datetime,
                         ESS_beam_energy: float,
                         beam_current: float,
-                        beam_current_unc: float,
                         is_test: bool): # And other beam parameters to be added
     try:
         beam_run = BeamRun(experiment_id=experiment_id,
@@ -20,7 +19,6 @@ def add_beam_run(experiment_id: int,
                                         datetime_of_run=datetime_of_run,
                                         ESS_beam_energy=ESS_beam_energy,
                                         beam_current=beam_current,
-                                        beam_current_unc=beam_current_unc,
                                         is_test=is_test)
     except TypeError as e:
         raise TypeError(f"TypeError: {e}") from e

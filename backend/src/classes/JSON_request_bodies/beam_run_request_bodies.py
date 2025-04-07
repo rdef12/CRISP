@@ -1,3 +1,4 @@
+from typing import Optional
 from pydantic import BaseModel
 
 from src.database.models import Camera, CameraSettingsLink, Photo, Settings
@@ -6,7 +7,6 @@ class CreateBeamRun(BaseModel):
     beam_run_number: int
     ESS_beam_energy: float
     beam_current: float
-    beam_current_unc: float
 
 class BeamRunCameraSettingsLink(BaseModel):
     id: int
@@ -23,7 +23,6 @@ class GetBeamRun(BaseModel):
     beam_run_number: int
     ESS_beam_energy: float
     beam_current: float
-    beam_current_unc: float
     camera_settings: list[BeamRunCameraSettingsLink]
 
 
@@ -46,7 +45,20 @@ class CreateBeamRunSettingsTest(BaseModel):
 class CreateBeamRunSettingsReal(BaseModel):
     frame_rate: int
     gain: float
+
+
+
+class UpdateNumberOfImagesAndRaw(BaseModel):
     number_of_images: int
+    take_raw_images: bool
+
+class UpdateNumberOfImagesAndRawResponse(BaseModel):
+    id: int
+
+class GetNumberOfImagesAndRaw(BaseModel):
+    id: int
+    number_of_images: Optional[int]
+    take_raw_images: Optional[bool]
 
 class GetBeamRunSettingsTest(BaseModel):
     id: int # camera_id
@@ -60,7 +72,7 @@ class GetBeamRunSettingsReal(BaseModel):
     frame_rate: int
     gain: float
     lens_position: float
-    number_of_images: int
+
 
 
 class CreateBeamRunSettingsTestResponse(BaseModel):
