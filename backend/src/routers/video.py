@@ -55,6 +55,10 @@ def trial_main_run_video_api():
                                    is_test=False).id
     
     camera_settings_link_id =  cdi.add_camera_settings_link_with_beam_run(camera_id, settings_id, beam_run_id)["id"]
+    
+    cdi.update_number_of_images(camera_settings_link_id, 10)
+    cdi.update_take_raw_images(camera_settings_link_id, True)
+    
     print(f"camera_settings_link_id: {camera_settings_link_id}")
     
     photo_id_array = take_single_video_for_main_run(experiment_id, camera_settings_link_id)
@@ -86,7 +90,7 @@ def trial_test_run_video_api():
     print(f"camera_id: {camera_id}")
     
     # Create the camera settings link ids
-    gain_list = np.arange(1, 11, 1).astype(float).tolist() # argparse cannot handle np.float64
+    gain_list = np.arange(1, 17, 1).astype(float).tolist() # argparse cannot handle np.float64
     camera_settings_link_id_array = []
     for gain in gain_list:
         settings_id = cdi.add_settings(frame_rate=20, lens_position=5, gain=gain)["id"]

@@ -244,22 +244,45 @@ def convert_beam_center_coords_to_penetration_depths(camera_analysis_id: int, un
         unc_physical_3d_beam_centers = np.vstack([unc_physical_3d_beam_centers, beam_center_uncertainty]) if unc_physical_3d_beam_centers.size else np.array([beam_center_uncertainty])
         distance_of_closest_approach_list.append(distance_of_closest_approach)
     
+    print("\n\nPhysical 3D beam centers shape", physical_3d_beam_centers.shape)
+    print("\n\nUncertainty 3D beam centers shape", unc_physical_3d_beam_centers.shape)
+    
+    max_uncertainty_index = np.unravel_index(np.argmax(unc_physical_3d_beam_centers, axis=None), unc_physical_3d_beam_centers.shape)
+    max_uncertainty_vector = unc_physical_3d_beam_centers[max_uncertainty_index[0]]
+    
+    print(f"\n\n3D vector with max uncertainty for beam center position: {max_uncertainty_vector} at pixel coord {unrotated_beam_center_coords[max_uncertainty_index[0]]}")
+    print("\n\nMin uncertainty for beam center position", np.min(unc_physical_3d_beam_centers))
+    
     beam_center_incident_position = beam_center_line_vectors[0]
     print("\n\n Minimum distance of closest approach", np.min(distance_of_closest_approach_list))
     print("\n\n Maximum distance of closest approach", np.max(distance_of_closest_approach_list))
     
     # Convert to depths
-    distances_travelled_inside_scintillator = np.array(
-        [calculate_3d_euclidian_distance(physical_beam_center_position - beam_center_incident_position) for physical_beam_center_position in physical_3d_beam_centers])
+    penetration_depth_vectors = np.array([(physical_beam_center_position - beam_center_incident_position) for physical_beam_center_position in physical_3d_beam_centers])
+    distances_travelled_inside_scintillator = np.array([calculate_3d_euclidian_distance(penetration_depth_vector) for penetration_depth_vector in penetration_depth_vectors])
     
-    unc_distances_travelled_inside_scintillator = [
-        calculate_3d_euclidian_distance(
-        np.array([
+    print("\n\nPenetration depth vectors shape", penetration_depth_vectors.shape)
+    print("\n\nDistances travelled inside scintillator shape", distances_travelled_inside_scintillator.shape)
+    
+    # Calculate component-wise errors for depth displacement
+    penetration_depth_vector_errors = np.array([
+        [
             normal_addition_in_quadrature([unc_incident_component, unc_center_component])
             for unc_incident_component, unc_center_component in zip(unc_beam_center_initial_position, unc_physical_beam_center_position)
-        ])
-        )
+        ]
         for unc_physical_beam_center_position in unc_physical_3d_beam_centers
-    ]
+    ])
+    
+    print("\n\nPenetration depth vector errors shape", penetration_depth_vector_errors.shape)
 
+    # Calculate uncertainties for distances traveled inside the scintillator
+    unc_distances_travelled_inside_scintillator = np.array([
+            np.sqrt(np.sum((penetration_depth_vector * penetration_depth_vector_error) ** 2)) / distance_travelled
+        for penetration_depth_vector, penetration_depth_vector_error, distance_travelled in zip(penetration_depth_vectors, penetration_depth_vector_errors, distances_travelled_inside_scintillator)
+    ])
+    
+    print("\n\nUncertainties for distances travelled inside scintillator shape", unc_distances_travelled_inside_scintillator.shape)
+    print("\n\nMax uncertainty for distance travelled inside scintillator", np.max(unc_distances_travelled_inside_scintillator))
+    print("\n\nMin uncertainty for distance travelled inside scintillator", np.min(unc_distances_travelled_inside_scintillator))
+    
     return distances_travelled_inside_scintillator, unc_distances_travelled_inside_scintillator

@@ -116,6 +116,18 @@ def get_beam_run_id_by_camera_settings_link_id(camera_settings_link_id: int):
         beam_run_id = camera_settings.beam_run_id
         return beam_run_id
     
+def get_take_raw_images(camera_settings_link_id: int):
+    with Session(engine) as session:
+        camera_settings = session.get(CameraSettingsLink, camera_settings_link_id)
+        take_raw_images = camera_settings.take_raw_images
+        return take_raw_images
+    
+def get_number_of_images_to_capture_by_camera_settings_link_id(camera_settings_link_id: int):
+    with Session(engine) as session:
+        camera_settings = session.get(CameraSettingsLink, camera_settings_link_id)
+        number_of_images = camera_settings.number_of_images
+        return number_of_images
+    
 def get_successfully_captured_photo_ids_by_camera_settings_link_id(camera_settings_link_id: int):
     with Session(engine) as session:
         # Bytes must be present to be included
@@ -234,5 +246,31 @@ def update_no_optimal_in_run(photo_ids: int):
             camera_settings.is_optimal = False
         session.commit()
         return {"message": f"Photos with ids: {photo_ids} all set to not optimal camera settings"}
+
+def update_number_of_images(camera_settings_link_id: int, number_of_images: int):
+    try:
+        with Session(engine) as session:
+            statement = select(CameraSettingsLink).where(CameraSettingsLink.id == camera_settings_link_id)
+            result = session.exec(statement).one()
+            result.number_of_images = number_of_images
+            session.commit()
+            return {"message": f"Number of images updated for camera settings link with id = {camera_settings_link_id}."}
+    except NoResultFound:
+        raise ValueError(f"No camera settings link found with id = {camera_settings_link_id}.")
+    except Exception as e:
+        raise RuntimeError(f"An error occurred: {str(e)}")
+    
+def update_take_raw_images(camera_settings_link_id: int, take_raw_images: bool):
+    try:
+        with Session(engine) as session:
+            statement = select(CameraSettingsLink).where(CameraSettingsLink.id == camera_settings_link_id)
+            result = session.exec(statement).one()
+            result.take_raw_images = take_raw_images
+            session.commit()
+            return {"message": f"Take raw images updated for camera settings link with id = {camera_settings_link_id}."}
+    except NoResultFound:
+        raise ValueError(f"No camera settings link found with id = {camera_settings_link_id}.")
+    except Exception as e:
+        raise RuntimeError(f"An error occurred: {str(e)}")
 
 # Delete

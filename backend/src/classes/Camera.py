@@ -383,8 +383,6 @@ class Camera():
             raise Exception(f"Error while closing SFTP connection: {e}")
         
 
-
-
   def transfer_image_without_writing_to_database(self, imageSettings: ImageSettings, camera_settings_link_id: int, full_file_path: str):
     """
     Returns the image bytes and metadata instead of copying the file locally.
@@ -494,12 +492,15 @@ class Camera():
     Then run SSH command with flags from rb.VideoSettings
     """
     frame_rate, lens_position, gain = Camera.source_camera_settings(camera_settings_link_id)
-    directory_name = self.experiment_directory + str(experiment_id) + self.real_run_image_directory + str(beam_run_id)
-    num_of_images = 25
+    num_of_images = cdi.get_number_of_images_to_capture_by_camera_settings_link_id(camera_settings_link_id)
+    if num_of_images is None:
+        raise ValueError("Camera settings link entry can not have the empty field 'number of images' when performing a main beam run")
+    raw = "-raw" if cdi.get_take_raw_images(camera_settings_link_id) else ""
     
-    # -raw flag added under the assumption that we always wanna save the raw files too
+    directory_name = self.experiment_directory + str(experiment_id) + self.real_run_image_directory + str(beam_run_id)
+
     command = (f"python video_script.py -dir {directory_name} " +
-            f"-lp {lens_position} -raw " + 
+            f"-lp {lens_position} {raw} " + 
             f"-c all -fr {frame_rate} " +
             f"-f jpeg -log -b 8 " +
             f"main_run -g {gain} -num {num_of_images} " +
@@ -530,8 +531,6 @@ class Camera():
         gain_list.append(gain)
     
     directory_name = self.experiment_directory + str(experiment_id) + self.test_run_image_directory + str(beam_run_id)
-    
-    # -raw flag added under the assumption that we always wanna save the raw files too
     
     command = (f"python video_script.py -dir {directory_name} " +
             f"-lp {lens_position} " + 

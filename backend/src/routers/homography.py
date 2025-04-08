@@ -673,6 +673,7 @@ def test_beam_analysis_api():
 @router.get("/test_beam_reconstruction")
 def test_beam_reconstruction_api():
     try:
+        plot_bytes = []
         side_camera_analysis_id = 1
         top_camera_analysis_id = 2
         side_camera_settings_link_id = cdi.get_camera_settings_link_id_by_camera_analysis_id(side_camera_analysis_id)
@@ -703,10 +704,34 @@ def test_beam_reconstruction_api():
                                                                         side_camera_analysis_id,
                                                                         top_camera_analysis_id)
         
-        plot_bytes = plot_physical_units_ODR_bortfeld(bragg_peak_depth, distances_travelled_inside_scintillator, unc_distances_travelled_inside_scintillator, 
-                                                      total_brightness_along_vertical_roi, unc_total_brightness_along_vertical_roi, fit_window=1000)
+        plot_bytes += [plot_physical_units_ODR_bortfeld(bragg_peak_depth, distances_travelled_inside_scintillator, unc_distances_travelled_inside_scintillator, 
+                                                      total_brightness_along_vertical_roi, unc_total_brightness_along_vertical_roi, left_fit_window=1000, right_fit_window=200)]
+        
+        #### TOP CAM VERSION OF ANALYSIS ######
+    
+        top_cam_beam_center_coords, unc_top_cam_beam_center_coords, \
+        total_brightness_along_vertical_roi, unc_total_brightness_along_vertical_roi = get_beam_center_coords(beam_run_id, top_camera_analysis_id)
+        
+        distances_travelled_inside_scintillator, \
+        unc_distances_travelled_inside_scintillator = convert_beam_center_coords_to_penetration_depths(top_camera_analysis_id,
+                                                                                                    top_cam_beam_center_coords,
+                                                                                                    unc_top_cam_beam_center_coords,
+                                                                                                    [beam_center_incident_position, beam_direction_vector],
+                                                                                                    [unc_beam_center_incident_position, unc_beam_direction_vector])
+        # Unc in range needs amending
+        # TODO - put range computations in a separate function?
+        
+        # TODO - don't exit code if distance of closest approach exceeds valid distance - just omit from data because failed pinpointing
+        # TODO - if error bar is sufficiently large, exclude from data - where pinpointing method has failed
+        # TODO - unc_penetration_depth looks far too big - look for errors
+        
+        plot_bytes += [plot_physical_units_ODR_bortfeld(bragg_peak_depth, distances_travelled_inside_scintillator, unc_distances_travelled_inside_scintillator, 
+                                                      total_brightness_along_vertical_roi, unc_total_brightness_along_vertical_roi, left_fit_window=800, right_fit_window=100)] # TODO - need to have an asymmetric window
 
-        html_content = f'<html><body><img src="data:image/svg+xml;base64,{plot_bytes}" width="200px"><br></body></html>'
+        img_tags = ""
+        for plot_base64 in plot_bytes:
+            img_tags += f'<img src="data:image/svg+xml;base64,{plot_base64}" width="500px"><br>' # SVG Plots
+        html_content = f"<html><body>{img_tags}</body></html>"
         return HTMLResponse(content=html_content)
     
     except Exception as e:

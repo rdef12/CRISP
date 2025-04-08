@@ -59,6 +59,8 @@ def setup_logging(directory_path):
     
 
 def lens_position_type(value):
+    if value is None:
+        return None
     try:
         fvalue = float(value)
     except ValueError:
@@ -78,7 +80,7 @@ def parse_arguments():
     """
     parser = argparse.ArgumentParser(description="Control CRISP cameras over SSH with Python script")
 
-    parser.add_argument("-lp", "--lens_position", type=lens_position_type, help="Lens position for focussing cam", default=0.0)
+    parser.add_argument("-lp", "--lens_position", type=lens_position_type, help="Lens position for focussing cam", default=None)
     parser.add_argument("-f", "--format", type=str, help="Image encoding type", default="jpeg")
     parser.add_argument("-b", "--bit_depth", type=int, choices=[8, 16], help="PNG bit depth", default=8)
     parser.add_argument("-dir", "--directory_name", type=str, help="Name of the ABSOLUTE image directory to store images inside", required=True)
@@ -95,7 +97,7 @@ def parse_arguments():
     main_run_parser.add_argument("-num", "--num_of_images", type=int, help="Number of images to take") # Using required breaks the -i arg.
     main_run_parser.add_argument("-g", "--gain", type=float, help="Gain Setting", default=1.0)
     main_run_parser.add_argument("-i", "--print_info", action="store_true", help="Flag for whether to print control information and quit script")
-    main_run_parser.add_argument("-csl", "--camera_settings_link_id", type=int, help="Stores the camera setting link ID of the in the CameraSettings table that holds these images' settings", required=True)
+    main_run_parser.add_argument("-csl", "--camera_settings_link_id", type=int, help="Stores the camera setting link ID of the in the CameraSettings table that holds these images' settings")
     
     # Sub arguments for test beam run
     test_run_parser = subparsers.add_parser("test_run", help="Perform test beam run imaging")
@@ -110,8 +112,10 @@ def parse_arguments():
     if (args.bit_depth == 16) and args.colour == "all":
             raise ValueError("Can only use bit depths higher than 8 when a single colour channel is inputted with -c flag.")
     if args.command == "main_run":
-        if not args.print_info and args.num_of_images is None:
-                raise ValueError("-num/--num_of_images is required if not using the -i flag.")
+        if not args.print_info and (args.num_of_images is None or args.camera_settings_link_id is None):
+                raise ValueError("-num/--num_of_images and -csl/camera_settings_link_id is required if not using the -i flag.")
+        if args.print_info and not args.logging:
+            args.logging = True
     return args
 
 def convert_framerate_to_frame_duration(framerate):
@@ -290,21 +294,28 @@ def main_run(args):
         picam2.configure(capture_config)
     
         if args.print_info:
-            logging.info("Camera properties:", picam2.camera_properties)
-            logging.info("Available controls:", picam2.camera_controls)
+            print("Trying to print info")
+            logging.info(f"Camera properties: {picam2.camera_properties}")
+            logging.info(f"Available controls: {picam2.camera_controls}")
             return 0
         
         frame_duration = convert_framerate_to_frame_duration(args.frame_rate)
-        picam2.set_controls({"AnalogueGain": args.gain,
-                             "ColourGains": (1.0, 1.0),
-                             "NoiseReductionMode": 0,
-                             "AfMode": controls.AfModeEnum.Manual,
-                             "LensPosition": args.lens_position,
-                             "Contrast": 1.0,
-                             "Saturation": 1.0,
-                             "Sharpness": 1.0,
-                             "FrameDurationLimits": (frame_duration, frame_duration),
-                             "ExposureTime": int(frame_duration / 2),})
+        
+        controls_dict = {
+            "AnalogueGain": args.gain,
+            "ColourGains": (1.0, 1.0),
+            "NoiseReductionMode": 0,
+            "Contrast": 1.0,
+            "Saturation": 1.0,
+            "Sharpness": 1.0,
+            "FrameDurationLimits": (frame_duration, frame_duration),
+            "ExposureTime": int(frame_duration / 2)
+        }
+        if args.lens_position is not None:
+            controls_dict["AfMode"] = controls.AfModeEnum.Manual
+            controls_dict["LensPosition"] = args.lens_position
+            
+        picam2.set_controls(controls_dict)
         picam2.start()
         logging.info("Camera started at t = :", get_relative_time(start_time))
         ret = take_main_run_images(picam2, args, frame_duration, start_time)
@@ -382,16 +393,21 @@ def test_run(args):
         
         frame_duration = convert_framerate_to_frame_duration(args.frame_rate)
         # Gain control moved to inside take_test_run_images function
-        picam2.set_controls({
-                            "ColourGains": (1.0, 1.0),
-                            "NoiseReductionMode": 0,
-                            # "AfMode": controls.AfModeEnum.Manual,
-                            # "LensPosition": args.lens_position, 
-                            "Contrast": 1.0,
-                            "Saturation": 1.0,
-                            "Sharpness": 1.0,
-                            "FrameDurationLimits": (frame_duration, frame_duration),
-                            "ExposureTime": int(frame_duration / 2)})
+        controls_dict = {
+            "ColourGains": (1.0, 1.0),
+            "NoiseReductionMode": 0,
+            "Contrast": 1.0,
+            "Saturation": 1.0,
+            "Sharpness": 1.0,
+            "FrameDurationLimits": (frame_duration, frame_duration),
+            "ExposureTime": int(frame_duration / 2)
+        }
+        
+        if args.lens_position is not None:
+            controls_dict["AfMode"] = controls.AfModeEnum.Manual
+            controls_dict["LensPosition"] = args.lens_position
+        
+        picam2.set_controls(controls_dict)
         
         logging.info("Camera started at t = :", get_relative_time(start_time))
         ret = take_test_run_images(picam2, args, frame_duration, start_time)

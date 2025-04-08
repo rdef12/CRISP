@@ -375,7 +375,7 @@ def locate_bragg_peak_in_image(x_positions, beam_center_positions, beam_center_e
     total_brightness_slice = total_brightness_along_vertical_roi[start_index:end_index]
     unc_brightness_slice = unc_total_brightness_along_vertical_roi[start_index:end_index]
     
-    bortfeld_fit = fitBP(x_positions_slice, total_brightness_slice, unc_D=unc_brightness_slice)
+    bortfeld_fit = fitBP(x_positions_slice, total_brightness_slice, unc_brightness_slice)
     fit_parameters_covariance = bortfeld_fit['bortfeld_fit_cov']
     bortfeld_fit_uncertainties = np.sqrt(np.diag(fit_parameters_covariance))
     
@@ -405,7 +405,7 @@ def locate_bragg_peak_in_image(x_positions, beam_center_positions, beam_center_e
     plot_byte_string = base64.b64encode(buf.read()).decode('utf-8')
     
     bortfeld_horizontal_coord = z[np.argmax(curve)]
-    peak_bounds, _, = find_peak_position_uncertainty(x_positions, bortfeld_fit['bortfeld_fit_p'], bortfeld_fit_uncertainties, points_per_bin=100, number_of_stds=1)
+    peak_bounds = find_peak_position_uncertainty(x_positions, bortfeld_fit['bortfeld_fit_p'], bortfeld_fit_uncertainties, points_per_bin=100, number_of_stds=1)
     lower_bound, upper_bound = peak_bounds
     print("Bortfeld horizontal pixel is {0}. lower/upper bound = {1}/{2}".format(bortfeld_horizontal_coord, lower_bound, upper_bound))
     # For the time being, use a symmetric interval with the largest unc
@@ -423,18 +423,32 @@ def locate_bragg_peak_in_image(x_positions, beam_center_positions, beam_center_e
 
 
 def plot_physical_units_ODR_bortfeld(bragg_peak_depth, distances, distance_uncertainties, brightnesses, brightness_uncertainties,
-                                     fit_window: int):
+                                     left_fit_window: int, right_fit_window: int):
     """
     Fit window is used to specify how tightly around the peak the ODR fit should be
     """
     
+    print("\n\nMinimum distance travelled through scintillator is {}".format(np.min(distances)))
+    print("\n\nMaximum distance travelled through scintillator is {}".format(np.max(distances)))
+    
+    if len(distances) != len(np.unique(distances)):
+        unique_distances, unique_indices = np.unique(distances, return_index=True)
+        distances = np.array(distances)[unique_indices]
+        distance_uncertainties = np.array(distance_uncertainties)[unique_indices]    
+        brightnesses = np.array(brightnesses)[unique_indices]    
+        brightness_uncertainties = np.array(brightness_uncertainties)[unique_indices]
+        
+    print("\n\nLength of distances array is {}".format(len(distances)))
+    print("\n\nLength of brightnesses array is {}".format(len(brightnesses)))
+    print("\n\nLength of distance uncertainties array is {}".format(len(distance_uncertainties)))
+    print("\n\nLength of brightness uncertainties array is {}".format(len(brightness_uncertainties)))
     
     # Find index of where distances array element is closest to the bragg peak depth
     bragg_peak_index = np.argmin(np.abs(distances - bragg_peak_depth))
     # Apply plot_window around this index to fit around the peak
     
-    start_index = max(0, bragg_peak_index - fit_window)
-    end_index = min(len(distances), bragg_peak_index + fit_window + 1)
+    start_index = max(0, bragg_peak_index - left_fit_window)
+    end_index = min(len(distances), bragg_peak_index + right_fit_window + 1)
     
     distances = distances[start_index:end_index]
     distance_uncertainties = distance_uncertainties[start_index:end_index]
