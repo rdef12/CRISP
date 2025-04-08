@@ -18,7 +18,7 @@ from src.connection_functions import *
 from src.classes.JSON_request_bodies import request_bodies as rb
 
 
-from src.database.models import Camera, CameraAnalysis, CameraSettingsLink
+from src.database.models import Camera, CameraAnalysis, CameraAnalysisPlot, CameraSettingsLink
 
 from src.database.CRUD import CRISP_database_interaction as cdi
 
@@ -53,7 +53,6 @@ def create_camera_analysis(beam_run_id: int, camera_id: int, payload: rb.CameraA
         cdi.update_unc_beam_angle(camera_analysis_id, float(results["beam_angle_error"]))
         cdi.update_bragg_peak_pixel(camera_analysis_id, [float(x) for x in results["bragg_peak_pixel"].flatten()])
         cdi.update_unc_bragg_peak_pixel(camera_analysis_id, [float(x) for x in results["bragg_peak_pixel_error"].flatten()])
-        cdi.update_plots(camera_analysis_id, results["plot_byte_strings"])
     return rb.CameraAnalysisPostResponse(id=camera_analysis_id)
 
 @router.get("/beam-run/{beam_run_id}/camera/{camera_id}")
@@ -74,9 +73,11 @@ def get_camera_analysis(beam_run_id: int, camera_id: int):
         pil_image.save(buffered, format="JPEG")
         image_bytes = buffered.getvalue()
         averaged_photo = base64.b64encode(image_bytes).decode("utf-8")
-        unpickled_plots = pickle.loads(camera_analysis.plots)
-        plots = list(unpickled_plots.values())
-                
+
+        plots_statement = (select(CameraAnalysisPlot)
+                           .where(CameraAnalysisPlot.camera_analysis_id == camera_analysis.id))
+        plots = session.exec(plots_statement).all()
+
         return rb.CameraAnalysisGetReponse(id=camera_id,
                                            cameraSettingsId=camera_analysis.camera_settings_id,
                                            colourChannel=camera_analysis.colour_channel,

@@ -1,6 +1,8 @@
 import { useGetOne } from "react-admin";
 import { ListCamerasInExperimentReal } from "./ListCamerasInExperimentReal";
 import { useParams } from "react-router-dom";
+import { ShowBraggPeakDepth } from "./dataTaken/ShowBraggPeakDepth";
+import { ComplexAnalysis } from "./dataTaken/ComplexAnalysis";
 
 export const ShowRealBeamRun = () => {
   const { beamRunId } = useParams();
@@ -8,6 +10,10 @@ export const ShowRealBeamRun = () => {
   if (isPending) return null;
   const dataTaken = data.data_taken
   return (
-    <ListCamerasInExperimentReal dataTaken={dataTaken} />
+    <div>
+      {dataTaken && (<ShowBraggPeakDepth />) }
+      <ListCamerasInExperimentReal dataTaken={dataTaken} />
+      {dataTaken && (<ComplexAnalysis/>)}
+    </div>
   );
 }
