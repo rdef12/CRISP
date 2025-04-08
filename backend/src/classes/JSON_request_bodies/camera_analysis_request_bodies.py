@@ -1,7 +1,7 @@
 from typing import List, Optional
 from pydantic import BaseModel
 
-from src.database.models import CameraAnalysis
+from src.database.models import CameraAnalysis, CameraAnalysisPlot
 
 class CameraAnalysisPostPayload(BaseModel):
     colour_channel: str
@@ -19,5 +19,5 @@ class CameraAnalysisGetReponse(BaseModel):
     beamAngleUncertainty: Optional[float] = None
     braggPeakPixel: Optional[List[float]] = None
     braggPeakPixelUncertainty: Optional[List[float]] = None
-    plots: Optional[List[str]] = None
+    plots: Optional[List[CameraAnalysisPlot]] = None
     
