@@ -16,4 +16,5 @@ RUN npm run build
 # Just metadata in this case because compose.yaml defines the ports again.
 EXPOSE 3000 
 
-CMD ["npm", "run", "start"]
+# CMD ["npm", "run", "start"]
+CMD ["npm", "run", "dev"]

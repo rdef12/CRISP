@@ -63,14 +63,22 @@ def get_cameras_in_experiment(experiment_id: int) -> list[Camera]:
 
 def get_scintillator_edges_by_photo_id(photo_id: int) -> tuple[int]:
     with Session(engine) as session:
-        statement = (select(CameraSetupLink)
-                     .join(Setup)
-                     .join(Experiment)
-                     .join(BeamRun)
-                     .join(CameraSettingsLink)
-                     .join(Photo)
-                     .where(Photo.id == photo_id))
-        setup_camera = session.exec(statement).one()
+        # statement = (select(CameraSetupLink)
+        #              .join(Setup, CameraSetupLink.setup_id == Setup.id)
+        #              .join(Experiment, Experiment.setup_id == Setup.id)
+        #              .join(BeamRun, BeamRun.experiment_id == Experiment.id)
+        #              .join(CameraSettingsLink, CameraSettingsLink.beam_run_id == BeamRun.id)
+        #              .join(Photo, Photo.camera_settings_link_id == CameraSettingsLink.id)
+        #              .where(Photo.id == photo_id))
+        # setup_camera = session.exec(statement).one()
+        photo = session.get(Photo, photo_id)
+        camera_settings = session.get(CameraSettingsLink, photo.camera_settings_link_id)
+        camera_id = camera_settings.camera_id
+        beam_run = session.get(BeamRun, camera_settings.beam_run_id)
+        experiment = session.get(Experiment, beam_run.experiment_id)
+        setup = session.get(Setup, experiment.setup_id)
+        setup_camera_id = get_setup_camera_id(camera_id, setup.id)
+        setup_camera = session.get(CameraSetupLink, setup_camera_id)
         horizontal_start = setup_camera.horizontal_scintillator_start
         horizontal_end = setup_camera.horizontal_scintillator_end
         vertical_start = setup_camera.vertical_scintillator_start
@@ -369,14 +377,14 @@ def get_vertical_scintillator_limits(camera_id:int, setup_id:int) -> tuple[int, 
         else:
             raise ValueError(f"Initial vertical ROI not found for camera with id {camera_id} and setup with id {setup_id}.")
 
-def get_scintillator_edges_photo_id(camera_id:int, setup_id:int) -> bytes:
-    with Session(engine) as session:
-        statement = select(CameraSetupLink).where(CameraSetupLink.camera_id == camera_id).where(CameraSetupLink.setup_id == setup_id)
-        result = session.exec(statement).one()
-        if result:
-            return result.scintillator_edges_photo_id
-        else:
-            raise ValueError(f"Far face calibration photo not found for camera with id {camera_id} and setup with id {setup_id}.")
+# def get_scintillator_edges_photo_id(camera_id:int, setup_id:int) -> bytes:
+#     with Session(engine) as session:
+#         statement = select(CameraSetupLink).where(CameraSetupLink.camera_id == camera_id).where(CameraSetupLink.setup_id == setup_id)
+#         result = session.exec(statement).one()
+#         if result:
+#             return result.scintillator_edges_photo_id
+#         else:
+#             raise ValueError(f"Far face calibration photo not found for camera with id {camera_id} and setup with id {setup_id}.")
 
 def get_camera_matrix(camera_id:int, setup_id:int) -> np.ndarray:
     with Session(engine) as session:

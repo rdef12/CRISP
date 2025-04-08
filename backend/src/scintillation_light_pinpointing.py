@@ -8,6 +8,7 @@ from src.homography_pinpointing import AbstractCamera, extract_weighted_average_
 from src.database.CRUD import CRISP_database_interaction as cdi
 from src.uncertainty_functions import *
 from itertools import product
+import matplotlib.pyplot as plt
 
 def pinpoint_bragg_peak(camera_analysis_id_list):
     try:
@@ -274,6 +275,8 @@ def convert_beam_center_coords_to_penetration_depths(camera_analysis_id: int, un
     ])
     
     print("\n\nPenetration depth vector errors shape", penetration_depth_vector_errors.shape)
+    
+    plt.plot(physical_3d_beam_centers[-1], ) # Plot of z against beam center error magnitude
 
     # Calculate uncertainties for distances traveled inside the scintillator
     unc_distances_travelled_inside_scintillator = np.array([

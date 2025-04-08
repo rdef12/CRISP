@@ -53,9 +53,11 @@ def roi_determination_inside_scintillator(image, scintillator_horizontal_roi, sc
         x_bounds = np.array([rows.min(), rows.max()])
         y_bounds = np.array([columns.min(), columns.max()])
     
+    # TODO - see if I need to reintroduce this!
     # To deal with case where only the frontier contour is identified, use the start of the horizontal ROI as 
     # that determined by the user for the incident scintillator face
-    x_bounds[0] = 0
+
+    #x_bounds[0] = 0
     
     if show_plots:
         plt.imshow(image)
