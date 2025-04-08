@@ -5,6 +5,17 @@ import { useEffect, useState } from "react";
 import { ShowSingleCameraResults } from "./ShowSingleCameraResults";
 import { ShowSingleCameraAnalysisPlots } from "./ShowSingleCameraAnalysisPlots";
 
+export interface Plot {
+  plot_type: string;
+  plot_figure: string;
+  parameter_labels?: string[];
+  parameter_values?: number[];
+  parameter_uncertainties?: number[];
+  chi_squared?: number;
+  number_of_data_points?: number;
+  description?: string;
+}
+
 export interface SingleCameraAnalyses {
   id: number;
   cameraSettingId: number;
@@ -14,7 +25,7 @@ export interface SingleCameraAnalyses {
   beamAngleUncertainty: number;
   braggPeakPixel: number[];
   braggPeakPixelUncertainty: number[];
-  plots: string[];
+  plots: Plot[];
 }
 
 interface ShowSingleCameraAnalysesProps {
