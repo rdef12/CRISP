@@ -137,6 +137,15 @@ def get_camera_optical_axis(camera_id:int, setup_id:int) -> int:
             return result.optical_axis.value # .value because type is enum
         else:
             raise ValueError(f"Optical axis not found for camera with id {camera_id} and setup with id {setup_id}.")
+        
+def get_image_beam_direction(camera_id:int, setup_id:int) -> str:
+    with Session(engine) as session:
+        statement = select(CameraSetupLink).where(CameraSetupLink.camera_id == camera_id).where(CameraSetupLink.setup_id == setup_id)
+        result = session.exec(statement).one()
+        if result:
+            return result.image_beam_axis.value # .value because type is enum
+        else:
+            raise ValueError(f"Image beam direction not found for camera with id {camera_id} and setup with id {setup_id}.")
        
 def get_far_face_z_shift(camera_id: int, setup_id: int) -> float:
     with Session(engine) as session:
@@ -660,6 +669,19 @@ def update_near_face_calibration_board_thickness_unc(camera_id: int, setup_id: i
     except Exception as e:
         raise RuntimeError(f"An error occurred: {str(e)}")
 
+def update_image_beam_direction(camera_id:int, setup_id:int, image_beam_direction: Literal["top", "right", "bottom", "left"]):
+    try:
+        with Session(engine) as session:
+            statement = select(CameraSetupLink).where(CameraSetupLink.camera_id == camera_id).where(CameraSetupLink.setup_id == setup_id)
+            result = session.exec(statement).one()
+            result.image_beam_direction = image_beam_direction
+            session.commit()
+            return {"message": f"Image beam direction updated for camera with id {camera_id} and setup with id {setup_id}."}
+    except NoResultFound:
+        raise ValueError(f"No camera setup link found for camera_id={camera_id} and setup_id={setup_id}.")
+    except Exception as e:
+        raise RuntimeError(f"An error occurred: {str(e)}")
+    
 def update_camera_optical_axis(camera_id:int, setup_id:int, camera_optical_axis: Literal["x", "y", "z"]):
     try:
         with Session(engine) as session:

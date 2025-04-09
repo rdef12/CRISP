@@ -12,6 +12,12 @@ class OpticalAxisEnum(str, Enum):
 class DepthDirectionEnum(int, Enum):
     POSITIVE = 1
     NEGATIVE = -1
+    
+class ImageBeamDirectionEnum(str, Enum):
+    TOP = "top"
+    RIGHT = "right"
+    BOTTOM = "bottom"
+    LEFT = "left"
 
 # from sqlmodel import Field, SQLModel, PickleType, JSON, Column, ARRAY, Integer, LargeBinary, Relationship
 from sqlmodel import Field, SQLModel, PickleType, JSON, LargeBinary, Relationship
@@ -49,6 +55,8 @@ class CameraSetupLink(SQLModel, table=True):
 # General homography
     optical_axis: Optional[OpticalAxisEnum] = Field(default=None)
     depth_direction: Optional[DepthDirectionEnum] = Field(default=None) # used to specify which side of the origin the cam is along optical axis
+    image_beam_direction: Optional[ImageBeamDirectionEnum] = Field(default=None) # used to orient images before applying analysis
+    
 # Far face homography
     #Calibration pattern type here too?
     far_face_calibration_pattern_size: Optional[List[int]] = Field(default=None, sa_column=Column(ARRAY(Integer)))
@@ -94,7 +102,6 @@ class CameraSetupLink(SQLModel, table=True):
     near_face_non_z_shift_unc: Optional[float] = Field(default=None)
     near_face_calibration_board_thickness: Optional[float] = Field(default=None)
     near_face_calibration_board_thickness_unc: Optional[float] = Field(default=None)
-    
     
 # Others
     scintillator_edges_photo_camera_settings_id: Optional[int] = Field(default=None, foreign_key="camerasettingslink.id")

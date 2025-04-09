@@ -102,6 +102,10 @@ def get_beam_angle_and_bragg_peak_pixel(camera_analysis_id: int):
         beam_energy, colour_channel, average_image, brightness_error, scintillator_edges = source_params_from_database(camera_analysis_id)
         average_rounded_image = average_image.astype(np.uint8)  # could be moved inside automated roi function
         
+        average_image = cv.rotate(average_image, cv.ROTATE_180) # TESTING
+        average_rounded_image = cv.rotate(average_rounded_image, cv.ROTATE_180) # TESTING
+        scintillator_edges = [np.array(average_rounded_image.shape[i-1] - edge)[::-1] for i, edge in enumerate(scintillator_edges)]
+        
         (h_bounds, v_bounds), base64_roi_image = get_automated_roi(average_rounded_image, scintillator_edges[0], scintillator_edges[1], 
                                                                    show_images=False, fraction=0.16)
         image_store.add_image("roi_image", base64_roi_image)
@@ -174,10 +178,6 @@ def get_beam_center_coords(beam_run_id: int, camera_analysis_id: int):
         ######################
         
         average_rounded_image = average_image.astype(np.uint8) # could be moved inside automated roi function
-        
-        average_image = cv.rotate(average_image, cv.ROTATE_180) # TESTING
-        average_rounded_image = cv.rotate(average_rounded_image, cv.ROTATE_180) # TESTING
-        scintillator_edges = [np.array(average_rounded_image.shape[i-1] - edge)[::-1] for i, edge in enumerate(scintillator_edges)]
         
         (h_bounds, v_bounds), _ = get_automated_roi(average_rounded_image, scintillator_edges[0], scintillator_edges[1], show_images=False, fraction=0.16)
         

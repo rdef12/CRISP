@@ -503,6 +503,10 @@ def populate_camera_setup_table_for_beam_analysis_api():
     # NEAR TOP CAM
     near_top_photo_bytes = cdi.get_photo_from_id(4)
     perform_homography_calibration("second_camera", 1, "near", top_transforms, photo_bytes=near_top_photo_bytes, save_overlayed_grid=True)
+    
+    # Beam directions updated
+    cdi.update_image_beam_direction(1, 1, "left") # side camera
+    cdi.update_image_beam_direction(2, 1, "left") # top camera
     return {"message": "done"}
 
 
