@@ -143,7 +143,7 @@ def get_image_beam_direction(camera_id:int, setup_id:int) -> str:
         statement = select(CameraSetupLink).where(CameraSetupLink.camera_id == camera_id).where(CameraSetupLink.setup_id == setup_id)
         result = session.exec(statement).one()
         if result:
-            return result.image_beam_axis.value # .value because type is enum
+            return result.image_beam_direction.value # .value because type is enum
         else:
             raise ValueError(f"Image beam direction not found for camera with id {camera_id} and setup with id {setup_id}.")
        

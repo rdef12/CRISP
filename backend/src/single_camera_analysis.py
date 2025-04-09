@@ -84,11 +84,12 @@ def source_params_from_database(camera_analysis_id: int):
     
     average_image, unc_average_image = average_image.astype(np.float64), unc_average_image.astype(np.float64) # TODO - fix because cv2 does not support float16
     
+    image_beam_direction = cdi.get_image_beam_direction(camera_id, setup_id)
     colour_channel = cdi.get_colour_channel(camera_analysis_id)
     # [horizontal_roi_dimensions, vertical_roi_dimensions]
     scintillator_edges = [cdi.get_horizontal_scintillator_limits(camera_id, setup_id),
                           cdi.get_vertical_scintillator_limits(camera_id, setup_id)]
-    return beam_energy, colour_channel, average_image, unc_average_image, scintillator_edges
+    return beam_energy, image_beam_direction, colour_channel, average_image, unc_average_image, scintillator_edges
 
 
 def get_beam_angle_and_bragg_peak_pixel(camera_analysis_id: int):
@@ -99,12 +100,28 @@ def get_beam_angle_and_bragg_peak_pixel(camera_analysis_id: int):
     """
     image_store = ImageByteStrings()
     try:
-        beam_energy, colour_channel, average_image, brightness_error, scintillator_edges = source_params_from_database(camera_analysis_id)
+        beam_energy, image_beam_direction, colour_channel, average_image, brightness_error, scintillator_edges = source_params_from_database(camera_analysis_id)
         average_rounded_image = average_image.astype(np.uint8)  # could be moved inside automated roi function
         
+        print("Image beam direction: ", image_beam_direction)
+        match image_beam_direction:
+            case "top":
+                pass
+            case "right":
+                pass
+            case "bottom": 
+                pass
+            case "left":
+                pass
+            case _:
+                raise Exception("Invalid image beam direction specified in the database.")
+        return 
+        
+        # ROTATION FOR  TESTING ##################
         average_image = cv.rotate(average_image, cv.ROTATE_180) # TESTING
         average_rounded_image = cv.rotate(average_rounded_image, cv.ROTATE_180) # TESTING
         scintillator_edges = [np.array(average_rounded_image.shape[i-1] - edge)[::-1] for i, edge in enumerate(scintillator_edges)]
+        ########################################
         
         (h_bounds, v_bounds), base64_roi_image = get_automated_roi(average_rounded_image, scintillator_edges[0], scintillator_edges[1], 
                                                                    show_images=False, fraction=0.16)

@@ -627,7 +627,6 @@ def test_beam_analysis_api():
         beam_run_id = cdi.get_beam_run_id_by_camera_settings_link_id(side_camera_settings_link_id)
 
         first_results = get_beam_angle_and_bragg_peak_pixel(side_camera_analysis_id)
-        print("\n\n\nFINISHED\n\n\n")
         print(f"\n\nBeam angle: {first_results['beam_angle']} +/- {first_results['beam_angle_error']}")
         print(f"\n\nBragg peak pixel: {first_results['bragg_peak_pixel']} +/- {first_results['bragg_peak_pixel_error']}")
         
