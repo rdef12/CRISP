@@ -65,10 +65,27 @@ def lens_position_type(value):
         fvalue = float(value)
     except ValueError:
         raise argparse.ArgumentTypeError("Lens position must be a float.")
-    if not (0.0 <= fvalue <= 10.0):  # Adjust range as needed
+    if not (0.0 <= fvalue <= 10.0):
         raise argparse.ArgumentTypeError("Lens position must be between 0.0 and 10.0")
     return fvalue
 
+def gain_type(value):
+    try:
+        fvalue = float(value)
+    except ValueError:
+        raise argparse.ArgumentTypeError("Gain must be a float.")
+    if not (1 <= fvalue <= 16):
+        raise argparse.ArgumentTypeError("Gain must be between 1.0 and 16.0")
+    return fvalue
+
+def frame_rate_type(value):
+    try:
+        fvalue = float(value)
+    except ValueError:
+        raise argparse.ArgumentTypeError("Frame rate must be a float.")
+    if not (5*10**-3 <= fvalue <= 90):
+        raise argparse.ArgumentTypeError("Frame rate must be between 5*10**-3 and 90 fps")
+    return fvalue
 
 def parse_arguments():
     """
@@ -85,7 +102,7 @@ def parse_arguments():
     parser.add_argument("-b", "--bit_depth", type=int, choices=[8, 16], help="PNG bit depth", default=8)
     parser.add_argument("-dir", "--directory_name", type=str, help="Name of the ABSOLUTE image directory to store images inside", required=True)
     parser.add_argument("-log", "--logging", action="store_true", help="Add logging info to a .log file in the image directory")
-    parser.add_argument("-fr", "--frame_rate", type=float, help="Specify frame rate (will be converted to an exposure time)", default=1.0) # in fps
+    parser.add_argument("-fr", "--frame_rate", type=frame_rate_type, help="Specify frame rate (will be converted to an exposure time)", default=1.0) # in fps
     parser.add_argument("-c", "--colour", type=str, choices=["r", "g", "b", "all"], help="Specify colour channel to save from image (one channel or all) ", default="all")
     parser.add_argument("-raw", "--save_dng", action="store_true", help="Save images in DNG format (in addition to the primary format to be transferred to local device)")
     
@@ -95,7 +112,7 @@ def parse_arguments():
     # Sub arguments for main beam run
     main_run_parser = subparsers.add_parser("main_run", help="Perform main beam run imaging")
     main_run_parser.add_argument("-num", "--num_of_images", type=int, help="Number of images to take") # Using required breaks the -i arg.
-    main_run_parser.add_argument("-g", "--gain", type=float, help="Gain Setting", default=1.0)
+    main_run_parser.add_argument("-g", "--gain", type=gain_type, help="Gain Setting", default=1.0)
     main_run_parser.add_argument("-i", "--print_info", action="store_true", help="Flag for whether to print control information and quit script")
     main_run_parser.add_argument("-csl", "--camera_settings_link_id", type=int, help="Stores the camera setting link ID of the in the CameraSettings table that holds these images' settings")
     
