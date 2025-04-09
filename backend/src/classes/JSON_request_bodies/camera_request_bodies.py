@@ -7,4 +7,8 @@ class CameraStatusResponse(BaseModel):
     username: str
     IPAddress: str
     cameraModel: str
-    connectionStatus: bool 
+    connectionStatus: bool
+
+class CameraPutRequestBody(BaseModel):
+    IPAddress: str
+    cameraModel: str
