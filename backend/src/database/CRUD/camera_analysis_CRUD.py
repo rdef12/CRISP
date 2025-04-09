@@ -51,7 +51,7 @@ def get_colour_channel(camera_analysis_id: int) -> str:
         statement = select(CameraAnalysis).where(CameraAnalysis.id == camera_analysis_id)
         result = session.exec(statement).one()
         if result:
-            return result.colour_channel
+            return result.colour_channel.value
         else:
             raise ValueError(f"Camera analysis with id {camera_analysis_id} not found.")
 

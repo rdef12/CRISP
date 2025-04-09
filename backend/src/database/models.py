@@ -18,6 +18,13 @@ class ImageBeamDirectionEnum(str, Enum):
     RIGHT = "right"
     BOTTOM = "bottom"
     LEFT = "left"
+    
+class ColourChannelEnum(str, Enum):
+    RED = "red"
+    GREEN = "green"
+    BLUE = "blue"
+    GRAY = "gray"
+    GREY = "grey"
 
 # from sqlmodel import Field, SQLModel, PickleType, JSON, Column, ARRAY, Integer, LargeBinary, Relationship
 from sqlmodel import Field, SQLModel, PickleType, JSON, LargeBinary, Relationship
@@ -334,7 +341,7 @@ class CameraAnalysis(SQLModel, table=True):
     # beam_run: "BeamRun" = Relationship(back_populates="camera_analyses")
     camera_settings_id: int = Field(default=None, foreign_key="camerasettingslink.id") # not optional
     
-    colour_channel: str = Field(default=None) # not optional
+    colour_channel: ColourChannelEnum = Field(default=None) # not optional
     average_image: Optional[bytes] = Field(default=None, sa_column=PickleType)
     beam_angle: Optional[float] = Field(default=None)
     unc_beam_angle: Optional[float] = Field(default=None)
