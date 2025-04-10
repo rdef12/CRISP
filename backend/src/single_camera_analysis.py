@@ -94,7 +94,7 @@ def source_params_from_database(camera_analysis_id: int):
 
 def get_beam_angle_and_bragg_peak_pixel(camera_analysis_id: int):
     """
-    At this point, assume camera objects have already been built and stored in system database.s
+    At this point, assume camera objects have already been built and stored in system database.
     So, this contains the user-defined scintillator edges, the homography matrix, distortion correction
     camera matrices, etc.
     """
@@ -103,39 +103,20 @@ def get_beam_angle_and_bragg_peak_pixel(camera_analysis_id: int):
         beam_energy, image_beam_direction, colour_channel, average_image, brightness_error, scintillator_edges = source_params_from_database(camera_analysis_id)
         average_rounded_image = average_image.astype(np.uint8)  # could be moved inside automated roi function
         
-        print("Image beam direction: ", image_beam_direction)
-        match image_beam_direction:
-            case "top":
-                pass
-            case "right":
-                pass
-            case "bottom": 
-                pass
-            case "left":
-                pass
-            case _:
-                raise Exception("Invalid image beam direction specified in the database.")
-        return 
-        
-        # ROTATION FOR  TESTING ##################
-        average_image = cv.rotate(average_image, cv.ROTATE_180) # TESTING
-        average_rounded_image = cv.rotate(average_rounded_image, cv.ROTATE_180) # TESTING
-        scintillator_edges = [np.array(average_rounded_image.shape[i-1] - edge)[::-1] for i, edge in enumerate(scintillator_edges)]
-        ########################################
-        
         (h_bounds, v_bounds), base64_roi_image = get_automated_roi(average_rounded_image, scintillator_edges[0], scintillator_edges[1], 
                                                                    show_images=False, fraction=0.16)
-        image_store.add_image("roi_image", base64_roi_image)
+        
+        cdi.add_camera_analysis_plot(camera_analysis_id, "automated_roi", base64_roi_image)
+        # image_store.add_image("roi_image", base64_roi_image)
         
         # Fit initial beam profile
         (horizontal_coords, fit_parameters_array, beam_center_errors, _, 
-         _, _, 
-         plot_byte_strings) = fit_beam_profile_along_full_roi(average_image, brightness_error,
-                                                                                h_bounds, v_bounds, show_fit_qualities=False)
-        image_store.add_image("original_chi_squared_values", plot_byte_strings[0])
+         _, _, plot_byte_strings) = fit_beam_profile_along_full_roi(camera_analysis_id, "round_1", average_image, brightness_error,
+                                                                    h_bounds, v_bounds, show_fit_qualities=False)
+        # image_store.add_image("original_chi_squared_values", plot_byte_strings[0])
         image_store.add_image("original_best_gaussian_fit", plot_byte_strings[1])
         image_store.add_image("original_worst_gaussian_fit", plot_byte_strings[2])
-        image_store.add_image("original_overlayed_beam", plot_byte_strings[3])
+        # image_store.add_image("original_overlayed_beam", plot_byte_strings[3])
         beam_center_vertical_coords = fit_parameters_array[:, 0]
         
         # Calculate incident beam angle
@@ -156,12 +137,13 @@ def get_beam_angle_and_bragg_peak_pixel(camera_analysis_id: int):
         # Fit beam profile on rotated image
         (horizontal_coords, fit_parameters_array, beam_center_errors, _,  
          total_brightness_along_vertical_roi, unc_total_brightness_along_vertical_roi,
-         plot_byte_strings) = fit_beam_profile_along_full_roi(rotated_image, brightness_error,
-                                                            h_bounds, v_bounds, show_fit_qualities=False)
-        image_store.add_image("rotated_chi_squared_values", plot_byte_strings[0])
+         plot_byte_strings) = fit_beam_profile_along_full_roi(camera_analysis_id, "round_2", rotated_image, brightness_error,
+                                                              h_bounds, v_bounds, show_fit_qualities=False)
+         
+        # image_store.add_image("rotated_chi_squared_values", plot_byte_strings[0])
         image_store.add_image("rotated_best_gaussian_fit", plot_byte_strings[1])
         image_store.add_image("rotated_worst_gaussian_fit", plot_byte_strings[2])
-        image_store.add_image("rotated_overlayed_beam", plot_byte_strings[3])
+        # image_store.add_image("rotated_overlayed_beam", plot_byte_strings[3])
         
         beam_center_vertical_coords, *fit_params = fit_parameters_array[:, :5].T
 

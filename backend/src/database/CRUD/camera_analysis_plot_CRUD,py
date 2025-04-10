@@ -1,0 +1,57 @@
+from sqlmodel import Session, select, PickleType
+from sqlalchemy.orm.exc import NoResultFound
+
+from src.database.database import engine
+from src.database.models import CameraAnalysis, CameraAnalysisPlot
+import numpy as np
+from typing import Literal, Optional, List
+import pickle
+
+# Create
+
+def add_camera_analysis_plot(camera_analysis_id: int, plot_type: str, 
+                             plot_figure: bytes, parameter_labels: Optional[List[str]],
+                             parameter_uncertainties: Optional[List[float]], 
+                             chi_squared: Optional[float],
+                             number_of_data_points: Optional[int],
+                             description: Optional[str]):
+    try:
+        camera_analysis_plot = CameraAnalysisPlot(camera_analysis_id=camera_analysis_id, plot_type=plot_type,
+                                                  plot_figure=plot_figure, parameter_labels=parameter_labels,
+                                                  parameter_uncertainties=parameter_uncertainties,
+                                                  chi_squared=chi_squared, number_of_data_points=number_of_data_points, 
+                                                  description=description)
+    except TypeError as e:
+        raise TypeError(f"TypeError: {e}") from e
+    except ValueError as e:
+        raise ValueError(f"ValueError: {e}") from e
+    with Session(engine) as session:
+        session.add(camera_analysis_plot)
+        session.commit()
+        return {"message": f"Camera analysis plot added to camera analysis with id {camera_analysis_id}.",
+                "id": camera_analysis_plot.id}
+        
+# Read
+
+def get_camera_analysis_plot_by_id(camera_analysis_plot_id: int) -> CameraAnalysisPlot:
+    with Session(engine) as session:
+        return session.get(CameraAnalysisPlot, camera_analysis_plot_id)
+    
+def get_all_plot_types() -> dict:
+    with Session(engine) as session:
+        statement = select(CameraAnalysisPlot.id, CameraAnalysisPlot.plot_type)
+        results = session.exec(statement).all()
+        return {result.id: result.plot_type for result in results}
+
+def get_plot_figure_by_camera_analysis_id_and_plot_name(camera_analysis_id: int, plot_name: str) -> bytes:
+    with Session(engine) as session:
+        statement = select(CameraAnalysisPlot.plot_figure).where(
+            CameraAnalysisPlot.camera_analysis_id == camera_analysis_id,
+            CameraAnalysisPlot.plot_type == plot_name
+        )
+        result = session.exec(statement).one()
+        if result:
+            return result
+        else:
+            raise NoResultFound(f"No plot found for camera_analysis_id {camera_analysis_id} and plot_name {plot_name}.")
+# Update 

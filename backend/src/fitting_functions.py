@@ -10,6 +10,7 @@ import base64
 
 from src.modified_pybragg import *
 from src.uncertainty_functions import *
+from src.database.CRUD import CRISP_database_interaction as cdi
 
 warnings.filterwarnings("ignore", category=OptimizeWarning)
 
@@ -154,7 +155,7 @@ def fit_gaussian_to_beam_profile(pixel_vertical_coords, column_of_brightness_val
         return float("nan"), float("nan"), float("nan"),  successful_fit
     
 
-def fit_beam_profile_along_full_roi(channel, channel_std, h_bounds, v_bounds, show_fit_qualities: bool=False,
+def fit_beam_profile_along_full_roi(camera_analysis_id: int, fit_context: str, channel, channel_std, h_bounds, v_bounds, show_fit_qualities: bool=False,
                                     save_best_fit_data: bool=False):
     try:
         (background_brightness, _, _, _) = cv.minMaxLoc(channel[v_bounds[0]: v_bounds[1] + 1, h_bounds[0]: h_bounds[1] + 1])
@@ -185,7 +186,7 @@ def fit_beam_profile_along_full_roi(channel, channel_std, h_bounds, v_bounds, sh
         roi_horizontal_coords = np.delete(roi_horizontal_coords, failed_fits) # Failed fits deleted from array - no data added when the fit failed (so would be differences in array lengths without this fix)
         print("The number of Gaussian fits which failed is {}".format(len(failed_fits)))
         
-        rcs_plot_bytes = plot_reduced_chi_squared_values(roi_horizontal_coords, reduced_chi_squared_array, save_data=False, show_plot=show_fit_qualities)
+        rcs_plot_bytes = plot_reduced_chi_squared_values(fit_context, roi_horizontal_coords, reduced_chi_squared_array, save_data=False, show_plot=show_fit_qualities)
         
         index_of_worst_accepted_fit = np.argmax(reduced_chi_squared_array)
         index_of_best_accepted_fit = np.argmin(reduced_chi_squared_array)
@@ -200,6 +201,7 @@ def fit_beam_profile_along_full_roi(channel, channel_std, h_bounds, v_bounds, sh
         overlayed_average_image_bytes = render_best_worst_fit_locations(channel, best_fit_horizontal_coord, worst_fit_horizontal_coord, v_bounds)
         
         plot_byte_strings = [rcs_plot_bytes, best_fit_gaussian_plot_bytes, worst_fit_gaussian_plot_bytes, overlayed_average_image_bytes]
+        
         return roi_horizontal_coords, fitted_parameters_array, beam_center_error_array, reduced_chi_squared_array, total_profile_brightness, unc_total_profile_brightness, plot_byte_strings
     except Exception as e:
         raise Exception("Error in fitting beam profile along full ROI: ", e)
@@ -266,7 +268,8 @@ def plot_beam_profile(channel, channel_std, horizontal_coord, v_bounds, global_b
     return base64.b64encode(buf.read()).decode('utf-8')
 
 
-def plot_reduced_chi_squared_values(roi_horizontal_coords, reduced_chi_squared_array, save_data: bool=False, show_plot: bool=False):
+def plot_reduced_chi_squared_values(camera_analysis_id: int, fit_context: str, roi_horizontal_coords,
+                                    reduced_chi_squared_array, show_plot: bool=False):
     
     plt.xlabel("Horizontal Pixel Coordinate")
     plt.ylabel(r"Gaussian Profile $\chi^{2}_R$")
@@ -277,15 +280,15 @@ def plot_reduced_chi_squared_values(roi_horizontal_coords, reduced_chi_squared_a
     if show_plot:
         plt.show()
     
-    if save_data:
-        data_array = np.column_stack((roi_horizontal_coords, reduced_chi_squared_array))
-        np.savetxt("plotting_data/new_reduced_chi_squared_data.csv", data_array, delimiter=",", header="Horizontal Pixel Coord, Gaussian Reduced Chi Squared")
-    
     buf = io.BytesIO()  # Create an in-memory binary stream (buffer)
     plt.savefig(buf, format="svg", dpi=600)  # Save the current plot to the buffer
     plt.close()
     buf.seek(0)  # Reset the buffer's position to the beginning - else will read from the end
-    return base64.b64encode(buf.read()).decode('utf-8')
+    plot_bytes = base64.b64encode(buf.read()).decode('utf-8')
+    
+    cdi.add_camera_analysis_plot(camera_analysis_id, f"{fit_context}_all_gaussian_rcs_values", plot_bytes, 
+                                 description=f"Plot showing the reduced chi squareds of all fitted {fit_context} Gaussians")
+    return plot_bytes
 
 
 def extract_incident_beam_angle(horizontal_coords, beam_center_vertical_coords, beam_center_errors, 

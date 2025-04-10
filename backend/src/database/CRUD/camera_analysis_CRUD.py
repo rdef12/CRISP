@@ -157,15 +157,15 @@ def update_unc_bragg_peak_pixel(camera_analysis_id: int, unc_bragg_peak_pixel: l
     except Exception as e:
         raise RuntimeError(f"An error occurred: {str(e)}")
 
-def update_plots(camera_analysis_id: int, plots: bytes):
-    try:
-        with Session(engine) as session:
-            statement = select(CameraAnalysis).where(CameraAnalysis.id == camera_analysis_id)
-            camera_analysis = session.exec(statement).one()
-            camera_analysis.plots = plots
-            session.commit()
-            return {"message": f"Plots updated for analysis with camera analysis id = {camera_analysis_id}."}
-    except NoResultFound:
-        raise ValueError(f"No camera analysis found with camera analysis id = {camera_analysis_id}.")
-    except Exception as e:
-        raise RuntimeError(f"An error occurred: {str(e)}")
+# def update_plots(camera_analysis_id: int, plots: bytes):
+#     try:
+#         with Session(engine) as session:
+#             statement = select(CameraAnalysis).where(CameraAnalysis.id == camera_analysis_id)
+#             camera_analysis = session.exec(statement).one()
+#             camera_analysis.plots = plots
+#             session.commit()
+#             return {"message": f"Plots updated for analysis with camera analysis id = {camera_analysis_id}."}
+#     except NoResultFound:
+#         raise ValueError(f"No camera analysis found with camera analysis id = {camera_analysis_id}.")
+#     except Exception as e:
+#         raise RuntimeError(f"An error occurred: {str(e)}")
