@@ -16,7 +16,9 @@ export const TakeHomographyCalibrationPicture = ({ plane, onImageTaken }: TakeHo
   })
 
   const handleSubmit = async (data: any) => {
+    console.log('Submitting form with data:', data);
     await save(data);
+    console.log('Save completed, calling onImageTaken');
     onImageTaken();
   };
 

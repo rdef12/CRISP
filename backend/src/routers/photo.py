@@ -4,7 +4,7 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 import pytz
 from sqlmodel import Session, select
-from src.create_homographies import test_grid_recognition_for_gui
+from src.create_homographies import ImagePointTransforms, test_grid_recognition_for_gui
 from src.gain_automation import ColourChannel, set_optimal_settings, show_saturated_points
 from src.database.database import engine
 
@@ -238,7 +238,9 @@ def take_homography_calibration_image(plane: str, setup_camera_id: int):
         return JSONResponse(content={"id": setup_camera_id})
 
 @router.get("/homography-calibration/{plane}/{setup_camera_id}")
-def get_homography_calibration_image(plane: str, setup_camera_id: int):
+def get_homography_calibration_image(plane: str, setup_camera_id: int,
+                                     horizontal_flip: bool = False, veritcal_flip: bool = False, swap_axes: bool = False):
+    print(f"\n\n\n\n horizontal flip: {horizontal_flip} \n {veritcal_flip} \n {swap_axes} \n\n\n\n")
     with Session(engine) as session:
         setup_camera = session.get(CameraSetupLink, setup_camera_id)
         camera_settings_id = None
@@ -261,7 +263,12 @@ def get_homography_calibration_image(plane: str, setup_camera_id: int):
         setup_id = setup_camera.setup_id
         camera_id = setup_camera.camera_id
         username = cdi.get_username_from_camera_id(camera_id)
-        response = test_grid_recognition_for_gui(username, setup_id, plane, photo_bytes=photo_bytes)
+
+        transforms = ImagePointTransforms(horizontal_flip=horizontal_flip,
+                                          vertical_flip=veritcal_flip,
+                                          swap_axes=swap_axes)
+
+        response = test_grid_recognition_for_gui(username, setup_id, plane, transforms, photo_bytes=photo_bytes)
         
         return rb.HomographyCalibrationPhotoGetResponse(id=setup_camera_id,
                                                         photo=response["image_bytes"],

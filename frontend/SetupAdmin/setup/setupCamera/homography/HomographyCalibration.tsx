@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useGetOne } from "react-admin";
+import { useCreate, useGetOne } from "react-admin";
 import { useParams } from "react-router-dom";
 import { CreateHomographySettings } from "./CreateHomographySettings";
 import { ViewHomographyCalibrationSettings } from "./ViewHomographyCalibrationSettings";
@@ -33,17 +33,21 @@ export const HomographyCalibration = ({ plane }: HomographyCalibrationProps) => 
      <CreateHomographySettings plane={plane} />
   )
   return (
-    <div>
-      <ViewHomographyCalibrationSettings plane={plane} />
-      <TakeHomographyCalibrationPicture 
-        plane={plane} 
-        onImageTaken={() => setImageTaken(true)} 
-      />
-      <ShowHomographyCalibrationResults 
-        plane={plane} 
-        imageTaken={imageTaken} 
-        onImageLoaded={() => setImageTaken(false)} 
-      />
+    <div style={{ display: 'flex', gap: '20px' }}>
+      <div style={{ flex: '0 0 400px' }}>
+        <ViewHomographyCalibrationSettings plane={plane} />
+        <TakeHomographyCalibrationPicture 
+          plane={plane} 
+          onImageTaken={() => setImageTaken(true)} 
+        />
+      </div>
+      <div style={{ flex: '1' }}>
+        <ShowHomographyCalibrationResults 
+          plane={plane} 
+          imageTaken={imageTaken} 
+          onImageLoaded={() => setImageTaken(false)} 
+        />
+      </div>
     </div>
   )
 }
