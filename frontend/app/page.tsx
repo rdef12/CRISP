@@ -9,6 +9,9 @@ import {
   HoverCardTrigger,
 } from "@/components/ui/hover-card";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { PiEditForm } from "@/components/PiEditForm";
+import { Button } from "@/components/ui/button";
 
 import { ClientSidePiStatus, getPiStatuses } from "@/pi_functions/pi-status";
 
@@ -23,6 +26,8 @@ export default function Home() {
   const [IPAddress, setIPAddress] = useState("");
   const [password, setPassword] = useState("");
   const [cameraModel, setCameraModel] = useState("");
+  const [selectedPi, setSelectedPi] = useState<ClientSidePiStatus | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
 
   const fetchPiStatuses = async (isAlreadyFetching: boolean) => {
     try {
@@ -53,6 +58,32 @@ export default function Home() {
   }, []); // Dependency array ensures it runs only once
   
 
+  const handleSavePi = async (updatedPi: ClientSidePiStatus) => {
+    try {
+      const response = await fetch(`${BACKEND_URL}/update_pi/${updatedPi.username}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updatedPi),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to update Pi");
+      }
+
+      // Update the local state
+      setPiStatuses(prevStatuses => 
+        prevStatuses.map(pi => 
+          pi.username === updatedPi.username ? updatedPi : pi
+        )
+      );
+
+      setIsEditing(false);
+      setSelectedPi(updatedPi);
+    } catch (error) {
+      console.error("Error updating Pi:", error);
+    }
+  };
+
   // Will get periodically rendered by React when getPiStatuses updated piStatuses
   const piDivs = piStatuses.length === 0 ? (
     <div className="text-center">Please configure a raspberry pi below</div>
@@ -60,7 +91,14 @@ export default function Home() {
       piStatuses.map((pi, index) => (
       <div key={index} className="flex items-center justify-between">
         <HoverCard>
-          <HoverCardTrigger><p className="text-lg text-green-500 hover:underline">{pi.username}</p></HoverCardTrigger>
+          <HoverCardTrigger>
+            <p 
+              className="text-lg text-green-500 hover:underline cursor-pointer"
+              onClick={() => setSelectedPi(pi)}
+            >
+              {pi.username}
+            </p>
+          </HoverCardTrigger>
           <HoverCardContent>
             IP Address - {pi.IPAddress}
             <br />
@@ -281,6 +319,54 @@ export default function Home() {
           </button>
         </form>
       </div>
+
+      <Dialog open={selectedPi !== null} onOpenChange={() => {
+        setSelectedPi(null);
+        setIsEditing(false);
+      }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{selectedPi?.username} Details</DialogTitle>
+            <DialogDescription>
+              {isEditing ? "Edit the Raspberry Pi details" : "Detailed information about this Raspberry Pi"}
+            </DialogDescription>
+          </DialogHeader>
+          
+          {isEditing ? (
+            <PiEditForm 
+              pi={selectedPi!} 
+              onSave={handleSavePi}
+              onCancel={() => setIsEditing(false)}
+            />
+          ) : (
+            <>
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <h4 className="font-medium">IP Address</h4>
+                    <p className="text-sm text-muted-foreground">{selectedPi?.IPAddress}</p>
+                  </div>
+                  <div>
+                    <h4 className="font-medium">Camera Model</h4>
+                    <p className="text-sm text-muted-foreground">{selectedPi?.cameraModel}</p>
+                  </div>
+                  <div>
+                    <h4 className="font-medium">Connection Status</h4>
+                    <p className="text-sm text-muted-foreground">
+                      {selectedPi?.connectionStatus ? "Connected" : "Disconnected"}
+                    </p>
+                  </div>
+                </div>
+              </div>
+              <div className="flex justify-end mt-4">
+                <Button onClick={() => setIsEditing(true)}>
+                  Edit Details
+                </Button>
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

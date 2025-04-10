@@ -36,6 +36,7 @@ from src.classes.JSON_request_bodies import request_bodies as rb
 
 from src.database.CRUD import CRISP_database_interaction as cdi
 from src.database.database import create_db_and_tables
+from src.database.models import Camera as CameraTable
 
 import os
 
@@ -127,6 +128,16 @@ async def add_pi(pi_config: PiConfig):
 async def remove_pi(username: str):
     remove_configured_pi(username)
     return {"message": "Pi configuration successfully deleted"}
+
+@app.put("/update_pi/{username}")
+def update_pi(username: str, update_body: rb.CameraPutRequestBody):
+    with Session(engine) as session:
+        camera_statement = select(CameraTable).where(CameraTable.username == username)
+        camera = session.exec(camera_statement).one()
+        camera.ip_address = update_body.IPAddress
+        camera.model = update_body.cameraModel
+        session.commit()
+        return {"message": f"Raspberry pi with username {username} updated with IP Address {camera.ip_address} and model {camera.model}"}
 
 @app.get("/health")
 def heath_check():
