@@ -10,14 +10,15 @@ import pickle
 # Create
 
 def add_camera_analysis_plot(camera_analysis_id: int, plot_type: str, 
-                             plot_figure: bytes, parameter_labels: Optional[List[str]],
+                             plot_figure: bytes, figure_format: str, parameter_labels: Optional[List[str]],
                              parameter_uncertainties: Optional[List[float]], 
                              chi_squared: Optional[float],
                              number_of_data_points: Optional[int],
                              description: Optional[str]):
     try:
         camera_analysis_plot = CameraAnalysisPlot(camera_analysis_id=camera_analysis_id, plot_type=plot_type,
-                                                  plot_figure=plot_figure, parameter_labels=parameter_labels,
+                                                  plot_figure=plot_figure, figure_format=figure_format, 
+                                                  parameter_labels=parameter_labels,
                                                   parameter_uncertainties=parameter_uncertainties,
                                                   chi_squared=chi_squared, number_of_data_points=number_of_data_points, 
                                                   description=description)

@@ -357,6 +357,7 @@ class CameraAnalysisPlot(SQLModel, table=True):
 
     plot_type: str
     plot_figure: bytes = Field(default=None, sa_column=Column(LargeBinary))
+    figure_format: str = Field(default=None) # SVG usually but PNG for OpenCV overlays
     parameter_labels: Optional[List[str]] = Field(default=None, sa_column=Column(ARRAY(String)))
     parameter_values: Optional[List[float]] = Field(default=None, sa_column=Column(ARRAY(Float)))
     parameter_uncertainties: Optional[List[float]] = Field(default=None, sa_column=Column(ARRAY(Float)))
