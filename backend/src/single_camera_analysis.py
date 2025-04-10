@@ -19,31 +19,7 @@ import src.image_processing as image_processing
 from src.automated_roi import get_automated_roi
 from src.fitting_functions import *
 from src.database.CRUD import CRISP_database_interaction as cdi
-
 import numpy as np
-from dataclasses import dataclass, field
-from typing import Dict
-
-@dataclass
-class ImageByteStrings:
-    """
-    NOTE - Images should be base64 encoded before storing
-    """
-    images: Dict[str, bytes] = field(default_factory=dict)
-
-    def add_image(self, image_type: str, image_bytes: bytes):
-        """Add an image byte string to the store."""
-        self.images[image_type] = image_bytes
-
-    def get_image(self, image_type: str) -> bytes:
-        """Retrieve an image byte string by its type."""
-        return self.images.get(image_type, None)
-
-    def remove_image(self, image_type: str):
-        """Remove an image from the store by its type."""
-        if image_type in self.images:
-            del self.images[image_type]
-
 
 def rotate_bragg_peak_into_original_coords(rotated_bragg_peak_coord, error_on_fitted_bragg_peak, inverse_rotation_matrix):
     # We need the bragg peak to be in terms of the coordinates of the original image (not the rotated one)
@@ -60,6 +36,88 @@ def round_bragg_peak_coord(bragg_peak_coord, error_on_bragg_peak_coord):
     bragg_peak_coord = np.round(bragg_peak_coord / leading_order_error) * leading_order_error
     error_on_bragg_peak_coord = np.round(error_on_bragg_peak_coord / leading_order_error) * leading_order_error
     return bragg_peak_coord, error_on_bragg_peak_coord
+
+def apply_rotations_for_analysis(average_image, average_rounded_image, brightness_error, scintillator_edges, rotation_angle):
+    
+    original_scintillation_edges = scintillator_edges.copy()
+    match rotation_angle:
+        case 90:
+            rotation_flag = cv.ROTATE_90_CLOCKWISE
+            scintillator_edges[1] = original_scintillation_edges[0][::-1]
+            scintillator_edges[0] = (average_rounded_image.shape[0] - 1 - original_scintillation_edges[1])[::-1]
+        case 180:
+            rotation_flag = cv.ROTATE_180
+            scintillator_edges = [np.array(average_rounded_image.shape[i-1] - 1 - edge)[::-1] for i, edge in enumerate(scintillator_edges)]
+        case 270:
+            rotation_flag = cv.ROTATE_90_COUNTERCLOCKWISE
+            scintillator_edges[1] = average_rounded_image.shape[1] - 1 - original_scintillation_edges[0][::-1]
+            scintillator_edges[0] = original_scintillation_edges[1][::-1]
+        case 0:
+            return average_image, average_rounded_image, brightness_error, scintillator_edges
+        
+    average_image = cv.rotate(average_image, rotation_flag)
+    average_rounded_image = cv.rotate(average_rounded_image, rotation_flag)
+    brightness_error = cv.rotate(brightness_error, rotation_flag)
+    return average_image, average_rounded_image, brightness_error, scintillator_edges
+
+
+def get_beam_direction_from_the_left(image_beam_direction, average_image, average_rounded_image, brightness_error, scintillator_edges):
+    match image_beam_direction:
+        case "top":
+            average_image, average_rounded_image, brightness_error, scintillator_edges = apply_rotations_for_analysis(average_image, average_rounded_image, 
+                                                                                                            brightness_error, scintillator_edges, 270)
+        case "right":
+            average_image, average_rounded_image, brightness_error, scintillator_edges = apply_rotations_for_analysis(average_image, average_rounded_image, 
+                                                                                                            brightness_error, scintillator_edges, 180)
+        case "bottom": 
+            average_image, average_rounded_image, brightness_error, scintillator_edges = apply_rotations_for_analysis(average_image, average_rounded_image, 
+                                                                                                            brightness_error, scintillator_edges, 90)
+        case "left":
+            pass
+        case _:
+            raise Exception("Invalid image beam direction specified in the database.")
+    return average_image, average_rounded_image, brightness_error, scintillator_edges
+
+def return_to_original_beam_direction(original_image_beam_direction, average_image, average_rounded_image, brightness_error, scintillator_edges):
+    match original_image_beam_direction:
+        case "top":
+            average_image, average_rounded_image, brightness_error, scintillator_edges = apply_rotations_for_analysis(average_image, average_rounded_image, 
+                                                                                                            brightness_error, scintillator_edges, 90)
+        case "right":
+            average_image, average_rounded_image, brightness_error, scintillator_edges = apply_rotations_for_analysis(average_image, average_rounded_image, 
+                                                                                                            brightness_error, scintillator_edges, 180)
+        case "bottom": 
+            average_image, average_rounded_image, brightness_error, scintillator_edges = apply_rotations_for_analysis(average_image, average_rounded_image, 
+                                                                                                            brightness_error, scintillator_edges, 270)
+        case "left":
+            pass
+        case _:
+            raise Exception("Invalid image beam direction specified in the database.")
+    return average_image, average_rounded_image, brightness_error, scintillator_edges
+
+def rotate_bragg_peak_back_to_original_beam_direction(original_image_beam_direction, bragg_peak_coord, image):
+    """
+    Image passed should be the image with the beam entering from the left!!!
+    """
+    height, width = image.shape[:2]
+    x, y = bragg_peak_coord
+    match original_image_beam_direction:
+        case "top":
+        # 90 degree clockwise rotation
+            x_new = height - 1 - y
+            y_new = x
+        case "right":
+        # 180 degree rotation
+            x_new = width - 1 - x
+            y_new = height - 1 - y
+        case "bottom":
+        # 270 degree clockwise rotation
+            x_new = y
+            y_new = width - 1 - x
+        case "left":
+            return bragg_peak_coord
+            
+    return np.array([x_new, y_new])
 
 
 def source_params_from_database(camera_analysis_id: int):
@@ -97,32 +155,33 @@ def get_beam_angle_and_bragg_peak_pixel(camera_analysis_id: int):
     So, this contains the user-defined scintillator edges, the homography matrix, distortion correction
     camera matrices, etc.
     """
-    image_store = ImageByteStrings()
     try:
+        # Reset database plots associated with this analysis
+        cdi.delete_all_plots_by_camera_analysis_id(camera_analysis_id)
+        
         beam_energy, image_beam_direction, colour_channel, average_image, brightness_error, scintillator_edges = source_params_from_database(camera_analysis_id)
         average_rounded_image = average_image.astype(np.uint8)  # could be moved inside automated roi function
         
-        (h_bounds, v_bounds), base64_roi_image = get_automated_roi(average_rounded_image, scintillator_edges[0], scintillator_edges[1], 
+        average_image, average_rounded_image, brightness_error, \
+        scintillator_edges =  get_beam_direction_from_the_left(image_beam_direction, average_image, average_rounded_image, brightness_error, scintillator_edges)
+        
+        (h_bounds, v_bounds), roi_image_bytes = get_automated_roi(average_rounded_image, scintillator_edges[0], scintillator_edges[1], 
                                                                    show_images=False, fraction=0.16)
         
-        cdi.add_camera_analysis_plot(camera_analysis_id, "automated_roi", base64_roi_image, "svg")
-        # image_store.add_image("roi_image", base64_roi_image)
+        cdi.add_camera_analysis_plot(camera_analysis_id, "automated_roi", roi_image_bytes, "svg")
         
         # Fit initial beam profile
         (horizontal_coords, fit_parameters_array, beam_center_errors, _, 
-         _, _, plot_byte_strings) = fit_beam_profile_along_full_roi(camera_analysis_id, "round_1", average_image, brightness_error,
+         _, _) = fit_beam_profile_along_full_roi(camera_analysis_id, "round_1", average_image, brightness_error,
                                                                     h_bounds, v_bounds, show_fit_qualities=False)
-        # image_store.add_image("original_chi_squared_values", plot_byte_strings[0])
-        # image_store.add_image("original_best_gaussian_fit", plot_byte_strings[1])
-        # image_store.add_image("original_worst_gaussian_fit", plot_byte_strings[2])
-        # image_store.add_image("original_overlayed_beam", plot_byte_strings[3])
         beam_center_vertical_coords = fit_parameters_array[:, 0]
         
         # Calculate incident beam angle
-        incident_beam_angle, beam_angle_error, angle_plot_byte_string = extract_incident_beam_angle(camera_analysis_id, horizontal_coords, beam_center_vertical_coords,
+        incident_beam_angle, beam_angle_error = extract_incident_beam_angle(camera_analysis_id, horizontal_coords, beam_center_vertical_coords,
                                                                                                     beam_center_errors, show_angle_plot=False)
-        # image_store.add_image("incident_beam_angle", angle_plot_byte_string)
-
+        cdi.update_beam_angle(camera_analysis_id, float(incident_beam_angle))
+        cdi.update_unc_beam_angle(camera_analysis_id, float(beam_angle_error))
+        
         # Rotate image for analysis
         rotated_image, _, inverse_rotation_matrix, rotation_brightness_error = image_processing.rotate_input_image(average_image, incident_beam_angle,
                                                                                                                     h_bounds, v_bounds, show_residuals=False)
@@ -134,34 +193,29 @@ def get_beam_angle_and_bragg_peak_pixel(camera_analysis_id: int):
                                                     show_images=False, fraction=0.16)
 
         # Fit beam profile on rotated image
-        (horizontal_coords, fit_parameters_array, beam_center_errors, _,  
-         total_brightness_along_vertical_roi, unc_total_brightness_along_vertical_roi,
-         plot_byte_strings) = fit_beam_profile_along_full_roi(camera_analysis_id, "round_2", rotated_image, brightness_error,
-                                                              h_bounds, v_bounds, show_fit_qualities=False)
-         
-        # image_store.add_image("rotated_chi_squared_values", plot_byte_strings[0])
-        # image_store.add_image("rotated_best_gaussian_fit", plot_byte_strings[1])
-        # image_store.add_image("rotated_worst_gaussian_fit", plot_byte_strings[2])
-        # image_store.add_image("rotated_overlayed_beam", plot_byte_strings[3])
+        (horizontal_coords, fit_parameters_array, beam_center_errors, _,  total_brightness_along_vertical_roi, 
+         unc_total_brightness_along_vertical_roi) = fit_beam_profile_along_full_roi(camera_analysis_id, "round_2", rotated_image, brightness_error,
+                                                                                    h_bounds, v_bounds, show_fit_qualities=False)
         
         beam_center_vertical_coords, *fit_params = fit_parameters_array[:, :5].T
 
         # Locate Bragg peak - NOTE: performed on rotated data before "unrotated" to original coords for pinpointing
-        rotated_bragg_peak_coord, error_on_fitted_bragg_peak, bortfeld_byte_string = locate_bragg_peak_in_image(camera_analysis_id, horizontal_coords, beam_center_vertical_coords, beam_center_errors,
+        rotated_bragg_peak_coord, error_on_fitted_bragg_peak = locate_bragg_peak_in_image(camera_analysis_id, horizontal_coords, beam_center_vertical_coords, beam_center_errors,
                                                                                                                 fit_params, total_brightness_along_vertical_roi, 
                                                                                                                 unc_total_brightness_along_vertical_roi)
-        # image_store.add_image("fitted_bortfeld", bortfeld_byte_string)
         
-        # NOTE - uncertainties may now be too small such that pinpointing fails!
         bragg_peak_coord, error_on_bragg_peak_coord = round_bragg_peak_coord(*rotate_bragg_peak_into_original_coords(rotated_bragg_peak_coord, error_on_fitted_bragg_peak, inverse_rotation_matrix))
+        
+        # TODO - APPLY ROTATION TO ERROR VECTOR TOO!
+        bragg_peak_coord = rotate_bragg_peak_back_to_original_beam_direction(image_beam_direction, bragg_peak_coord, average_rounded_image)
         print("Bragg peak via Gaussian/Bortfeld fitting is at the pixel: {0} +/- {1}".format(bragg_peak_coord, error_on_bragg_peak_coord))
+        cdi.update_bragg_peak_pixel(camera_analysis_id, [float(x) for x in bragg_peak_coord.flatten()])
+        cdi.update_unc_bragg_peak_pixel(camera_analysis_id, [float(x) for x in error_on_bragg_peak_coord.flatten()])
         
-        
-        
+        average_image, average_rounded_image, brightness_error, \
+        scintillator_edges =  return_to_original_beam_direction(image_beam_direction, average_image, average_rounded_image, brightness_error, scintillator_edges)
         overlay_bragg_peak_coord(camera_analysis_id, rotated_rounded_image, bragg_peak_coord)
-        
-        return {"beam_angle": incident_beam_angle, "beam_angle_error": beam_angle_error, "bragg_peak_pixel": bragg_peak_coord, "bragg_peak_pixel_error": error_on_bragg_peak_coord,
-                "plot_byte_strings": image_store.images} # return results which will be written to database
+        return {"message": "successful single camera analysis"}
     
     except Exception as e:
         print("\n\nError when getting beam angle and bragg peak pixel: ", e)

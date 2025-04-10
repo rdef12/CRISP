@@ -26,11 +26,13 @@ def pinpoint_bragg_peak(camera_analysis_id_list):
         bragg_peak_pixel_error_list = [cdi.get_unc_bragg_peak_pixel(camera_analysis_id) for camera_analysis_id in camera_analysis_id_list]
         
         cameras = [AbstractCamera.setup(camera_id, setup_id) for camera_id in camera_id_list]
-        weighted_intersection_point, unc_weighted_intersection_point = (
+        weighted_bragg_peak_position, unc_weighted_bragg_peak_position = (
             extract_weighted_average_3d_physical_position(cameras, bragg_peak_pixel_list, bragg_peak_pixel_error_list, scintillator_present=True))
         
-        print(f"3D Bragg peak position: {weighted_intersection_point} +/- {unc_weighted_intersection_point}")
-        return {"bragg_peak_position": weighted_intersection_point, "bragg_peak_position_error": unc_weighted_intersection_point}
+        print(f"3D Bragg peak position: {weighted_bragg_peak_position} +/- {unc_weighted_bragg_peak_position}")
+        cdi.update_bragg_peak_3d_position(beam_run_id, [float(x) for x in weighted_bragg_peak_position.flatten()])
+        cdi.update_unc_bragg_peak_3d_position(beam_run_id, [float(x) for x in unc_weighted_bragg_peak_position.flatten()])
+        return {"message": "Successfully pinpointed bragg peak"}
         
     except Exception as e:
         print(f"Error when pinpointing bragg peak: {e}")

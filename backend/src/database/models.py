@@ -28,7 +28,7 @@ class ColourChannelEnum(str, Enum):
 
 # from sqlmodel import Field, SQLModel, PickleType, JSON, Column, ARRAY, Integer, LargeBinary, Relationship
 from sqlmodel import Field, SQLModel, PickleType, JSON, LargeBinary, Relationship
-from sqlalchemy import Column, ARRAY, Float, Integer, String
+from sqlalchemy import Column, ARRAY, Float, Integer, String, Text
 
 class Setup(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
@@ -356,7 +356,7 @@ class CameraAnalysisPlot(SQLModel, table=True):
     camera_analysis_id: int = Field(default=None, foreign_key="cameraanalysis.id")
 
     plot_type: str
-    plot_figure: bytes = Field(default=None, sa_column=Column(LargeBinary))
+    plot_figure: bytes = Field(default=None, sa_column=Column(LargeBinary)) # Not base64!!!
     figure_format: str = Field(default=None) # SVG usually but PNG for OpenCV overlays
     parameter_labels: Optional[List[str]] = Field(default=None, sa_column=Column(ARRAY(String)))
     parameter_values: Optional[List[float]] = Field(default=None, sa_column=Column(ARRAY(Float)))

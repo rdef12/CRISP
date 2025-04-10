@@ -184,26 +184,25 @@ def fit_beam_profile_along_full_roi(camera_analysis_id: int, fit_context: str, c
             unc_total_profile_brightness.append(normal_addition_in_quadrature(column_of_brightness_errors))
             
         roi_horizontal_coords = np.delete(roi_horizontal_coords, failed_fits) # Failed fits deleted from array - no data added when the fit failed (so would be differences in array lengths without this fix)
-        print("The number of Gaussian fits which failed is {}".format(len(failed_fits)))
+        print("\n\n\nThe number of Gaussian fits which failed is {}\n\n\n".format(len(failed_fits)))
         
-        rcs_plot_bytes = plot_reduced_chi_squared_values(camera_analysis_id, fit_context, roi_horizontal_coords,
-                                                         reduced_chi_squared_array, show_plot=show_fit_qualities)
+        plot_reduced_chi_squared_values(camera_analysis_id, fit_context, roi_horizontal_coords,
+                                        reduced_chi_squared_array, show_plot=show_fit_qualities)
         
         index_of_worst_accepted_fit = np.argmax(reduced_chi_squared_array)
         index_of_best_accepted_fit = np.argmin(reduced_chi_squared_array)
         
-        best_fit_gaussian_plot_bytes = plot_beam_profile(camera_analysis_id, fit_context, channel, channel_std, roi_horizontal_coords[index_of_best_accepted_fit], v_bounds, background_brightness, np.min(reduced_chi_squared_array),
-                                                        profile_type="Best Fit", save_best_fit_data=save_best_fit_data, show_plot=show_fit_qualities)
-        worst_fit_gaussian_plot_bytes= plot_beam_profile(camera_analysis_id, fit_context, channel, channel_std, roi_horizontal_coords[index_of_worst_accepted_fit], v_bounds, background_brightness, np.max(reduced_chi_squared_array),
-                                                        profile_type="Worst Fit", show_plot=show_fit_qualities)
+        plot_beam_profile(camera_analysis_id, fit_context, channel, channel_std, roi_horizontal_coords[index_of_best_accepted_fit], v_bounds, background_brightness, np.min(reduced_chi_squared_array),
+                                                        profile_type="best_fit", save_best_fit_data=save_best_fit_data, show_plot=show_fit_qualities)
+        plot_beam_profile(camera_analysis_id, fit_context, channel, channel_std, roi_horizontal_coords[index_of_worst_accepted_fit], v_bounds, background_brightness, np.max(reduced_chi_squared_array),
+                                                        profile_type="worst_fit", show_plot=show_fit_qualities)
         
-        best_fit_horizontal_coord = roi_horizontal_coords[index_of_best_accepted_fit]
-        worst_fit_horizontal_coord = roi_horizontal_coords[index_of_worst_accepted_fit]
-        overlayed_average_image_bytes = render_best_worst_fit_locations(channel, best_fit_horizontal_coord, worst_fit_horizontal_coord, v_bounds)
+        # best_fit_horizontal_coord = roi_horizontal_coords[index_of_best_accepted_fit]
+        # worst_fit_horizontal_coord = roi_horizontal_coords[index_of_worst_accepted_fit]
+        # overlayed_average_image_bytes = render_best_worst_fit_locations(channel, best_fit_horizontal_coord, worst_fit_horizontal_coord, v_bounds)
+        # plot_byte_strings = [rcs_plot_bytes, best_fit_gaussian_plot_bytes, worst_fit_gaussian_plot_bytes, overlayed_average_image_bytes]
         
-        plot_byte_strings = [rcs_plot_bytes, best_fit_gaussian_plot_bytes, worst_fit_gaussian_plot_bytes, overlayed_average_image_bytes]
-        
-        return roi_horizontal_coords, fitted_parameters_array, beam_center_error_array, reduced_chi_squared_array, total_profile_brightness, unc_total_profile_brightness, plot_byte_strings
+        return roi_horizontal_coords, fitted_parameters_array, beam_center_error_array, reduced_chi_squared_array, total_profile_brightness, unc_total_profile_brightness
     except Exception as e:
         raise Exception("Error in fitting beam profile along full ROI: ", e)
     
@@ -235,7 +234,7 @@ def plot_beam_profile(camera_analysis_id: int, fit_context: str, channel, channe
     fitted_pixel_values = super_gaussian_with_background_noise(pixel_height_linspace, gaussian_center, scale_factor, sigma, n, background_noise) # FOR SUPER GAUSSIAN FITTING
     
     # Compute residuals
-    residuals = column_of_brightness_vals - fitted_pixel_values
+    residuals = column_of_brightness_vals - super_gaussian_with_background_noise(pixel_vertical_coords, gaussian_center, scale_factor, sigma, n, background_noise)
     
     # Create figure and subplots
     fig, axs = plt.subplots(2, 1, gridspec_kw={'height_ratios': [3, 1]}, figsize=(8, 6), sharex=True)
@@ -266,10 +265,9 @@ def plot_beam_profile(camera_analysis_id: int, fit_context: str, channel, channe
     plt.savefig(buf, format="svg", dpi=600)  # Save the current plot to the buffer
     plt.close()
     buf.seek(0)  # Reset the buffer's position to the beginning - else will read from the end
-    plot_bytes = base64.b64encode(buf.read()).decode('utf-8')
-    cdi.add_camera_analysis_plot(camera_analysis_id, f"{fit_context}_{profile_type.lower()}_gaussian", plot_bytes, "svg",
+    plot_bytes = buf.read()
+    cdi.add_camera_analysis_plot(camera_analysis_id, f"{fit_context}_{profile_type}_gaussian", plot_bytes, "svg",
                                  description=f"Plot showing '{profile_type.lower()}' Gaussian fit in {fit_context}")
-    return plot_bytes
 
 
 def plot_reduced_chi_squared_values(camera_analysis_id: int, fit_context: str, roi_horizontal_coords,
@@ -288,11 +286,10 @@ def plot_reduced_chi_squared_values(camera_analysis_id: int, fit_context: str, r
     plt.savefig(buf, format="svg", dpi=600)  # Save the current plot to the buffer
     plt.close()
     buf.seek(0)  # Reset the buffer's position to the beginning - else will read from the end
-    plot_bytes = base64.b64encode(buf.read()).decode('utf-8')
+    plot_bytes = buf.read()
     
     cdi.add_camera_analysis_plot(camera_analysis_id, f"{fit_context}_all_gaussian_rcs_values", plot_bytes, "svg",
                                  description=f"Plot showing the reduced chi squareds of all fitted {fit_context} Gaussians")
-    return plot_bytes
 
 
 def extract_incident_beam_angle(camera_analysis_id: int, horizontal_coords, beam_center_vertical_coords, beam_center_errors, 
@@ -360,12 +357,12 @@ def extract_incident_beam_angle(camera_analysis_id: int, horizontal_coords, beam
     plt.savefig(buf, format="svg", dpi=600)  # Save the current plot to the buffer
     plt.close()
     buf.seek(0)  # Reset the buffer's position to the beginning - else will read from the end
-    plot_bytes = base64.b64encode(buf.read()).decode('utf-8')
+    plot_bytes = buf.read()
     
     cdi.add_camera_analysis_plot(camera_analysis_id, f"angle_plot", plot_bytes, "svg",
                                  description=f"Plot showing beam's angle when seen in the plane of the scintillator normal to the camera optical axis")
     
-    return fitted_angle, unc_fitted_angle, plot_bytes
+    return fitted_angle, unc_fitted_angle
 
 
 def locate_bragg_peak_in_image(camera_analysis_id: int, x_positions, beam_center_positions, beam_center_errors, fit_parameters,
@@ -413,7 +410,7 @@ def locate_bragg_peak_in_image(camera_analysis_id: int, x_positions, beam_center
     plt.savefig(buf, format="svg", dpi=600)  # Save the current plot to the buffer
     plt.close()
     buf.seek(0)  # Reset the buffer's position to the beginning - else will read from the end
-    plot_bytes = base64.b64encode(buf.read()).decode('utf-8')
+    plot_bytes = buf.read()
     
     cdi.add_camera_analysis_plot(camera_analysis_id, f"pixel_bortfeld_fit", plot_bytes, "svg",
                                  description=f"Plot showing a bortfeld function fitted to the on-axis pixel scintillation light distribution")
@@ -433,17 +430,16 @@ def locate_bragg_peak_in_image(camera_analysis_id: int, x_positions, beam_center
     print("PIXEL BORTFELD FIT PARAMS: {}".format(bortfeld_fit['bortfeld_fit_p']))
     print("PIXEL BORTFELD PARAM COVARIANCES: {}".format(fit_parameters_covariance))
     
-    return (bortfeld_horizontal_coord, bragg_peak_vertical_coord), (unc_bortfeld_horizontal_coord, unc_bragg_peak_vertical_coord), plot_bytes # Uncertainty not rounded appropriately yet, nor has horizontal coord itself.
+    return (bortfeld_horizontal_coord, bragg_peak_vertical_coord), (unc_bortfeld_horizontal_coord, unc_bragg_peak_vertical_coord) # Uncertainty not rounded appropriately yet, nor has horizontal coord itself.
 
 
 def overlay_bragg_peak_coord(camera_analysis_id, averaged_image, bragg_peak_coord):
+    bragg_peak_coord = tuple(map(int, bragg_peak_coord))
     image_with_bragg_peak = np.copy(averaged_image)
     image_with_bragg_peak = cv.cvtColor(image_with_bragg_peak, cv.COLOR_GRAY2BGR)
-    image_with_bragg_peak = cv.circle(image_with_bragg_peak, bragg_peak_coord, 5, (0, 0, 255), -1)  # args = radius, colour, thickness
+    image_with_bragg_peak = cv.circle(image_with_bragg_peak, bragg_peak_coord, 10, (0, 0, 255), -1)  # args = radius, colour, thickness
     
-    _, buffer = cv.imencode('.png', image_with_bragg_peak)  # Encode the image as a PNG
-    image_bytes = base64.b64encode(buffer).decode('utf-8')  # Convert to base64 string
-    
+    _, image_bytes = cv.imencode('.png', image_with_bragg_peak)  # Encode the image as a PNG
     cdi.add_camera_analysis_plot(camera_analysis_id, f"overlayed_bragg_peak_coord", image_bytes, "png",
                                  description=f"Overlayed Bragg peak coordinate identified onto averaged image")
     return image_bytes
