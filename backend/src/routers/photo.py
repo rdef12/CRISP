@@ -226,7 +226,7 @@ def take_homography_calibration_image(plane: str, setup_camera_id: int):
         filename = f"{plane}_plane_calibration"
         gain = settings.gain
         timeDelay = 1 # Hardcoded
-        format = "jpeg" # Hardcoded
+        format = "jpg" # Hardcoded
         meta_data_format = "dng" # Hardcoded
         image_settings = ImageSettings(filename=filename,
                                        gain=gain,
@@ -239,8 +239,9 @@ def take_homography_calibration_image(plane: str, setup_camera_id: int):
 
 @router.get("/homography-calibration/{plane}/{setup_camera_id}")
 def get_homography_calibration_image(plane: str, setup_camera_id: int,
-                                     horizontal_flip: bool = False, veritcal_flip: bool = False, swap_axes: bool = False):
-    print(f"\n\n\n\n horizontal flip: {horizontal_flip} \n {veritcal_flip} \n {swap_axes} \n\n\n\n")
+                                     horizontal_flip: bool = False,
+                                     vertical_flip: bool = False,
+                                     swap_axes: bool = False):
     with Session(engine) as session:
         setup_camera = session.get(CameraSetupLink, setup_camera_id)
         camera_settings_id = None
@@ -265,10 +266,9 @@ def get_homography_calibration_image(plane: str, setup_camera_id: int,
         username = cdi.get_username_from_camera_id(camera_id)
 
         transforms = ImagePointTransforms(horizontal_flip=horizontal_flip,
-                                          vertical_flip=veritcal_flip,
+                                          vertical_flip=vertical_flip,
                                           swap_axes=swap_axes)
-
-        response = test_grid_recognition_for_gui(username, setup_id, plane, transforms, photo_bytes=photo_bytes)
+        response = test_grid_recognition_for_gui(username, setup_id, plane, image_point_transforms=transforms, photo_id=photo.id)
         
         return rb.HomographyCalibrationPhotoGetResponse(id=setup_camera_id,
                                                         photo=response["image_bytes"],

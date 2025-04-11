@@ -1,8 +1,10 @@
 from datetime import datetime
 from fastapi import HTTPException, Response, APIRouter
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 import pytz
 from sqlmodel import Session, select
+from src.create_homographies import ImagePointTransforms, perform_homography_calibration
 from src.database.models import Camera, CameraSettingsLink, CameraSetupLink, Experiment, Photo, Settings
 from src.database.database import engine
 
@@ -173,7 +175,7 @@ def add_homography_calibration_settings(plane: str, setup_camera_id: int, payloa
             setup_camera.far_face_non_z_shift = payload.origin_shift_non_z_dir
             setup_camera.far_face_non_z_shift_unc = payload.origin_shift_non_z_dir_error
         session.commit()
-        return setup_camera
+        return JSONResponse(content={"id": setup_camera_id})
     
 
 @router.put("/settings/{plane}/{setup_camera_id}")
@@ -238,3 +240,95 @@ def update_homography_calibration_settings(plane: str, setup_camera_id: int, pay
             setup_camera.far_face_non_z_shift_unc = payload.origin_shift_non_z_dir_error
         session.commit()
         return rb.HomographyCalibrationSettingsGetBody(id=setup_camera_id)
+    
+# hy-calibratn/save-homography/far/7/horizontal-flip/false/vertical-flip/false/swap-axes/false
+@router.post("/save-homography/{plane}/{setup_camera_id}/horizontal-flip/{horizontal_flip}/vertical-flip/{vertical_flip}/swap-axes/{swap_axes}")
+def save_homography_parameters(plane: str, setup_camera_id: int, horizontal_flip: bool, vertical_flip: bool, swap_axes: bool):
+    transforms = ImagePointTransforms(horizontal_flip=horizontal_flip,
+                                      vertical_flip=vertical_flip,
+                                      swap_axes=swap_axes)
+    with Session(engine) as session:
+        setup_camera = session.get(CameraSetupLink, setup_camera_id)
+        camera_id = setup_camera.camera_id
+        setup_id = setup_camera.setup_id
+        username = cdi.get_username_from_camera_id(camera_id)
+        camera_settings_id = None
+        if plane == "near":
+            camera_settings_id = setup_camera.far_face_calibration_photo_camera_settings_id
+        elif plane == "far":
+            camera_settings_id = setup_camera.far_face_calibration_photo_camera_settings_id
+        else:
+            raise HTTPException(status_code=400, detail=f"Invalid plane: {plane}. Must be 'near' or 'far'.")
+        
+        camera_settings = session.get(CameraSettingsLink, camera_settings_id)
+        photo_statement = select(Photo).where(Photo.camera_settings_link_id == camera_settings_id)
+        photos = session.exec(photo_statement).all()
+        if len(photos) == 0:
+            raise HTTPException(status_code=503, detail="No photos found")
+        if len(photos) > 1:
+            raise HTTPException(status_code=503, detail="Multiple photos found, reset this calibration!")
+        photo = photos[0]
+        try:
+            status = perform_homography_calibration(username, setup_id, plane, image_point_transforms=transforms, photo_bytes=photo.photo)
+        except Exception as e:
+            print(f"Error performing homography calibration: {e}")
+            status = False
+        
+        return JSONResponse(content={"id": setup_camera_id})
+
+
+@router.delete("/reset/{plane}/{setup_camera_id}")
+def reset_homography(plane: str, setup_camera_id: int):
+    camera_settings_id = None
+    with Session(engine) as session:
+        setup_camera = session.get(CameraSetupLink, setup_camera_id)
+        if plane == "near":
+            camera_settings_id = setup_camera.near_face_calibration_photo_camera_settings_id
+            setup_camera.near_face_calibration_photo_camera_settings_id = None
+        if plane == "far":
+            camera_settings_id = setup_camera.far_face_calibration_photo_camera_settings_id
+            setup_camera.far_face_calibration_photo_camera_settings_id = None
+
+        ### Delete corresponding photos ###
+        photos_statement = select(Photo).where(Photo.camera_settings_link_id == camera_settings_id)
+        photos = session.exec(photos_statement).all()
+        for photo in photos:
+            session.delete(photo)
+        session.commit()
+
+        ### Delete corresponding camera settings link ###
+        camera_settings = session.get(CameraSettingsLink, camera_settings_id)
+        session.delete(camera_settings)
+        session.commit()
+
+        ### Reset setup camera parameters ###
+        if plane == "near":
+            setup_camera.near_face_calibration_pattern_size = None
+            setup_camera.near_face_calibration_pattern_type = None
+            setup_camera.near_face_calibration_spacing = None
+            setup_camera.near_face_calibration_spacing_unc = None
+            setup_camera.near_face_calibration_photo_camera_settings_id = None
+            setup_camera.near_face_homography_matrix = None
+            setup_camera.near_face_homography_covariance_matrix = None
+            setup_camera.near_face_z_shift = None
+            setup_camera.near_face_z_shift_unc = None
+            setup_camera.near_face_non_z_shift = None
+            setup_camera.near_face_non_z_shift_unc = None
+            setup_camera.near_face_calibration_board_thickness = None
+            setup_camera.near_face_calibration_board_thickness_unc = None
+        if plane == "far":
+            setup_camera.far_face_calibration_pattern_size = None
+            setup_camera.far_face_calibration_pattern_type = None
+            setup_camera.far_face_calibration_spacing = None
+            setup_camera.far_face_calibration_spacing_unc = None
+            setup_camera.far_face_calibration_photo_camera_settings_id = None
+            setup_camera.far_face_homography_matrix = None
+            setup_camera.far_face_homography_covariance_matrix = None
+            setup_camera.far_face_z_shift = None
+            setup_camera.far_face_z_shift_unc = None
+            setup_camera.far_face_non_z_shift = None
+            setup_camera.far_face_non_z_shift_unc = None
+            setup_camera.far_face_calibration_board_thickness = None
+            setup_camera.far_face_calibration_board_thickness_unc = None
+        session.commit()
+        return

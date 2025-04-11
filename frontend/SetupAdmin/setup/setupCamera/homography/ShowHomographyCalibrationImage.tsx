@@ -6,8 +6,6 @@ interface ShowHomographyCalibrationImageProps {
 }
 
 export const ShowHomographyCalibrationImage = ({ imageUrl }: ShowHomographyCalibrationImageProps) => {
-  console.log('Image URL received:', imageUrl); // Debug log
-
   if (!imageUrl) return <div>No image available</div>;
 
   return (

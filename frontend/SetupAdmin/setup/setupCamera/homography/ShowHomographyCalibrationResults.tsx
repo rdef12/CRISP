@@ -5,6 +5,7 @@ import { useDataProvider, DataProvider } from "react-admin";
 import { HomographyPlane } from "./HomographyCalibration";
 import { useState, useEffect, useRef } from "react";
 import { GridTransformation } from "./GridTransformation";
+import { SaveHomographyButton } from "./SaveHomographyButton";
 
 type CheckboxOption = 'horizontal_flip' | 'vertical_flip' | 'swap_axes';
 
@@ -26,13 +27,10 @@ const useGetOneHomographyPhoto = (plane: HomographyPlane, id: string, queryParam
 
   const fetchData = async () => {
     try {
-      console.log('Starting fetchData with:', { plane, id, queryParams });
       setIsPending(true);
       const result = await dataProvider.getHomographyPhoto(plane, id, queryParams);
-      console.log('Received result:', result);
       setData(result.data);
     } catch (err) {
-      console.error('Error in fetchData:', err);
       setError(err as Error);
     } finally {
       setIsPending(false);
@@ -105,7 +103,6 @@ export const ShowHomographyCalibrationResults = ({ plane, imageTaken, onImageLoa
     }
   }, [data?.photo, onImageLoaded]);
 
-  console.log('Rendering with state:', { isPending, imageUrl, error });
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
@@ -135,6 +132,14 @@ export const ShowHomographyCalibrationResults = ({ plane, imageTaken, onImageLoa
       </div>
       {data?.status != null && data?.message != null && (
         <ShowHomographyCalibrationSuccess status={data.status} message={data.message} />
+      )}
+      {data?.status === true && (
+        <SaveHomographyButton
+          plane={plane}
+          horizontal_flip={checkedStates.horizontal_flip}
+          vertical_flip={checkedStates.vertical_flip}
+          swap_axes={checkedStates.swap_axes}
+         />
       )}
     </div>
   )

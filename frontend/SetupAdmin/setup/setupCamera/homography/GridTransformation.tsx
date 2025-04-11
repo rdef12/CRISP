@@ -13,7 +13,7 @@ interface GridTransformationProps {
 
 export const GridTransformation = ({ checkedStates, onCheckboxChange }: GridTransformationProps) => {
   return (
-    <div className="space-y-4">
+    <div className="flex flex-row items-center justify-center space-x-8">
       <div className="flex items-center space-x-2">
         <Checkbox 
           id="horizontal_flip" 

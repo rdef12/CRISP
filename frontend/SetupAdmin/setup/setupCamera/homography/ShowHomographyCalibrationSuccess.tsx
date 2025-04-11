@@ -1,3 +1,5 @@
+import { Card } from "@/components/ui/card";
+
 interface ShowHomographyCalibrationSuccessProps {
   status: boolean;
   message: string;
@@ -5,6 +7,13 @@ interface ShowHomographyCalibrationSuccessProps {
 
 export const ShowHomographyCalibrationSuccess = ({ status, message }: ShowHomographyCalibrationSuccessProps) => {
   return (
-    <div>HELO THEWR</div>
+    <Card className="p-4">
+      <p style={{ 
+        color: status ? '#059669' : '#dc2626',
+        fontWeight: '600'
+      }}>
+        {message}
+      </p>
+    </Card>
   )
 }

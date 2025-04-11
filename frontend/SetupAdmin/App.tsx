@@ -2,8 +2,6 @@ import { Admin, Resource } from "react-admin"
 import { Route } from 'react-router-dom';
 import { 
   SetupCameraShow,
-  NearFaceTestContent,
-  FarFaceTestContent,
   SetupShow
 } from "./setup/setupCamera/setupCamera";
 import { SetupCreate, SetupList } from "./setup/setup";

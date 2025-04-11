@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
-import { useCreate, useGetOne } from "react-admin";
+import { useGetOne } from "react-admin";
 import { useParams } from "react-router-dom";
 import { CreateHomographySettings } from "./CreateHomographySettings";
 import { ViewHomographyCalibrationSettings } from "./ViewHomographyCalibrationSettings";
 import { TakeHomographyCalibrationPicture } from "./TakeHomographyCalibrationPicture";
 import { ShowHomographyCalibrationResults } from "./ShowHomographyCalibrationResults";
+import { ResetHomographyCalibration } from "./ResetHomographyCalibration";
 
 export enum HomographyPlane {
   Near = "near",
@@ -20,7 +21,7 @@ export const HomographyCalibration = ({ plane }: HomographyCalibrationProps) => 
   const [hasCalibrationSettings, setHasCalibrationSettings] = useState(false)
   const [imageTaken, setImageTaken] = useState(false);
 
-  const { data: homographyCalibration, error, isPending, refetch } = useGetOne(
+  const { data: homographyCalibration, isPending } = useGetOne(
     `homography-calibration/settings/${plane}`,
     { id: setupCameraId }
   )
@@ -47,6 +48,9 @@ export const HomographyCalibration = ({ plane }: HomographyCalibrationProps) => 
           imageTaken={imageTaken} 
           onImageLoaded={() => setImageTaken(false)} 
         />
+      </div>
+      <div>
+        <ResetHomographyCalibration plane={plane} />
       </div>
     </div>
   )
