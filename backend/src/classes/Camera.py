@@ -32,9 +32,10 @@ class ImageSettings(BaseModel):
     filename: str = Field(..., min_length=1, description="Filename without extension.")
     gain: int = Field(1, gt=0, example=1)
     timeDelay: int = Field(1000, ge=0, example=1000, description="Time delay in milliseconds") 
-    format: Literal["png", "jpg", "raw", "jpeg"] = Field("jpeg", example="png") #TODO Should we disallow .raw?
-    meta_data_format: str = "dng" #TODO Can be made variable if need be
+    format: Literal["png", "jpg", "jpeg"] = Field("jpeg", example="png")
     
+class ImageTestSettings(ImageSettings):
+    lens_position: float = Field(0, ge=0, le=32)
 
 class CalibrationImageSettings(ImageSettings):
     """
@@ -166,7 +167,7 @@ class Camera():
     except Exception as e:
         raise Exception(f"Error when checking remote image directory exists: {e}")
     
-  def capture_image(self, imageSettings: ImageSettings, context: PhotoContext):
+  def capture_image(self, imageSettings: ImageSettings|ImageTestSettings, context: PhotoContext):
         try:
             print("\n\n\n\n\n I've started adding all the settings")
             added_settings = cdi.add_settings(frame_rate=5, lens_position=0.5, gain=imageSettings.gain) #TODO obviously these will take variable values once model is fleshed out
@@ -195,9 +196,14 @@ class Camera():
         
         try:
             print("\n\n\n\n\n I will try to create the file")
-            raw = "--raw" if imageSettings.format == "raw" else ""
             
-            command = f"libcamera-still -o {full_file_path}.{imageSettings.format} -t {imageSettings.timeDelay} --gain {imageSettings.gain} -n {raw} --lens-position 5"
+
+            lens_position = getattr(imageSettings, "lens_position", None)
+            print(type(imageSettings))
+            print(lens_position)
+            lens_position = f"--lens-position {lens_position}" if lens_position is not None else ""
+            
+            command = f"libcamera-still -o {full_file_path}.{imageSettings.format} -t {imageSettings.timeDelay} --gain {imageSettings.gain} -n {lens_position}"
             timeout=30 #TODO temporary
             stdin, stdout, stderr = self.ssh_client.exec_command(command, timeout=timeout)
             
@@ -234,11 +240,7 @@ class Camera():
         try:
             print("\n\n\n\n\n I will try to create the file")
             
-            # raw = "--raw" #raw = "" #changed for testing
-            raw = ""
-            if imageSettings.format == "raw":
-                raw = "--raw"
-            command = f"libcamera-still -o {full_file_path}.{imageSettings.format} -t {imageSettings.timeDelay} --gain {imageSettings.gain} -n {raw}"#TODO changed for testing without camera
+            command = f"libcamera-still -o {full_file_path}.{imageSettings.format} -t {imageSettings.timeDelay} --gain {imageSettings.gain} -n"#TODO changed for testing without camera
             timeout=30 #TODO temporary
             stdin, stdout, stderr = self.ssh_client.exec_command(command, timeout=timeout)
             
@@ -266,7 +268,7 @@ class Camera():
     print("\n\n\n\n\n The transfer has begun")
     remote_image_path = f"{full_file_path}.{imageSettings.format}"
     print(f"Remote image path: {remote_image_path}")
-    remote_photo_meta_data_path = f"{full_file_path}.{imageSettings.meta_data_format}"
+    # remote_photo_meta_data_path = f"{full_file_path}.{imageSettings.meta_data_format}"
     try:
         self.open_sftp()
 
@@ -321,7 +323,7 @@ class Camera():
 
 
 
-  def transfer_image(self, imageSettings: ImageSettings, camera_settings_link_id: int, full_file_path: str):
+  def transfer_image(self, imageSettings: ImageSettings|ImageTestSettings, camera_settings_link_id: int, full_file_path: str):
     """
     Returns the image bytes and metadata instead of copying the file locally.
     Provides detailed error handling.
@@ -329,7 +331,7 @@ class Camera():
     print("\n\n\n\n\n The transfer has begun")
     remote_image_path = f"{full_file_path}.{imageSettings.format}"
     print(f"Remote image path: {remote_image_path}")
-    remote_photo_meta_data_path = f"{full_file_path}.{imageSettings.meta_data_format}"
+    # remote_photo_meta_data_path = f"{full_file_path}.{imageSettings.meta_data_format}"
     try:
         self.open_sftp()
 
@@ -391,7 +393,7 @@ class Camera():
     print("\n\n\n\n\n The transfer has begun")
     remote_image_path = f"{full_file_path}.{imageSettings.format}"
     print(f"Remote image path: {remote_image_path}")
-    remote_photo_meta_data_path = f"{full_file_path}.{imageSettings.meta_data_format}"
+    # remote_photo_meta_data_path = f"{full_file_path}.{imageSettings.meta_data_format}"
     try:
         self.open_sftp()
 

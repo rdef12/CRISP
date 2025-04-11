@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { ClientSidePiStatus, getPiStatuses } from "@/pi_functions/pi-status";
-import { ImageSettings } from "@/pi_functions/interfaces";
+import { ImageTestSettings } from "@/pi_functions/interfaces";
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND
 
@@ -22,11 +22,12 @@ export default function ImageTesting() {
   const [selectedCamera, setSelectedCamera] = useState<string | null>(null);
   const [imageVisible, setImageVisible] = useState(false);
   const [imageUrl, setImageUrl] = useState<string | undefined>(undefined);
-  const [formData, setFormData] = useState<ImageSettings>({
+  const [formData, setFormData] = useState<ImageTestSettings>({
     filename: "",
     gain: "",
     timeDelay: "",
     format: "",
+    lens_position: "",
   });
 
   useEffect(() => {
@@ -67,7 +68,7 @@ export default function ImageTesting() {
 
       console.log(`Selected Pi's username is ${selectedPiUsername}`)
       try {
-        const response = await fetch(`${BACKEND_URL}/take_single_picture/${selectedPiUsername}`, {
+        const response = await fetch(`${BACKEND_URL}/take_single_test_picture/${selectedPiUsername}`, {
           method: "POST",
           body: JSON.stringify(formData),
           headers: { "Content-Type": "application/json" }
@@ -151,9 +152,16 @@ export default function ImageTesting() {
             onChange={handleChange}
           />
           <Input
+            type="number"
+            name="lens_position"
+            placeholder = {"Lens position"}
+            value={formData.lens_position}
+            onChange={handleChange}
+          />
+          <Input
             type="text"
             name="format"
-            placeholder = {"File format (default=raw)"}
+            placeholder = {"File format (jpeg or png)"}
             value={formData.format}
             onChange={handleChange}
           />

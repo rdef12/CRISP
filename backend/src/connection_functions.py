@@ -56,6 +56,10 @@ def get_raspberry_pi_statuses():
     
     
 def connect_over_ssh(username: str):
+    
+    if existing_pi := Pi.get_pi_with_username(username):
+        Pi.delete_pi(username) # delete the pi object from memory
+    
     pi = Pi.instantiate_configured_pi_by_username(username)
     try:
         pi.connect_via_ssh()

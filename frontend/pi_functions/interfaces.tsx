@@ -5,6 +5,10 @@ export interface ImageSettings {
     format: string;
   }
 
+  export interface ImageTestSettings extends ImageSettings {
+    lens_position: number | string;
+  }
+
 export interface CalibrationImageSettings extends ImageSettings {
   calibrationGridSize: [number, number]; // Tuple for grid size (rows, columns)
   calibrationTileSpacing: [number, number]; // Spacing between tiles in mm

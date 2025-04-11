@@ -17,7 +17,7 @@ from src.network_functions import *
 from src.camera_functions import *
 from src.connection_functions import *
 from src.create_homographies import *
-from src.classes.Camera import ImageSettings, PhotoContext, CalibrationImageSettings
+from src.classes.Camera import ImageSettings, PhotoContext, CalibrationImageSettings, ImageTestSettings
 from src.calibration_functions import ROI, determine_frame_size
 from src.distortion_correction import distortion_calibration_test_for_gui, perform_distortion_calibration_from_database
 from src.routers import setup as setup_router
@@ -166,6 +166,13 @@ def connect_over_ssh_api(username: str):
 @app.post("/disconnect_from_ssh/{username}")
 def disconnect_from_ssh_api(username: str):
     return {"sshStatus": disconnect_from_ssh(username)}
+
+@app.post("/take_single_test_picture/{username}")
+def take_single_test_picture_api(username: str, imageSettings: ImageTestSettings):
+    context = PhotoContext.GENERAL
+    photo_bytes, _ = take_single_image(username, imageSettings, context)
+    if photo_bytes:
+        return Response(content=photo_bytes, media_type="image/png")
 
 @app.post("/take_single_picture/{username}")
 def take_single_picture_api(username: str, imageSettings: ImageSettings):

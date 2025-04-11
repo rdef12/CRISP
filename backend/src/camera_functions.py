@@ -1,5 +1,5 @@
 from src.classes.Pi import Pi
-from src.classes.Camera import ImageSettings, PhotoContext
+from src.classes.Camera import ImageSettings, PhotoContext, ImageTestSettings
 import cv2
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import os
@@ -19,7 +19,7 @@ def get_image_bytestring_frame_size(image_byte_string: str):
     image = load_image_byte_string_to_opencv(image_byte_string)
     return determine_frame_size(image=image)
 
-def take_single_image(username: str, imageSettings: ImageSettings, context: PhotoContext):
+def take_single_image(username: str, imageSettings: ImageSettings|ImageTestSettings, context: PhotoContext):
     
     try:
         # Should have already validated the fact that Pis with these usernames are connected via SSH.

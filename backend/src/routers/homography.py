@@ -661,7 +661,7 @@ def view_test_analysis_plots_api():
     for plot in plots:
         plot_base64 = base64.b64encode(plot["figure"]).decode('utf-8')
         plot_format = "svg+xml" if plot["format"] == "svg" else "png"
-        img_tags += f'<img src="data:image/{plot_format};base64,{plot_base64}" width="200px"><br>' # SVG Plots
+        img_tags += f'<img src="data:image/{plot_format};base64,{plot_base64}" width="500px"><br>'
     html_content = f"<html><body>{img_tags}</body></html>"
     return HTMLResponse(content=html_content)
 
