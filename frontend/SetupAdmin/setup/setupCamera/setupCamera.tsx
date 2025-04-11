@@ -28,7 +28,7 @@ import {
   required,
 } from 'react-admin';
 import { Link, useParams } from 'react-router-dom';
-import HomograpyCalibration from './HomographyCalibration';
+import HomograpyCalibration from './OldHomographyCalibration';
 // import ManualROI from './scintillator_edges/ScintillatorEdges';
 import { DialogContent, DialogHeader } from '@/components/ui/dialog';
 import { Dialog, DialogDescription, DialogTitle, DialogTrigger } from '@radix-ui/react-dialog';
@@ -326,9 +326,9 @@ export const SetupCameraShow = () => {
   const { setupCameraId } = useParams();
   const {record, isPending} = useShowController({ resource: "setup-camera/calibration", id: setupCameraId });  
   if (isPending) return null;
-
+  console.log("DO DIST CAL:", record?.do_distortion_calibration)
   if (record?.do_distortion_calibration === null) return (<EditSetupCamera/>)
-  if (record?.do_distortion_calibration) return (<CalibrationRouting record={record} />)
+  if (record?.do_distortion_calibration != null) return (<CalibrationRouting record={record} />)
   //   else return (<HomographyCalibration />)
     // else return (<CalibrationRoutingPage />)
 }

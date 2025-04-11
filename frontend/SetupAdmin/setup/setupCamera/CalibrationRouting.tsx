@@ -7,6 +7,7 @@ export const CalibrationRouting = ({ record }: { record: RaRecord }) => {
   useEffect(() => {
     setDistortionCalibrated((record?.camera_matrix != null && record?.distortion_coefficients != null))
   }, [record]);
+  console.log("I AM HERE AT LEAST")
     if (record?.do_distortion_calibration)
       return (
       <div>
@@ -15,5 +16,12 @@ export const CalibrationRouting = ({ record }: { record: RaRecord }) => {
         { distortionCalibrated && <NearFaceCalibrationButton/> }
         { distortionCalibrated && <ScintillatorEdgeSelectionButton/> }
       </div>
-    )
+    );
+  return (
+    <div>
+      <FarFaceCalibrationButton/>
+      <NearFaceCalibrationButton/>
+      <ScintillatorEdgeSelectionButton/>
+    </div>
+  )
 }
