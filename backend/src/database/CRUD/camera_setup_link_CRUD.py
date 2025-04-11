@@ -1003,6 +1003,12 @@ def patch_setup_camera(setup_camera_id: int, patch: rb.SetupCameraPatchRequest):
         # Others
             if patch.lens_position is not None:
                 result.lens_position = patch.lens_position
+            if patch.optical_axis is not None:
+                result.optical_axis = patch.optical_axis
+            if patch.depth_direction is not None:
+                result.depth_direction = patch.depth_direction
+            if patch.image_beam_direction is not None:
+                result.image_beam_direction = patch.image_beam_direction
 
             setup_statement = select(Setup).join(CameraSetupLink).where(CameraSetupLink.id == setup_camera_id)
             setup_result = session.exec(setup_statement).one() #from .one()
