@@ -1,9 +1,10 @@
 from datetime import datetime
-from fastapi import Response, APIRouter
+from fastapi import HTTPException, Response, APIRouter
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 import pytz
 from sqlmodel import Session, select
+from src.create_homographies import ImagePointTransforms, test_grid_recognition_for_gui
 from src.gain_automation import ColourChannel, set_optimal_settings, show_saturated_points
 from src.database.database import engine
 
@@ -194,8 +195,96 @@ def get_all_distortion_calibration_images(setup_camera_id: int, response: Respon
         distortion_calibration_images = cdi.get_photo_from_camera_settings_link_id(camera_settings_id)
         response.headers["Content-Range"] = str(len(distortion_calibration_images))
         return distortion_calibration_images
-    
 
+@router.post("/homography-calibration/{plane}/{setup_camera_id}")
+def take_homography_calibration_image(plane: str, setup_camera_id: int):
+    context = PhotoContext.GENERAL
+    with Session(engine) as session:
+        setup_camera = session.get(CameraSetupLink, setup_camera_id)
+        camera_id = setup_camera.camera_id
+        setup_id = setup_camera.setup_id
+        username = cdi.get_username_from_camera_id(camera_id)
+
+        camera_settings_id = None
+        if plane == "near":
+            camera_settings_id = setup_camera.near_face_calibration_photo_camera_settings_id
+        elif plane == "far":
+            camera_settings_id = setup_camera.far_face_calibration_photo_camera_settings_id
+        else:
+            raise HTTPException(status_code=400, detail=f"Invalid plane: {plane}. Must be 'near' or 'far'.")
+        
+        old_photos_statement = select(Photo).where(Photo.camera_settings_link_id == camera_settings_id)
+        old_photos = session.exec(old_photos_statement).all()
+        for old_photo in old_photos:
+            session.delete(old_photo)
+        session.commit()
+
+        camera_settings = session.get(CameraSettingsLink, camera_settings_id)
+
+        settings = session.get(Settings, camera_settings.settings_id)
+
+        filename = f"{plane}_plane_calibration"
+        gain = settings.gain
+        timeDelay = 1 # Hardcoded
+        format = "jpg" # Hardcoded
+        meta_data_format = "dng" # Hardcoded
+        image_settings = ImageSettings(filename=filename,
+                                       gain=gain,
+                                       timeDelay=timeDelay,
+                                       format=format,
+                                       meta_data_format=meta_data_format)
+        photo_bytes, _ = take_single_image(username, image_settings, context)
+        photo_id = cdi.add_photo(camera_settings_id, photo_bytes)["id"]
+        return JSONResponse(content={"id": setup_camera_id})
+
+@router.get("/homography-calibration/{plane}/{setup_camera_id}")
+def get_homography_calibration_image(plane: str, setup_camera_id: int,
+                                     horizontal_flip: bool = False,
+                                     vertical_flip: bool = False,
+                                     swap_axes: bool = False):
+    with Session(engine) as session:
+        setup_camera = session.get(CameraSetupLink, setup_camera_id)
+        camera_settings_id = None
+        if plane == "near":
+            camera_settings_id = setup_camera.near_face_calibration_photo_camera_settings_id
+        elif plane == "far":
+            camera_settings_id = setup_camera.far_face_calibration_photo_camera_settings_id
+        else:
+            raise HTTPException(status_code=400, detail=f"Invalid plane: {plane}. Must be 'near' or 'far'.")
+        print(f"\n\n\n\n Camera setuigngs isd: {camera_settings_id}\n\n\n\n")
+        photo_statement = select(Photo).where(Photo.camera_settings_link_id == camera_settings_id)
+        
+        photos = session.exec(photo_statement).all()
+        if len(photos) == 0:
+            return rb.HomographyCalibrationPhotoGetResponse(id=setup_camera_id)
+        if len(photos) > 1:
+            raise HTTPException(503, detail="Multiple photos found for homography calibration")
+        photo = photos[0]
+        photo_bytes = photo.photo
+        setup_id = setup_camera.setup_id
+        camera_id = setup_camera.camera_id
+        username = cdi.get_username_from_camera_id(camera_id)
+
+        transforms = ImagePointTransforms(horizontal_flip=horizontal_flip,
+                                          vertical_flip=vertical_flip,
+                                          swap_axes=swap_axes)
+        response = test_grid_recognition_for_gui(username, setup_id, plane, image_point_transforms=transforms, photo_id=photo.id)
+        
+        return rb.HomographyCalibrationPhotoGetResponse(id=setup_camera_id,
+                                                        photo=response["image_bytes"],
+                                                        status=response["status"],
+                                                        message=response["message"])
+# return {
+#         "status": False,
+#         "message": "Calibration pattern could not be recognised in the image",
+#         "image_bytes": base64.b64encode(buffer).decode("utf-8")
+# }
+
+# return {
+#     "status": True,
+#     "message": "Calibration pattern succesfully recognised. Origin of coordinate system overlayed as a red circle.",
+#     "image_bytes": image_bytes
+# }
 
 # @router.get("/beam-run/test/{beam_run_id}/camera-settings/{camera_settings_id}")
 # def get_test_run_photo(beam_run_id: int, camera_settings_id: int):

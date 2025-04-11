@@ -181,12 +181,14 @@ def build_calibration_plane_homography(image: np.ndarray, plane_type: str, calib
         return homography_matrix, homography_covariance, image_grid_positions
     
 
-def test_grid_recognition_for_gui(username: str, setup_id: int, 
-                                   calibration_plane_type: Literal["far", "near"],
-                                   image_point_transforms: ImagePointTransforms = ImagePointTransforms(
-                                        horizontal_flip=False, vertical_flip=False, swap_axes=False
-                                   ),
-                                   photo_id: int|None=None, photo_bytes:str|None=None):
+def test_grid_recognition_for_gui(username: str,
+                                  setup_id: int, 
+                                  calibration_plane_type: Literal["far", "near"],
+                                  image_point_transforms: ImagePointTransforms = ImagePointTransforms(horizontal_flip=False,
+                                                                                                      vertical_flip=False,
+                                                                                                      swap_axes=False),
+                                  photo_id: int|None=None,
+                                  photo_bytes:str|None=None):
 
     camera_id = cdi.get_camera_id_from_username(username)
     match calibration_plane_type:

@@ -28,7 +28,7 @@ import {
   required,
 } from 'react-admin';
 import { Link, useParams } from 'react-router-dom';
-import HomograpyCalibration from './HomographyCalibration';
+import HomograpyCalibration from './OldHomographyCalibration';
 // import ManualROI from './scintillator_edges/ScintillatorEdges';
 import { DialogContent, DialogHeader } from '@/components/ui/dialog';
 import { Dialog, DialogDescription, DialogTitle, DialogTrigger } from '@radix-ui/react-dialog';
@@ -284,6 +284,25 @@ export const FarFaceTestContent = () => (
 //   <DistortionPage />
 // )
 
+const opticalAxes = [
+  { id : 'x', name : "x" },
+  { id : 'y', name : "y" },
+  { id : 'z', name : "z" }, 
+]
+
+const imageBeamDirections = [
+  { id : 'top', name : "Top" },
+  { id : 'right', name : "Right" },
+  { id : 'bottom', name : "Bottom" }, 
+  { id : 'left', name : "Left" }, 
+]
+
+const depthDirections = [
+  { id : 1, name : "Positive"},
+  { id : -1, name : "Negative"}
+]
+
+
 export const EditSetupCamera = () => {
   const { setupCameraId } = useParams();
   const { record, save, isPending } = useEditController({ resource: "setup-camera/calibration", id: setupCameraId, redirect: false, mutationMode: "optimistic"})
@@ -299,6 +318,15 @@ export const EditSetupCamera = () => {
         <Form record={record} onSubmit={save} className="space-y-4">
           <div className="space-y-2">
             <NumberInput source="lens_position"/>
+          </div>
+          <div className="space-y-2">
+            <SelectInput source="optical_axis" validate={required()} choices={opticalAxes} />
+          </div>
+          <div className="space-y-2">
+            <SelectInput source="depth_direction" validate={required()} choices={depthDirections} />
+          </div>
+          <div className="space-y-2">
+            <SelectInput source="image_beam_direction" validate={required()} choices={imageBeamDirections} />            
           </div>
           <div className="space-y-2">
             <BooleanInput source="do_distortion_calibration" label="Enable Distortion Calibration" />
@@ -326,9 +354,15 @@ export const SetupCameraShow = () => {
   const { setupCameraId } = useParams();
   const {record, isPending} = useShowController({ resource: "setup-camera/calibration", id: setupCameraId });  
   if (isPending) return null;
-
-  if (record?.do_distortion_calibration === null) return (<EditSetupCamera/>)
-  if (record?.do_distortion_calibration) return (<CalibrationRouting record={record} />)
+  console.log("DO DIST CAL:", record?.do_distortion_calibration)
+  if (record?.do_distortion_calibration === null || record?.lens_position === null || record?.optical_axis === null || record?.depth_direction === null || record?.image_beam_direction === null)
+    return (
+    <EditSetupCamera/>
+  )
+  if (record?.do_distortion_calibration != null)
+    return (
+    <CalibrationRouting record={record} />
+  )
   //   else return (<HomographyCalibration />)
     // else return (<CalibrationRoutingPage />)
 }

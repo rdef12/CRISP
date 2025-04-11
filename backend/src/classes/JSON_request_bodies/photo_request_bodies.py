@@ -6,10 +6,10 @@ class PhotoDeleteResponse(BaseModel):
 
 class ScintillatorEdgePhotoGet(BaseModel):
     id: int #setup camera id
-    camera_settings_id: Optional[int]
-    photo: Optional[bytes]
-    height: Optional[int]
-    width: Optional[int]
+    camera_settings_id: Optional[int] = None
+    photo: Optional[bytes] = None
+    height: Optional[int] = None
+    width: Optional[int] = None
 
 class DistortionCalibrationPhotoPost(BaseModel):
     id: int #setup camera id
@@ -22,6 +22,13 @@ class DistortionCalibrationSaveRequest(BaseModel):
 
 class DistortionCalibrationSaveResponse(BaseModel):
     id: int
+
+
+class HomographyCalibrationPhotoGetResponse(BaseModel):
+    id: int
+    photo: Optional[bytes] = None
+    status: Optional[bool] = None
+    message: Optional[str] = None
 
 class TestRunPhotoGet(BaseModel):
     id: int #camera_settings_id

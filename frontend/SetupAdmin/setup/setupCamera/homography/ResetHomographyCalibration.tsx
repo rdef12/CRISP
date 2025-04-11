@@ -1,6 +1,6 @@
-import { Button } from "@/components/ui/button";
-import { useDelete } from "react-admin";
 import { useParams } from "react-router-dom";
+import { HomographyPlane } from "./HomographyCalibration"
+import { useDelete } from "react-admin";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -12,11 +12,17 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { Button } from "@/components/ui/button";
 
-export const ResetDistortionCalibrationButton = () => {
+
+interface ResetHomographyCalibrationProps {
+  plane: HomographyPlane
+}
+
+export const ResetHomographyCalibration = ({ plane }: ResetHomographyCalibrationProps) => {
   const { setupCameraId } = useParams();
-  const [deleteOne, { isPending, error }] = useDelete(
-    'setup-camera/distortion-calibration/reset',
+  const [deleteOne, { isPending }] = useDelete(
+    `homography-calibration/reset/${plane}`,
     { id: setupCameraId}
   );
   
