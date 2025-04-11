@@ -1,7 +1,7 @@
 from pydantic import BaseModel
 from typing import Optional, List
 
-from src.database.models import Camera, Settings
+from src.database.models import Camera, DepthDirectionEnum, ImageBeamDirectionEnum, OpticalAxisEnum, Settings
 
 class SetupCameraCreateRequest(BaseModel):
     camera_id: int
@@ -47,6 +47,10 @@ class SetupCameraDistortionCalibrationSaveResponse(BaseModel):
     id: int
 
 class SetupCameraPatchRequest(BaseModel):
+# General homography
+    optical_axis: Optional[OpticalAxisEnum] = None
+    depth_direction: Optional[DepthDirectionEnum] = None # used to specify which side of the origin the cam is along optical axis
+    image_beam_direction: Optional[ImageBeamDirectionEnum] = None # used to orient images before applying analysis
 # Far face
     #Calibration pattern type here too?
     far_face_calibration_pattern_size: Optional[List[int]] = None
