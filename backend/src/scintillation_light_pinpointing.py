@@ -158,16 +158,17 @@ def build_weighted_directional_vector_of_beam_center(side_camera_analysis_id_lis
             print(f"Error when retrieving beam angles for side camera {side_camera_analysis_id} and top camera {top_camera_analysis_id}: {e}")
     
     if num_pairings == 1:
-        return build_directional_vector_of_beam_center_for_beam_run(beam_run_id, side_cam_beam_angle_array[0], unc_side_cam_beam_angle_array[0],
-                                                                    top_cam_beam_angle_array[0], unc_top_cam_beam_angle_array[0])
-    
-    weighted_side_cam_beam_angle, unc_weighted_side_cam_beam_angle = compute_weighted_mean_of_array(side_cam_beam_angle_array, unc_side_cam_beam_angle_array)
-    weighted_top_cam_beam_angle, unc_weighted_top_cam_beam_angle = compute_weighted_mean_of_array(top_cam_beam_angle_array, unc_top_cam_beam_angle_array)
-    
-    # Beam vector constructed using weighted angles seen by side and top cameras
-    beam_center_incident_position, unc_beam_center_incident_position, \
+        beam_center_incident_position, unc_beam_center_incident_position, \
         beam_direction_vector, unc_beam_directional_vector = build_directional_vector_of_beam_center_for_beam_run(beam_run_id, weighted_side_cam_beam_angle, unc_weighted_side_cam_beam_angle,
                                                                                                                   weighted_top_cam_beam_angle, unc_weighted_top_cam_beam_angle)
+    else:
+        weighted_side_cam_beam_angle, unc_weighted_side_cam_beam_angle = compute_weighted_mean_of_array(side_cam_beam_angle_array, unc_side_cam_beam_angle_array)
+        weighted_top_cam_beam_angle, unc_weighted_top_cam_beam_angle = compute_weighted_mean_of_array(top_cam_beam_angle_array, unc_top_cam_beam_angle_array)
+        
+        # Beam vector constructed using weighted angles seen by side and top cameras
+        beam_center_incident_position, unc_beam_center_incident_position, \
+            beam_direction_vector, unc_beam_directional_vector = build_directional_vector_of_beam_center_for_beam_run(beam_run_id, weighted_side_cam_beam_angle, unc_weighted_side_cam_beam_angle,
+                                                                                                                    weighted_top_cam_beam_angle, unc_weighted_top_cam_beam_angle)
     
     cdi.update_beam_incident_3d_position(beam_run_id, [float(x) for x in beam_center_incident_position.flatten()])
     cdi.update_unc_beam_incident_3d_position(beam_run_id, [float(x) for x in unc_beam_center_incident_position.flatten()])
@@ -236,10 +237,10 @@ def convert_beam_center_coords_to_penetration_depths(camera_analysis_id: int, un
     setup_id = cdi.get_setup_id_from_experiment_id(experiment_id)
     camera = AbstractCamera.setup(camera_id, setup_id)
     
-    beam_center_incident_position = cdi.get_beam_incident_3d_position(beam_run_id)
-    unc_beam_center_initial_position = cdi.get_unc_beam_incident_3d_position(beam_run_id)
-    beam_center_directional_vector = cdi.get_beam_path_vector(beam_run_id)
-    unc_beam_center_directional_vector = cdi.get_unc_beam_path_vector(beam_run_id)
+    beam_center_incident_position = np.array(cdi.get_beam_incident_3d_position(beam_run_id))
+    unc_beam_center_initial_position = np.array(cdi.get_unc_beam_incident_3d_position(beam_run_id))
+    beam_center_directional_vector = np.array(cdi.get_beam_path_vector(beam_run_id))
+    unc_beam_center_directional_vector = np.array(cdi.get_unc_beam_path_vector(beam_run_id))
     beam_center_line_vectors = [beam_center_incident_position, beam_center_directional_vector]
     
     # Pinpoint beam centers

@@ -668,7 +668,6 @@ def view_test_analysis_plots_api():
 @router.get("/test_beam_reconstruction")
 def test_beam_reconstruction_api():
     """
-    TODO - don't exit code if distance of closest approach exceeds valid distance - just omit from data because failed pinpointing
     TODO - if error bar is sufficiently large, exclude from data - where pinpointing method has failed
     TODO - unc_penetration_depth looks far too big for top HQ - look for errors
     """
