@@ -126,7 +126,13 @@ def get_scintillator_edge_photo_data(setup_camera_id: int):
                                                           height=None,
                                                           width=None)
         return null_photo_response
-
+    if len(photos) == 0:
+        null_photo_response = rb.ScintillatorEdgePhotoGet(id=setup_camera_id,
+                                                          camera_settings_id=None,
+                                                          photo=None,
+                                                          height=None,
+                                                          width=None)
+        return null_photo_response
     if len(photos) > 1:
         raise Exception("Multiple Scintillator Edge Pictures have been found")
     photo = photos[0]
@@ -256,11 +262,12 @@ def get_homography_calibration_image(plane: str, setup_camera_id: int,
         
         photos = session.exec(photo_statement).all()
         if len(photos) == 0:
+            print("SURES")
             return rb.HomographyCalibrationPhotoGetResponse(id=setup_camera_id)
         if len(photos) > 1:
             raise HTTPException(503, detail="Multiple photos found for homography calibration")
         photo = photos[0]
-        photo_bytes = photo.photo
+        # photo_bytes = photo.photo
         setup_id = setup_camera.setup_id
         camera_id = setup_camera.camera_id
         username = cdi.get_username_from_camera_id(camera_id)

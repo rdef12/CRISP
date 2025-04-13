@@ -28,21 +28,21 @@ export const HomographyCalibration = ({ plane }: HomographyCalibrationProps) => 
   useEffect(() => {
     setHasCalibrationSettings((homographyCalibration?.camera_settings_id != null))
   }, [homographyCalibration]);
-  console.log("THing", homographyCalibration?.camera_settings_id)
+
   if (isPending) return null;
   if (!hasCalibrationSettings) return (
      <CreateHomographySettings plane={plane} />
   )
   return (
-    <div style={{ display: 'flex', gap: '20px' }}>
-      <div style={{ flex: '0 0 400px' }}>
+    <div className="flex gap-5">
+      <div className="flex-[0_0_400px]">
         <ViewHomographyCalibrationSettings plane={plane} />
         <TakeHomographyCalibrationPicture 
           plane={plane} 
           onImageTaken={() => setImageTaken(true)} 
         />
       </div>
-      <div style={{ flex: '1' }}>
+      <div className="flex-1">
         <ShowHomographyCalibrationResults 
           plane={plane} 
           imageTaken={imageTaken} 

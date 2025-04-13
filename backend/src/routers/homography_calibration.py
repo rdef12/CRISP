@@ -30,7 +30,7 @@ def get_homography_calibration_settings(plane: str, setup_camera_id: int):
             gain = None
             if camera_settings_id is not None:
                 camera_settings = session.get(CameraSettingsLink, camera_settings_id)
-                settings = session.get(Settings, camera_settings.id)
+                settings = session.get(Settings, camera_settings.settings_id)
                 gain = settings.gain
             
             horizontal_grid_dimension = None
@@ -254,17 +254,17 @@ def save_homography_parameters(plane: str, setup_camera_id: int, horizontal_flip
         username = cdi.get_username_from_camera_id(camera_id)
         camera_settings_id = None
         if plane == "near":
-            camera_settings_id = setup_camera.far_face_calibration_photo_camera_settings_id
+            camera_settings_id = setup_camera.near_face_calibration_photo_camera_settings_id
         elif plane == "far":
             camera_settings_id = setup_camera.far_face_calibration_photo_camera_settings_id
         else:
             raise HTTPException(status_code=400, detail=f"Invalid plane: {plane}. Must be 'near' or 'far'.")
         
-        camera_settings = session.get(CameraSettingsLink, camera_settings_id)
+        # camera_settings = session.get(CameraSettingsLink, camera_settings_id)
         photo_statement = select(Photo).where(Photo.camera_settings_link_id == camera_settings_id)
         photos = session.exec(photo_statement).all()
         if len(photos) == 0:
-            raise HTTPException(status_code=503, detail="No photos found")
+            raise HTTPException(status_code=504, detail="No photos found")
         if len(photos) > 1:
             raise HTTPException(status_code=503, detail="Multiple photos found, reset this calibration!")
         photo = photos[0]

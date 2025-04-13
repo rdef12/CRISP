@@ -1,5 +1,4 @@
 import { Card } from "@/components/ui/card";
-import { HomographyPlane } from "./HomographyCalibration";
 
 interface ShowHomographyCalibrationImageProps {
   imageUrl: string;

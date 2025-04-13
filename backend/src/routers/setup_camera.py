@@ -41,8 +41,47 @@ def get_camera_setups(setup_id: int, response: Response) -> list[rb.SetupCameraG
 @router.get("/calibration/{setup_camera_id}")
 async def read_setup_camera(setup_camera_id: int) -> CameraSetupLink:
     setup_camera = cdi.get_setup_camera_by_id(setup_camera_id)
-    print(f"\n\n\n\n\nHELLLLLLLLLLLOOOOOOO: {setup_camera} \n\n\n\n\n")
-    return setup_camera
+    setup_camera_response = rb.SetupCameraFullGetRequest(id=setup_camera.id,
+                                                     setup_id=setup_camera.id,
+                                                     camera_id=setup_camera.camera_id,
+                                                     optical_axis=setup_camera.optical_axis,
+                                                     depth_direction=setup_camera.depth_direction,
+                                                     image_beam_direction=setup_camera.image_beam_direction,
+                                                     far_face_calibration_pattern_size=setup_camera.far_face_calibration_pattern_size,
+                                                     far_face_calibration_pattern_type=setup_camera.far_face_calibration_pattern_type,
+                                                     far_face_calibration_spacing=setup_camera.far_face_calibration_spacing,
+                                                     far_face_calibration_spacing_unc=setup_camera.far_face_calibration_spacing_unc,
+                                                     far_face_calibration_photo_camera_settings_id=setup_camera.far_face_calibration_photo_camera_settings_id,
+                                                     far_face_z_shift=setup_camera.far_face_z_shift,
+                                                     far_face_z_shift_unc=setup_camera.far_face_z_shift_unc,
+                                                     far_face_non_z_shift=setup_camera.far_face_non_z_shift,
+                                                     far_face_non_z_shift_unc=setup_camera.far_face_non_z_shift_unc,
+                                                     far_face_calibration_board_thickness=setup_camera.far_face_calibration_board_thickness,
+                                                     far_face_calibration_board_thickness_unc=setup_camera.far_face_calibration_board_thickness_unc,
+                                                     near_face_calibration_pattern_size=setup_camera.near_face_calibration_pattern_size,
+                                                     near_face_calibration_pattern_type=setup_camera.near_face_calibration_pattern_type,
+                                                     near_face_calibration_spacing=setup_camera.near_face_calibration_spacing,
+                                                     near_face_calibration_spacing_unc=setup_camera.near_face_calibration_spacing_unc,
+                                                     near_face_calibration_photo_camera_settings_id=setup_camera.near_face_calibration_photo_camera_settings_id,
+                                                     near_face_z_shift=setup_camera.near_face_z_shift,
+                                                     near_face_z_shift_unc=setup_camera.near_face_z_shift_unc,
+                                                     near_face_non_z_shift=setup_camera.near_face_non_z_shift,
+                                                     near_face_non_z_shift_unc=setup_camera.near_face_non_z_shift_unc,
+                                                     near_face_calibration_board_thickness=setup_camera.near_face_calibration_board_thickness,
+                                                     near_face_calibration_board_thickness_unc=setup_camera.near_face_calibration_board_thickness_unc,
+                                                     do_distortion_calibration=setup_camera.do_distortion_calibration,
+                                                     distortion_calibration_pattern_size_z_dim=setup_camera.distortion_calibration_pattern_size_z_dim,
+                                                     distortion_calibration_pattern_size_non_z_dim=setup_camera.distortion_calibration_pattern_size_non_z_dim,
+                                                     distortion_calibration_pattern_type=setup_camera.distortion_calibration_pattern_type,
+                                                     distortion_calibration_pattern_spacing=setup_camera.distortion_calibration_pattern_spacing,
+                                                     scintillator_edges_photo_camera_settings_id=setup_camera.scintillator_edges_photo_camera_settings_id,
+                                                     horizontal_scintillator_start=setup_camera.horizontal_scintillator_start,
+                                                     horizontal_scintillator_end=setup_camera.horizontal_scintillator_end,
+                                                     vertical_scintillator_start=setup_camera.vertical_scintillator_start,
+                                                     vertical_scintillator_end=setup_camera.vertical_scintillator_end,
+                                                     distortion_calibration_camera_settings_link=setup_camera.distortion_calibration_camera_settings_link,
+                                                     lens_position=setup_camera.lens_position)
+    return setup_camera_response
 
 
 @router.get("/scintillator-edges/{setup_camera_id}")
