@@ -2,8 +2,9 @@ import { useParams } from "react-router-dom";
 import { useGetOne, useRecordContext } from "react-admin";
 import { ShowAveragedPhoto } from "./ShowAveragedPhoto";
 import { useEffect, useState } from "react";
-import { ShowSingleCameraResults } from "./ShowSingleCameraResults";
-import { ShowSingleCameraAnalysisPlots } from "./ShowSingleCameraAnalysisPlots";
+import { ShowResults } from "./ShowResults";
+import { ShowPlots } from "./ShowPlots";
+import { Button } from "@/components/ui/button";
 
 export interface Plot {
   plot_type: string;
@@ -16,7 +17,7 @@ export interface Plot {
   description?: string;
 }
 
-export interface SingleCameraAnalyses {
+export interface Analyses {
   id: number;
   cameraSettingId: number;
   colourChannel: string;
@@ -28,12 +29,13 @@ export interface SingleCameraAnalyses {
   plots: Plot[];
 }
 
-interface ShowSingleCameraAnalysesProps {
+interface ShowAnalysesProps {
   refreshTrigger: boolean;
 }
 
-export const ShowSingleCameraAnalyses = ({ refreshTrigger }: ShowSingleCameraAnalysesProps) => {
+export const ShowAnalyses = ({ refreshTrigger }: ShowAnalysesProps) => {
   const [imageUrl, setImageUrl] = useState<string>("");
+  const [showPlotsDialog, setShowPlotsDialog] = useState(false);
 
   const { beamRunId } = useParams();
   const record = useRecordContext();
@@ -73,15 +75,26 @@ export const ShowSingleCameraAnalyses = ({ refreshTrigger }: ShowSingleCameraAna
       )}
       
       {hasAllResults && (
-        <ShowSingleCameraResults
+        <ShowResults
           beamAngle={cameraAnalysis.beamAngle}
           beamAngleUncertainty={cameraAnalysis.beamAngleUncertainty}
           braggPeakPixel={cameraAnalysis.braggPeakPixel}
           braggPeakPixelUncertainty={cameraAnalysis.braggPeakPixelUncertainty}
         />
       )}
-      {cameraAnalysis?.plots && (
-        <ShowSingleCameraAnalysisPlots plots={cameraAnalysis.plots} />
+      {cameraAnalysis?.averageImage && cameraAnalysis?.colourChannel && (
+        <div className="flex flex-col gap-4">
+          <Button 
+            onClick={() => setShowPlotsDialog(true)}
+            className="w-fit"
+          >
+            View Analysis Plots
+          </Button>
+          <ShowPlots 
+            isOpen={showPlotsDialog} 
+            onOpenChange={setShowPlotsDialog} 
+          />
+        </div>
       )}
     </div>
   )   

@@ -1,18 +1,18 @@
 import { Card } from "@/components/ui/card"
 
-interface ShowSingleCameraResultsProps {
+interface ShowResultsProps {
   beamAngle: number;
   beamAngleUncertainty: number;
   braggPeakPixel: number[];
   braggPeakPixelUncertainty: number[];
 }
 
-export const ShowSingleCameraResults = ({
+export const ShowResults = ({
   beamAngle,
   beamAngleUncertainty,
   braggPeakPixel,
   braggPeakPixelUncertainty,
-} : ShowSingleCameraResultsProps) => {
+} : ShowResultsProps) => {
 
   return (
     <div className="space-y-4">

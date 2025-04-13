@@ -1,6 +1,6 @@
-import { CreateCameraAnalysis } from "./CreateCameraAnalysis"
-import { ShowRealRunPhoto } from "./ShowRealRunPhoto"
-import { ShowSingleCameraAnalyses } from "./ShowSingleCameraAnalyses"
+import { CreateCameraAnalysis } from "./singleCameraAnalysis/CreateCameraAnalysis"
+import { ShowRealRunPhoto } from "./singleCameraAnalysis/ShowRealRunPhoto"
+import { ShowAnalyses } from "./singleCameraAnalysis/ShowAnalyses"
 import { useState } from "react"
 
 export const ShowCameraWithData = () => {
@@ -14,7 +14,7 @@ export const ShowCameraWithData = () => {
     <div>
       <CreateCameraAnalysis onAnalysisCreated={handleAnalysisCreated} />
       <ShowRealRunPhoto />
-      <ShowSingleCameraAnalyses refreshTrigger={refreshTrigger} />
+      <ShowAnalyses refreshTrigger={refreshTrigger} />
     </div>
   )
 }
