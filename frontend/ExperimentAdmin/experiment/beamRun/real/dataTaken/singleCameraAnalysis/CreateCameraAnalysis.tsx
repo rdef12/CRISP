@@ -18,7 +18,7 @@ interface CreateCameraAnalysisProps {
 export const CreateCameraAnalysis = ({ onAnalysisCreated }: CreateCameraAnalysisProps) => {
   const { beamRunId } = useParams();
   const record = useRecordContext();
-  const { save, saving, isPending } = useCreateController({
+  const { save, saving, isPending, error } = useCreateController({
     resource: `camera-analysis/beam-run/${beamRunId}/camera/${record?.id}`,
     redirect: false,
     transform: (data) => ({ colour_channel: data.colour_channel })
@@ -30,7 +30,7 @@ export const CreateCameraAnalysis = ({ onAnalysisCreated }: CreateCameraAnalysis
       onAnalysisCreated();
     }
   };
-
+  if (error) return <div> ERROR!!! </div>
   if (isPending) return null;
   if (saving) return (
     <Card> Generating analysis... </Card>

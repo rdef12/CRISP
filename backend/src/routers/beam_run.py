@@ -1,5 +1,6 @@
 from datetime import datetime
 from fastapi import Response, APIRouter
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 import pytz
 from sqlmodel import Session, select
@@ -389,3 +390,29 @@ def get_is_data_taken(beam_run_id: int) -> rb.GetTestBeamRunDataTaken:
 #         if len(test_photos) > 0:
 #             return rb.GetTestBeamRunDataTaken(id=beam_run_id, data_taken=True)
 #         return rb.GetTestBeamRunDataTaken(id=beam_run_id, data_taken=False)
+
+@router.get("/MSIC/{beam_run_id}")
+def get_MSIC_data(beam_run_id: int):
+    with Session(engine) as session:
+        beam_run = session.get(BeamRun, beam_run_id)
+        return rb.GetMSICDataResponse(id=beam_run_id,
+                                      MSIC_energy=beam_run.MSIC_beam_energy,
+                                      MSIC_energy_uncertainty=beam_run.MSIC_beam_energy_unc,
+                                    #   MSIC_current=beam_run.MSIC_beam_current,
+                                    #   MSIC_current_uncertainty=beam_run.MSIC_beam_current_unc
+                                      )
+
+@router.put("/MSIC/{beam_run_id}")
+def update_MSIC_data(beam_run_id: int, payload: rb.PostMSICDataPayload):
+    with Session(engine) as session:
+        beam_run = session.get(BeamRun, beam_run_id)
+        if payload.MSIC_energy is not None:
+            beam_run.MSIC_beam_energy = payload.MSIC_energy
+        if payload.MSIC_energy_uncertainty is not None:
+            beam_run.MSIC_beam_energy_unc = payload.MSIC_energy_uncertainty
+        # if payload.MSIC_current is not None:
+        #     beam_run.MSIC_beam_current = payload.MSIC_current
+        # if payload.MSIC_current_uncertainty is not None:
+        #     beam_run.MSIC_beam_current_unc = payload.MSIC_current_uncertainty
+        session.commit()
+        return JSONResponse(content={"id": beam_run_id})

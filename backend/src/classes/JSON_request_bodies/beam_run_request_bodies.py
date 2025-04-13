@@ -81,3 +81,16 @@ class CreateBeamRunSettingsTestResponse(BaseModel):
 
 class CreateBeamRunSettingsRealResponse(BaseModel):
     id: int #camera_id
+
+class PostMSICDataPayload(BaseModel):
+    MSIC_energy: Optional[float] = None
+    MSIC_energy_uncertainty: Optional[float] = None
+    MSIC_current: Optional[float] = None
+    MSIC_current_uncertainty: Optional[float] = None
+
+class GetMSICDataResponse(BaseModel):
+    id: int
+    MSIC_energy: Optional[float] = None
+    MSIC_energy_uncertainty: Optional[float] = None
+    MSIC_current: Optional[float] = None
+    MSIC_current_uncertainty: Optional[float] = None
