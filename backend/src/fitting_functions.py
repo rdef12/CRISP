@@ -157,7 +157,7 @@ def fit_gaussian_to_beam_profile(pixel_vertical_coords, column_of_brightness_val
     
 
 def fit_beam_profile_along_full_roi(camera_analysis_id: int, fit_context: str, channel, channel_std, h_bounds, v_bounds, show_fit_qualities: bool=False,
-                                    save_best_fit_data: bool=False):
+                                    save_plots_to_database: bool=False):
     try:
         (background_brightness, _, _, _) = cv.minMaxLoc(channel[v_bounds[0]: v_bounds[1] + 1, h_bounds[0]: h_bounds[1] + 1])
         
@@ -187,21 +187,22 @@ def fit_beam_profile_along_full_roi(camera_analysis_id: int, fit_context: str, c
         roi_horizontal_coords = np.delete(roi_horizontal_coords, failed_fits) # Failed fits deleted from array - no data added when the fit failed (so would be differences in array lengths without this fix)
         print("\n\n\nThe number of Gaussian fits which failed is {}\n\n\n".format(len(failed_fits)))
         
-        plot_reduced_chi_squared_values(camera_analysis_id, fit_context, roi_horizontal_coords,
-                                        reduced_chi_squared_array, show_plot=show_fit_qualities)
-        
-        index_of_worst_accepted_fit = np.argmax(reduced_chi_squared_array)
-        index_of_best_accepted_fit = np.argmin(reduced_chi_squared_array)
-        
-        plot_beam_profile(camera_analysis_id, fit_context, channel, channel_std, roi_horizontal_coords[index_of_best_accepted_fit], v_bounds, background_brightness, np.min(reduced_chi_squared_array),
-                                                        profile_type="best_fit", save_best_fit_data=save_best_fit_data, show_plot=show_fit_qualities)
-        plot_beam_profile(camera_analysis_id, fit_context, channel, channel_std, roi_horizontal_coords[index_of_worst_accepted_fit], v_bounds, background_brightness, np.max(reduced_chi_squared_array),
-                                                        profile_type="worst_fit", show_plot=show_fit_qualities)
-        
-        # best_fit_horizontal_coord = roi_horizontal_coords[index_of_best_accepted_fit]
-        # worst_fit_horizontal_coord = roi_horizontal_coords[index_of_worst_accepted_fit]
-        # overlayed_average_image_bytes = render_best_worst_fit_locations(channel, best_fit_horizontal_coord, worst_fit_horizontal_coord, v_bounds)
-        # plot_byte_strings = [rcs_plot_bytes, best_fit_gaussian_plot_bytes, worst_fit_gaussian_plot_bytes, overlayed_average_image_bytes]
+        if save_plots_to_database:
+            plot_reduced_chi_squared_values(camera_analysis_id, fit_context, roi_horizontal_coords,
+                                            reduced_chi_squared_array, show_plot=show_fit_qualities)
+            
+            index_of_worst_accepted_fit = np.argmax(reduced_chi_squared_array)
+            index_of_best_accepted_fit = np.argmin(reduced_chi_squared_array)
+            
+            plot_beam_profile(camera_analysis_id, fit_context, channel, channel_std, roi_horizontal_coords[index_of_best_accepted_fit], v_bounds, background_brightness, np.min(reduced_chi_squared_array),
+                                                            profile_type="best_fit", show_plot=show_fit_qualities)
+            plot_beam_profile(camera_analysis_id, fit_context, channel, channel_std, roi_horizontal_coords[index_of_worst_accepted_fit], v_bounds, background_brightness, np.max(reduced_chi_squared_array),
+                                                            profile_type="worst_fit", show_plot=show_fit_qualities)
+            
+            # best_fit_horizontal_coord = roi_horizontal_coords[index_of_best_accepted_fit]
+            # worst_fit_horizontal_coord = roi_horizontal_coords[index_of_worst_accepted_fit]
+            # overlayed_average_image_bytes = render_best_worst_fit_locations(channel, best_fit_horizontal_coord, worst_fit_horizontal_coord, v_bounds)
+            # plot_byte_strings = [rcs_plot_bytes, best_fit_gaussian_plot_bytes, worst_fit_gaussian_plot_bytes, overlayed_average_image_bytes]
         
         return roi_horizontal_coords, fitted_parameters_array, beam_center_error_array, reduced_chi_squared_array, total_profile_brightness, unc_total_profile_brightness
     except Exception as e:
@@ -222,8 +223,7 @@ def render_best_worst_fit_locations(image, best_fit_horizontal_coord, worst_fit_
 
 
 def plot_beam_profile(camera_analysis_id: int, fit_context: str, channel, channel_std, horizontal_coord, v_bounds,
-                      global_background_estimate, reduced_chi_squared, profile_type: str=None,
-                      save_best_fit_data: bool=False, show_plot: bool=False):
+                      global_background_estimate, reduced_chi_squared, profile_type: str=None, show_plot: bool=False):
     
     pixel_vertical_coords, column_of_brightness_vals, column_of_brightness_errors = extract_beam_profile(channel, channel_std, horizontal_coord, v_bounds)
     fitted_parameters, _, reduced_chi_squared, _ = fit_gaussian_to_beam_profile(pixel_vertical_coords, column_of_brightness_vals, column_of_brightness_errors,
@@ -345,9 +345,12 @@ def extract_incident_beam_angle(camera_analysis_id: int, horizontal_coords, beam
 
     fitted_angle, unc_fitted_angle = np.rad2deg(fitted_angle), np.rad2deg(unc_fitted_angle)
     
-    fitted_label = r"$\alpha = $" + f"{fitted_angle:.3g}" + " \u00B1 " + f"{unc_fitted_angle:.3g}" + \
-    "\u00B0" + "\n" + r"Reduced $\chi^2$ = " + str(round(chi_squared_reduced, 2))
+    leading_order_error = 10 ** np.floor(np.log10(np.abs(unc_fitted_angle).max())) # same OOM for both coords - ideal?
+    fitted_angle = np.round(fitted_angle / leading_order_error) * leading_order_error
+    unc_fitted_angle = np.round(unc_fitted_angle / leading_order_error) * leading_order_error
     
+    fitted_label = r"$\alpha = $" + f"{fitted_angle}" + " \u00B1 " + f"{unc_fitted_angle}" + \
+    "\u00B0" + "\n" + r"Reduced $\chi^2$ = " + str(round(chi_squared_reduced, 2))
     
     fig, axs = plt.subplots(2, 1, gridspec_kw={'height_ratios': [3, 1]}, figsize=(8, 6), sharex=True)
     axs[0].plot(horizontal_coords, predicted_beam_centers, color="red", label=fitted_label)
@@ -467,83 +470,88 @@ def overlay_bragg_peak_coord(camera_analysis_id, averaged_image, bragg_peak_coor
     return image_bytes
 
 
-def plot_physical_units_ODR_bortfeld(bragg_peak_depth, distances, distance_uncertainties, brightnesses, brightness_uncertainties,
-                                     left_fit_window: int, right_fit_window: int):
-    """
-    Fit window is used to specify how tightly around the peak the ODR fit should be
-    """
-    
-    print("\n\nMinimum distance travelled through scintillator is {}".format(np.min(distances)))
-    print("\n\nMaximum distance travelled through scintillator is {}".format(np.max(distances)))
-    
-    if len(distances) != len(np.unique(distances)):
-        unique_distances, unique_indices = np.unique(distances, return_index=True)
-        distances = np.array(distances)[unique_indices]
-        distance_uncertainties = np.array(distance_uncertainties)[unique_indices]    
-        brightnesses = np.array(brightnesses)[unique_indices]    
-        brightness_uncertainties = np.array(brightness_uncertainties)[unique_indices]
+def plot_physical_units_ODR_bortfeld(camera_analysis_id, bragg_peak_depth, distances, distance_uncertainties, brightnesses, brightness_uncertainties):
+    try:
+        result = cdi.delete_physical_bortfeld_plots_by_camera_analysis_id(camera_analysis_id)
+        print(result["message"])
+        print("\n\nMinimum distance travelled through scintillator is {}".format(np.min(distances)))
+        print("\n\nMaximum distance travelled through scintillator is {}".format(np.max(distances)))
         
-    print("\n\nLength of distances array is {}".format(len(distances)))
-    print("\n\nLength of brightnesses array is {}".format(len(brightnesses)))
-    print("\n\nLength of distance uncertainties array is {}".format(len(distance_uncertainties)))
-    print("\n\nLength of brightness uncertainties array is {}".format(len(brightness_uncertainties)))
-    
-    # Find index of where distances array element is closest to the bragg peak depth
-    bragg_peak_index = np.argmin(np.abs(distances - bragg_peak_depth))
-    # Apply plot_window around this index to fit around the peak
-    
-    start_index = max(0, bragg_peak_index - left_fit_window)
-    end_index = min(len(distances), bragg_peak_index + right_fit_window + 1)
-    
-    distances = distances[start_index:end_index]
-    distance_uncertainties = distance_uncertainties[start_index:end_index]
-    brightnesses = brightnesses[start_index:end_index]
-    brightness_uncertainties = brightness_uncertainties[start_index:end_index]
-    
-    # Fit the Bortfeld function using ODR
-    fit_parameters, fit_parameters_uncertainties, true_uncertainties = fit_bortfeld_odr(
-        distances, brightnesses, distance_uncertainties, brightness_uncertainties
-    )
+        if len(distances) != len(np.unique(distances)):
+            unique_distances, unique_indices = np.unique(distances, return_index=True)
+            distances = np.array(distances)[unique_indices]
+            distance_uncertainties = np.array(distance_uncertainties)[unique_indices]
+            brightnesses = np.array(brightnesses)[unique_indices]    
+            brightness_uncertainties = np.array(brightness_uncertainties)[unique_indices]
+            
+        print("\n\nLength of distances array is {}".format(len(distances)))
+        print("\n\nLength of brightnesses array is {}".format(len(brightnesses)))
+        print("\n\nLength of distance uncertainties array is {}".format(len(distance_uncertainties)))
+        print("\n\nLength of brightness uncertainties array is {}".format(len(brightness_uncertainties)))
+        
+        threshold_fraction = 1 / 3
+        initial_brightness = brightnesses[0]
+        peak_brightness = np.max(brightnesses)
+        peak_threshold_condition = initial_brightness  + (peak_brightness - initial_brightness) * threshold_fraction
+        within_peak_threshold = np.where(brightnesses >= peak_threshold_condition)[0]
+        peak_range = slice(max(0, within_peak_threshold[0]), min(len(distances), within_peak_threshold[-1] + 1))
+        print(f"\n\nPeak range is {peak_range}")
+        
+        distances = distances[peak_range]
+        distance_uncertainties = distance_uncertainties[peak_range]
+        brightnesses = brightnesses[peak_range]
+        brightness_uncertainties = brightness_uncertainties[peak_range]
+        
+        print("Max dist uncertainty in this range is {}".format(np.max(distance_uncertainties)))
+        print("Min dist uncertainty in this range is {}".format(np.min(distance_uncertainties)))
+        
+        # Fit the Bortfeld function using ODR
+        fit_parameters, fit_parameters_uncertainties, true_uncertainties, reduced_chi_squared = fit_bortfeld_odr(
+            distances, brightnesses, distance_uncertainties, brightness_uncertainties)
 
-    # Find the Bragg peak position and uncertainties
-    bragg_peak_position_arguement, bragg_peak_position = find_peak_of_bortfeld(distances, fit_parameters)
-    lower_uncertainty_peak_position, upper_uncertainty_peak_position = find_peak_position_uncertainty(
-        distances, fit_parameters, fit_parameters_uncertainties, points_per_bin=100
-    )
-    print(f"Bragg peak position {bragg_peak_position} + {upper_uncertainty_peak_position} - {lower_uncertainty_peak_position}")
+        # Find the Bragg peak position and uncertainties
+        bragg_peak_position_arguement, bragg_peak_position = find_peak_of_bortfeld(distances, fit_parameters)
+        lower_uncertainty_peak_position, upper_uncertainty_peak_position = find_peak_position_uncertainty(
+            distances, fit_parameters, fit_parameters_uncertainties, points_per_bin=100
+        )
+        print(f"Bragg peak position {bragg_peak_position} + {upper_uncertainty_peak_position} - {lower_uncertainty_peak_position}")
 
-    # Find the range and uncertainties
-    range_argument, range = find_range(distances, fit_parameters, points_per_bin=100)
-    lower_uncertainty, upper_uncertainty = (0, 0)  # Placeholder for range uncertainty calculation
-    print(f"Range {range} + {upper_uncertainty} - {lower_uncertainty}")
+        # Find the range and uncertainties
+        range_argument, range = find_range(distances, fit_parameters, points_per_bin=100)
+        lower_uncertainty, upper_uncertainty = (0, 0)  # Placeholder for range uncertainty calculation
+        print(f"Range {range} + {upper_uncertainty} - {lower_uncertainty}")
 
-    # Generate fitted curve
-    fitted_distances = np.linspace(min(distances), max(distances), 1000)
-    fitted_brightnesses = bortfeld(fitted_distances, *fit_parameters)
+        # Generate fitted curve
+        fitted_brightnesses = bortfeld(distances, *fit_parameters)
 
-    # Plot the data with error bars and the fitted curve
-    plt.plot(fitted_distances, fitted_brightnesses, color='red', label='Fitted Bortfeld Function')
-    
-    plt.step(distances, brightnesses, where='mid')
-    # Suppress markers for error bars only
-    plt.errorbar(
-        distances, brightnesses, 
-        xerr=distance_uncertainties, yerr=brightness_uncertainties, 
-        fmt='', color='black', ecolor='blue', label='Experimental Data', ms=3
-    )
-    
-    # Add labels, legend, and grid
-    plt.xlabel("Distance travelled through Scintillator (mm)")
-    plt.ylabel("Total Profile Intensity")
-    plt.legend(**LEGEND_CONFIG)
-    plt.grid()
+        # Plot the data with error bars and the fitted curve
+        plt.plot(distances, fitted_brightnesses, color='red', 
+             label=('Fitted Bortfeld Function \n' + fr"Reduced $\chi^2$ = {reduced_chi_squared:.3g}"))
+        
+        # plt.step(distances, brightnesses, where='mid')
+        # Suppress markers for error bars only
+        plt.errorbar(
+            distances, brightnesses, 
+            xerr=distance_uncertainties, yerr=brightness_uncertainties, 
+            fmt='', color='black', ecolor='blue', label='Experimental Data', ms=3
+        )
+        
+        # Add labels, legend, and grid
+        plt.xlabel("Distance travelled through Scintillator (mm)")
+        plt.ylabel("Total Profile Intensity")
+        plt.legend(**LEGEND_CONFIG)
+        plt.grid()
 
-    buf = io.BytesIO()  # Create an in-memory binary stream (buffer)
-    plt.savefig(buf, format="svg", dpi=600)  # Save the current plot to the buffer
-    plt.close()
-    buf.seek(0)  # Reset the buffer's position to the beginning - else will read from the end
-    plot_byte_string = base64.b64encode(buf.read()).decode('utf-8')
-    return plot_byte_string
-    
+        buf = io.BytesIO()  # Create an in-memory binary stream (buffer)
+        plt.savefig(buf, format="svg", dpi=600)  # Save the current plot to the buffer
+        plt.close()
+        buf.seek(0)  # Reset the buffer's position to the beginning - else will read from the end
+        plot_bytes = buf.read()
+        
+        cdi.add_camera_analysis_plot(camera_analysis_id, "physical_bortfeld_fit", plot_bytes, "svg",
+                                    description=f"Plot showing a bortfeld function ODR fitting to the beam axis scintillation light distribution in physical units")
+        return None
+    except Exception as e:
+        raise Exception("Error in plotting physical units ODR Bortfeld: ", e)
     
     

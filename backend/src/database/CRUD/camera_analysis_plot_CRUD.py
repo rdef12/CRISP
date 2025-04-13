@@ -90,3 +90,19 @@ def delete_all_plots_by_camera_analysis_id(camera_analysis_id: int):
             session.delete(result)
         session.commit()
     return {"message": f"All plots deleted for camera analysis with id {camera_analysis_id}."}
+
+
+def delete_physical_bortfeld_plots_by_camera_analysis_id(camera_analysis_id: int):
+    with Session(engine) as session:
+        statement = select(CameraAnalysisPlot).where(
+            CameraAnalysisPlot.camera_analysis_id == camera_analysis_id,
+            CameraAnalysisPlot.plot_type == "physical_bortfeld_fit"
+        )
+        results = session.exec(statement).all()
+        if not results:
+            return {"message": f"No physical Bortfeld plots found for camera analysis with id {camera_analysis_id}."}
+        for result in results:
+            session.delete(result)
+        session.commit()
+    return {"message": f"All physical Bortfeld plots deleted for camera analysis with id {camera_analysis_id}."}
+    

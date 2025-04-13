@@ -268,7 +268,7 @@ def fitBP_odr(z, D, z_unc, D_unc, method='bortfeld', rel_resolution=0.01):
 
         chi_square = myoutput.sum_square
         print(f"Chi square: {chi_square}")
-        degrees_of_freedom = len(z) - 5
+        degrees_of_freedom = len(z)
         chi_squared_reduced = chi_square / degrees_of_freedom
         print(f"Reduced chi square: {chi_squared_reduced}")
 
@@ -280,7 +280,7 @@ def fitBP_odr(z, D, z_unc, D_unc, method='bortfeld', rel_resolution=0.01):
         # overwrite results from spline fit
         quantities.update(bortfeld_quantities)
 
-        return quantities, true_uncertainties
+        return quantities, true_uncertainties, chi_squared_reduced
 
 
 def fit_bortfeld(z_bins, on_axis_energies, on_axis_energies_uncertainties):
@@ -291,11 +291,11 @@ def fit_bortfeld(z_bins, on_axis_energies, on_axis_energies_uncertainties):
     return fit_parameters, fit_parameters_uncertainties
 
 def fit_bortfeld_odr(z_bins, on_axis_energies, z_uncertainties, on_axis_energies_uncertainties):
-    bortfeld_fit, true_uncertainties = fitBP_odr(z_bins, on_axis_energies, z_uncertainties, on_axis_energies_uncertainties)
+    bortfeld_fit, true_uncertainties, chi_squared_reduced = fitBP_odr(z_bins, on_axis_energies, z_uncertainties, on_axis_energies_uncertainties)
     fit_parameters = bortfeld_fit['bortfeld_fit_p']
     fit_parameters_covariance = bortfeld_fit['bortfeld_fit_cov']
     fit_parameters_uncertainties = np.sqrt(np.diag(fit_parameters_covariance))
-    return fit_parameters, fit_parameters_uncertainties, true_uncertainties
+    return fit_parameters, fit_parameters_uncertainties, true_uncertainties, chi_squared_reduced
 
 def find_peak_of_bortfeld(z_bins, bortfeld_parameters, points_per_bin=1000):
     z_length = len(z_bins) * points_per_bin

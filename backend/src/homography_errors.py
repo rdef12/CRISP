@@ -106,7 +106,7 @@ def generate_householder_matrix(eigen_values, eigen_vectors, exclude_eigen_value
     
         # Multiplying eigenvectors by huge scale factor, and this factor actually cancels out!
         # Should be no risk of going above the upper floating point precision limit (HACK)
-        eigen_vector *= (-1 * smallest_abs_order_of_magnitude + 4) # factor of 10,000 overboard to be safe
+        eigen_vector *= (-1 * smallest_abs_order_of_magnitude + 6) # factor of 1,000,000 overboard to be safe
         house_holder_matrix += np.outer(eigen_vector, eigen_vector)/eigen_values[count]
 
     return house_holder_matrix
@@ -114,8 +114,8 @@ def generate_householder_matrix(eigen_values, eigen_vectors, exclude_eigen_value
 
 def find_homography_covariance_matrix(homography_jacobian, pixel_uncertainty_covariance_matrix):
     
-    # matrix_to_pseudo_inverse = homography_jacobian.T @ np.linalg.inv(pixel_uncertainty_covariance_matrix) @ homography_jacobian
-    matrix_to_pseudo_inverse = homography_jacobian.T @ np.linalg.pinv(pixel_uncertainty_covariance_matrix) @ homography_jacobian
+    matrix_to_pseudo_inverse = homography_jacobian.T @ np.linalg.inv(pixel_uncertainty_covariance_matrix) @ homography_jacobian
+    # matrix_to_pseudo_inverse = homography_jacobian.T @ np.linalg.pinv(pixel_uncertainty_covariance_matrix) @ homography_jacobian
     
     eigen_values, eigen_vectors = find_descending_order_eigen_info(matrix_to_pseudo_inverse)
     house_holder_matrix = generate_householder_matrix(eigen_values, eigen_vectors)
@@ -258,15 +258,14 @@ def generate_homography_covariance_matrix(image_grid_positions, homography_matri
 def generate_world_point_uncertainty(image_point, x_pixel_uncertainty, y_pixel_uncertainty, homography_matrix, homography_covariance):
     
     covariance_from_homography = calculate_homography_position_covariance(image_point, homography_matrix, homography_covariance)   
+    print("Covariance from Homography:", covariance_from_homography)
     covariance_from_pixel_selection = calculate_covariance_from_pixel_selection(image_point, homography_matrix, x_pixel_uncertainty, y_pixel_uncertainty)
-    
-    # print("Covariance from Homography:", covariance_from_homography)
-    # print("Covariance from Pixel Selection:", covariance_from_pixel_selection)
+    print("Covariance from Pixel Selection:", covariance_from_pixel_selection)
     
     world_point_covariance = covariance_from_homography + covariance_from_pixel_selection
-    #print("World Point Covariance Matrix:", world_point_covariance)
+    print("World Point Covariance Matrix:", world_point_covariance)
     x_variance, y_variance = world_point_covariance[0, 0],  world_point_covariance[1, 1]
-    #print("X Variance:", x_variance, "Y Variance:", y_variance)
+    print("X Variance:", x_variance, "Y Variance:", y_variance)
     x_uncertainty, y_uncertainty = np.sqrt(x_variance), np.sqrt(y_variance)
     
     return [x_uncertainty, y_uncertainty]

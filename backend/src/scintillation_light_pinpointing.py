@@ -85,6 +85,20 @@ def calculate_beam_incidence_and_directional_vector(
     return beam_center_incident_position, unc_beam_center_incident_position, beam_direction_vector, unc_beam_directional_vector
 
 
+def build_directional_vector_of_beam_center_for_beam_run(beam_run_id: int, side_cam_beam_angle, unc_side_cam_beam_angle,
+                                                         top_cam_beam_angle, unc_top_cam_beam_angle):
+    """
+    Physical Bragg position must be 3D.
+    """
+    physical_bragg_peak_position = cdi.get_bragg_peak_3d_position(beam_run_id)
+    bragg_peak_error = cdi.get_unc_bragg_peak_3d_position(beam_run_id)
+
+    return calculate_beam_incidence_and_directional_vector(
+        physical_bragg_peak_position, bragg_peak_error, top_cam_beam_angle, unc_top_cam_beam_angle,
+        side_cam_beam_angle, unc_side_cam_beam_angle
+    )
+
+
 def build_directional_vector_of_beam_center_for_camera_pair(side_camera_analysis_id: int, top_camera_analysis_id: int):
     """
     Physical Bragg position must be 3D.
@@ -108,20 +122,6 @@ def build_directional_vector_of_beam_center_for_camera_pair(side_camera_analysis
     bragg_peak_error = cdi.get_unc_bragg_peak_3d_position(beam_run_id)
     top_cam_beam_angle, unc_top_cam_beam_angle = cdi.get_beam_angle(top_camera_analysis_id), cdi.get_unc_beam_angle(top_camera_analysis_id)
     side_cam_beam_angle, unc_side_cam_beam_angle = cdi.get_beam_angle(side_camera_analysis_id), cdi.get_unc_beam_angle(side_camera_analysis_id)
-
-    return calculate_beam_incidence_and_directional_vector(
-        physical_bragg_peak_position, bragg_peak_error, top_cam_beam_angle, unc_top_cam_beam_angle,
-        side_cam_beam_angle, unc_side_cam_beam_angle
-    )
-    
-
-def build_directional_vector_of_beam_center_for_beam_run(beam_run_id: int, side_cam_beam_angle, unc_side_cam_beam_angle,
-                                                         top_cam_beam_angle, unc_top_cam_beam_angle):
-    """
-    Physical Bragg position must be 3D.
-    """
-    physical_bragg_peak_position = cdi.get_bragg_peak_3d_position(beam_run_id)
-    bragg_peak_error = cdi.get_unc_bragg_peak_3d_position(beam_run_id)
 
     return calculate_beam_incidence_and_directional_vector(
         physical_bragg_peak_position, bragg_peak_error, top_cam_beam_angle, unc_top_cam_beam_angle,
@@ -278,7 +278,7 @@ def convert_beam_center_coords_to_penetration_depths(camera_analysis_id: int, un
     
     print("\n\nPenetration depth vector errors shape", penetration_depth_vector_errors.shape)
     
-    plt.plot(physical_3d_beam_centers[-1], ) # Plot of z against beam center error magnitude
+    # plt.plot(physical_3d_beam_centers[-1], ) # Plot of z against beam center error magnitude
 
     # Calculate uncertainties for distances traveled inside the scintillator
     unc_distances_travelled_inside_scintillator = np.array([

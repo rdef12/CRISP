@@ -682,7 +682,7 @@ def test_beam_reconstruction_api():
         beam_center_incident_position, unc_beam_center_incident_position, \
         beam_direction_vector, unc_beam_direction_vector = build_weighted_directional_vector_of_beam_center([side_camera_analysis_id], [top_camera_analysis_id])
         
-        # Get beam center coords in side cam image
+        ###################### Get beam center coords in side cam image ##################################################
         side_cam_beam_center_coords, unc_side_cam_beam_center_coords, \
         total_brightness_along_vertical_roi, unc_total_brightness_along_vertical_roi = get_beam_center_coords(beam_run_id, side_camera_analysis_id)
         
@@ -692,6 +692,8 @@ def test_beam_reconstruction_api():
                                                                                                     unc_side_cam_beam_center_coords,
                                                                                                     [beam_center_incident_position, beam_direction_vector],
                                                                                                     [unc_beam_center_incident_position, unc_beam_direction_vector])
+        
+        print(distances_travelled_inside_scintillator, unc_distances_travelled_inside_scintillator)
         # Unc in range needs amending
         # TODO - put range computations in a separate function?
         
@@ -699,35 +701,34 @@ def test_beam_reconstruction_api():
                                                                         side_camera_analysis_id,
                                                                         top_camera_analysis_id)
         
-        plot_bytes += [plot_physical_units_ODR_bortfeld(bragg_peak_depth, distances_travelled_inside_scintillator, unc_distances_travelled_inside_scintillator, 
-                                                      total_brightness_along_vertical_roi, unc_total_brightness_along_vertical_roi, left_fit_window=1000, right_fit_window=200)]
+        plot_physical_units_ODR_bortfeld(side_camera_analysis_id, bragg_peak_depth, distances_travelled_inside_scintillator, unc_distances_travelled_inside_scintillator, 
+                                        total_brightness_along_vertical_roi, unc_total_brightness_along_vertical_roi)
         
-        #### TOP CAM VERSION OF ANALYSIS ######
+        ######################################################## ONLY THE ABOVE NEEDED FOR PRODUCING ONE ODR BORTFELD ####################################################
+        
+        ###################### Get beam center coords in top cam image ##################################################
     
-        top_cam_beam_center_coords, unc_top_cam_beam_center_coords, \
-        total_brightness_along_vertical_roi, unc_total_brightness_along_vertical_roi = get_beam_center_coords(beam_run_id, top_camera_analysis_id)
+        # top_cam_beam_center_coords, unc_top_cam_beam_center_coords, \
+        # total_brightness_along_vertical_roi, unc_total_brightness_along_vertical_roi = get_beam_center_coords(beam_run_id, top_camera_analysis_id)
         
-        distances_travelled_inside_scintillator, \
-        unc_distances_travelled_inside_scintillator = convert_beam_center_coords_to_penetration_depths(top_camera_analysis_id,
-                                                                                                    top_cam_beam_center_coords,
-                                                                                                    unc_top_cam_beam_center_coords,
-                                                                                                    [beam_center_incident_position, beam_direction_vector],
-                                                                                                    [unc_beam_center_incident_position, unc_beam_direction_vector])
-        # Unc in range needs amending
-        # TODO - put range computations in a separate function?
+        # distances_travelled_inside_scintillator, \
+        # unc_distances_travelled_inside_scintillator = convert_beam_center_coords_to_penetration_depths(top_camera_analysis_id,
+        #                                                                                             top_cam_beam_center_coords,
+        #                                                                                             unc_top_cam_beam_center_coords,
+        #                                                                                             [beam_center_incident_position, beam_direction_vector],
+        #                                                                                             [unc_beam_center_incident_position, unc_beam_direction_vector])
         
-        # TODO - don't exit code if distance of closest approach exceeds valid distance - just omit from data because failed pinpointing
-        # TODO - if error bar is sufficiently large, exclude from data - where pinpointing method has failed
-        # TODO - unc_penetration_depth looks far too big - look for errors
+        # # Unc in range needs amending
+        # # TODO - put range computations in a separate function?
         
-        plot_bytes += [plot_physical_units_ODR_bortfeld(bragg_peak_depth, distances_travelled_inside_scintillator, unc_distances_travelled_inside_scintillator, 
-                                                      total_brightness_along_vertical_roi, unc_total_brightness_along_vertical_roi, left_fit_window=800, right_fit_window=100)] # TODO - need to have an asymmetric window
+        # # TODO - don't exit code if distance of closest approach exceeds valid distance - just omit from data because failed pinpointing
+        # # TODO - if error bar is sufficiently large, exclude from data - where pinpointing method has failed
+        # # TODO - unc_penetration_depth looks far too big - look for errors
+        
+        # plot_physical_units_ODR_bortfeld(top_camera_analysis_id, bragg_peak_depth, distances_travelled_inside_scintillator, unc_distances_travelled_inside_scintillator, 
+        #                                 total_brightness_along_vertical_roi, unc_total_brightness_along_vertical_roi)
 
-        img_tags = ""
-        for plot_base64 in plot_bytes:
-            img_tags += f'<img src="data:image/svg+xml;base64,{plot_base64}" width="500px"><br>' # SVG Plots
-        html_content = f"<html><body>{img_tags}</body></html>"
-        return HTMLResponse(content=html_content)
     
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        # raise HTTPException(status_code=500, detail=str(e))
+        raise e

@@ -129,10 +129,23 @@ def inverse_rotation_of_coords(array_of_coords, inverse_rotation_matrix):
     
     unrotated_coords = np.array([])
     for rotated_coordinate in homogenous_beam_center_coords:
-        coordinate = (inverse_rotation_matrix @ rotated_coordinate.T).astype(int)
+        coordinate = (inverse_rotation_matrix @ rotated_coordinate.T)
         unrotated_coords = np.append(unrotated_coords, coordinate)
     unrotated_coords = unrotated_coords.reshape(len(array_of_coords), 2)
     return unrotated_coords
+
+
+def inverse_rotation_of_error_bars(array_of_error_vectors, inverse_rotation_matrix):
+    """
+    Not tied to rotation about a particular origin, the error bars rotate about their own center. Therefore, only
+    need the 2x2 rotation matrix to rotate the error bars, not the 2x3 matrix that includes the translation.
+    """
+    unrotated_error_bars = np.array([])
+    for rotated_error_bar in array_of_error_vectors:
+        error_vector = np.abs(inverse_rotation_matrix[:, :2] @ np.array(rotated_error_bar).T)
+        unrotated_error_bars = np.append(unrotated_error_bars, error_vector)
+    unrotated_error_bars = unrotated_error_bars.reshape(len(array_of_error_vectors), 2)
+    return unrotated_error_bars
 
 
 

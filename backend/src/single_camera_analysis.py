@@ -95,17 +95,18 @@ def return_to_original_beam_direction(original_image_beam_direction, average_ima
             raise Exception("Invalid image beam direction specified in the database.")
     return average_image, average_rounded_image, brightness_error, scintillator_edges
 
-def rotate_bragg_peak_back_to_original_beam_direction(original_image_beam_direction, bragg_peak_coord, image):
+def rotate_pixel_back_to_original_beam_direction(original_image_beam_direction, pixel_coord, unc_pixel_coord, image):
     """
     Image passed should be the image with the beam entering from the left!!!
     """
     height, width = image.shape[:2]
-    x, y = bragg_peak_coord
+    x, y = pixel_coord
     match original_image_beam_direction:
         case "top":
         # 90 degree clockwise rotation
             x_new = height - 1 - y
             y_new = x
+            unc_pixel_coord = unc_pixel_coord[::-1] # transpose error bars
         case "right":
         # 180 degree rotation
             x_new = width - 1 - x
@@ -114,10 +115,11 @@ def rotate_bragg_peak_back_to_original_beam_direction(original_image_beam_direct
         # 270 degree clockwise rotation
             x_new = y
             y_new = width - 1 - x
+            unc_pixel_coord = unc_pixel_coord[::-1]  # transpose error bars
         case "left":
-            return bragg_peak_coord
+            return pixel_coord, unc_pixel_coord
             
-    return np.array([x_new, y_new])
+    return np.array([x_new, y_new]), unc_pixel_coord
 
 
 def source_params_from_database(camera_analysis_id: int):
@@ -173,7 +175,7 @@ def get_beam_angle_and_bragg_peak_pixel(camera_analysis_id: int):
         # Fit initial beam profile
         (horizontal_coords, fit_parameters_array, beam_center_errors, _, 
          _, _) = fit_beam_profile_along_full_roi(camera_analysis_id, "round_1", average_image, brightness_error,
-                                                                    h_bounds, v_bounds, show_fit_qualities=False)
+                                                                    h_bounds, v_bounds, show_fit_qualities=False, save_plots_to_database=True)
         beam_center_vertical_coords = fit_parameters_array[:, 0]
         
         # Calculate incident beam angle
@@ -193,9 +195,9 @@ def get_beam_angle_and_bragg_peak_pixel(camera_analysis_id: int):
                                                     show_images=False, fraction=0.16)
 
         # Fit beam profile on rotated image
-        (horizontal_coords, fit_parameters_array, beam_center_errors, _,  total_brightness_along_vertical_roi, 
+        (horizontal_coords, fit_parameters_array, beam_center_errors, _,  total_brightness_along_vertical_roi,
          unc_total_brightness_along_vertical_roi) = fit_beam_profile_along_full_roi(camera_analysis_id, "round_2", rotated_image, brightness_error,
-                                                                                    h_bounds, v_bounds, show_fit_qualities=False)
+                                                                                    h_bounds, v_bounds, show_fit_qualities=False, save_plots_to_database=True)
         
         beam_center_vertical_coords, *fit_params = fit_parameters_array[:, :5].T
 
@@ -204,10 +206,11 @@ def get_beam_angle_and_bragg_peak_pixel(camera_analysis_id: int):
                                                                                                                 fit_params, total_brightness_along_vertical_roi, 
                                                                                                                 unc_total_brightness_along_vertical_roi)
         
+        # Rotate Bragg peak back to "beam on left coords"
         bragg_peak_coord, error_on_bragg_peak_coord = round_bragg_peak_coord(*rotate_bragg_peak_into_original_coords(rotated_bragg_peak_coord, error_on_fitted_bragg_peak, inverse_rotation_matrix))
+        # Rotate Bragg peak back to original beam direction
+        bragg_peak_coord, error_on_bragg_peak_coord = rotate_pixel_back_to_original_beam_direction(image_beam_direction, bragg_peak_coord, error_on_bragg_peak_coord, average_rounded_image)
         
-        # TODO - APPLY ROTATION TO ERROR VECTOR TOO!
-        bragg_peak_coord = rotate_bragg_peak_back_to_original_beam_direction(image_beam_direction, bragg_peak_coord, average_rounded_image)
         print("Bragg peak via Gaussian/Bortfeld fitting is at the pixel: {0} +/- {1}".format(bragg_peak_coord, error_on_bragg_peak_coord))
         cdi.update_bragg_peak_pixel(camera_analysis_id, [float(x) for x in bragg_peak_coord.flatten()])
         cdi.update_unc_bragg_peak_pixel(camera_analysis_id, [float(x) for x in error_on_bragg_peak_coord.flatten()])
@@ -230,11 +233,14 @@ def get_beam_center_coords(beam_run_id: int, camera_analysis_id: int):
     """
     try:
         #### DB Readingg #####
-        beam_energy, colour_channel, average_image, brightness_error, scintillator_edges = source_params_from_database(camera_analysis_id)
+        beam_energy, image_beam_direction, colour_channel, average_image, brightness_error, scintillator_edges = source_params_from_database(camera_analysis_id)
         beam_angle = cdi.get_beam_angle(camera_analysis_id)
         ######################
         
         average_rounded_image = average_image.astype(np.uint8) # could be moved inside automated roi function
+        
+        average_image, average_rounded_image, brightness_error, \
+        scintillator_edges =  get_beam_direction_from_the_left(image_beam_direction, average_image, average_rounded_image, brightness_error, scintillator_edges)
         
         (h_bounds, v_bounds), _ = get_automated_roi(average_rounded_image, scintillator_edges[0], scintillator_edges[1], show_images=False, fraction=0.16)
         
@@ -242,26 +248,38 @@ def get_beam_center_coords(beam_run_id: int, camera_analysis_id: int):
                                                                                                                    h_bounds, v_bounds, show_residuals=False)
         
         rotated_rounded_image = rotated_image.astype(np.uint8)
-        (h_bounds, v_bounds), _ = get_automated_roi(average_rounded_image, scintillator_edges[0], scintillator_edges[1], 
-                                                                   show_images=False, fraction=0.16)
+        (h_bounds, v_bounds), _ = get_automated_roi(rotated_rounded_image, scintillator_edges[0], scintillator_edges[1], 
+                                                    show_images=False, fraction=0.16)
         
         rotated_image = rotated_image.astype(np.float64)
         
         # Fit beam profile on rotated image
         (horizontal_coords, fit_parameters_array, beam_center_errors, _,
-         total_brightness_along_vertical_roi, unc_total_brightness_along_vertical_roi, _) = fit_beam_profile_along_full_roi(rotated_image, brightness_error,
-                                                                                                                            h_bounds, v_bounds, show_fit_qualities=False)
+         total_brightness_along_vertical_roi, unc_total_brightness_along_vertical_roi) = fit_beam_profile_along_full_roi(camera_analysis_id, "beam_reconstruction", rotated_image, brightness_error,
+                                                                                                                            h_bounds, v_bounds)
         beam_center_vertical_coords, *fit_params = fit_parameters_array[:, :5].T
         # beam_scale_values, beam_sigma_values, sub_gauss_exponent_values, background_noise_values = fit_params
         
         beam_center_coords = np.vstack((horizontal_coords, beam_center_vertical_coords)).T
         unrotated_beam_center_coords = image_processing.inverse_rotation_of_coords(beam_center_coords, inverse_rotation_matrix)
         beam_center_error_vectors = np.vstack((np.full(len(beam_center_errors), 0), beam_center_errors)).T # vertical error in angle-corrected image
+        unrotated_beam_center_error_vectors = image_processing.inverse_rotation_of_error_bars(beam_center_error_vectors, inverse_rotation_matrix) # now horizontal component to error vector also
         
-        # TODO - update rotation of error vectors to that done to the bragg peak pixel error (only 2x2 rotation matrix needed)
-        unrotated_beam_center_error_vectors = image_processing.inverse_rotation_of_coords(beam_center_error_vectors, inverse_rotation_matrix) # rotated to original coords to introduce horizontal and vertical error
+        print("\n\n\n")
+        print(unrotated_beam_center_coords, unrotated_beam_center_coords.shape)
+        print("\n\n\n")
+        print(unrotated_beam_center_error_vectors, unrotated_beam_center_error_vectors.shape)
+        print("\n\n\n")
         
-        return unrotated_beam_center_coords, unrotated_beam_center_error_vectors, total_brightness_along_vertical_roi, unc_total_brightness_along_vertical_roi,
+        result = np.array([rotate_pixel_back_to_original_beam_direction(image_beam_direction, pixel_coord, unc_pixel_coord, average_rounded_image) for pixel_coord, unc_pixel_coord in zip(unrotated_beam_center_coords, unrotated_beam_center_error_vectors)])
+        print(result.shape)
+        original_beam_direction_beam_center_coords = result[:, 0]
+        original_beam_direction_beam_center_coords_unc = result[:, 1]
+        
+        print(original_beam_direction_beam_center_coords, original_beam_direction_beam_center_coords.shape)
+        print(original_beam_direction_beam_center_coords_unc, original_beam_direction_beam_center_coords_unc.shape)
+        
+        return original_beam_direction_beam_center_coords, original_beam_direction_beam_center_coords_unc, total_brightness_along_vertical_roi, unc_total_brightness_along_vertical_roi
     
     except Exception as e:
         print("\n\nError when getting beam center coords: ", e)
