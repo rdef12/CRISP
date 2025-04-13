@@ -82,7 +82,7 @@ export const ListTestSettings = ({ refreshTrigger, dataTaken }: ListTestSettings
     <div>
         <Card>
           <CardHeader>
-            <CardTitle>Minimum time for data collection: {sumOfReciprocals.toFixed(2)} s</CardTitle>
+            <CardTitle>Minimum time for data collection: {sumOfReciprocals} s</CardTitle>
           </CardHeader>
           <CardFooter> Number of photos: {numberOfPhotos}</CardFooter>
         </Card>
@@ -107,7 +107,7 @@ export const ListTestSettings = ({ refreshTrigger, dataTaken }: ListTestSettings
     <div>
       <Card>
         <CardHeader>
-          <CardTitle>Minimum time for data collection: {sumOfReciprocals.toFixed(2)} s</CardTitle>
+          <CardTitle>Minimum time for data collection: {sumOfReciprocals} s</CardTitle>
         </CardHeader>
         <CardFooter> Number of photos: {numberOfPhotos}</CardFooter>
       </Card>

@@ -32,7 +32,7 @@ export const ShowBraggPeakDepth = () => {
   }
 
   const formatValue = (value: number, uncertainty: number) => {
-    return `${value.toFixed(2)} ± ${uncertainty.toFixed(2)}`;
+    return `${value} ± ${uncertainty}`;
   };
 
   return (
