@@ -470,61 +470,63 @@ def overlay_bragg_peak_coord(camera_analysis_id, averaged_image, bragg_peak_coor
     return image_bytes
 
 
-def plot_physical_units_ODR_bortfeld(camera_analysis_id, bragg_peak_depth, distances, distance_uncertainties, brightnesses, brightness_uncertainties):
+def fit_physical_units_ODR_bortfeld(camera_analysis_id, distances, distance_uncertainties, brightnesses, brightness_uncertainties):
+    
+    cdi.delete_physical_bortfeld_plots_by_camera_analysis_id(camera_analysis_id)
+    print("\n\nMinimum distance travelled through scintillator is {}".format(np.min(distances)))
+    print("\n\nMaximum distance travelled through scintillator is {}".format(np.max(distances)))
+    
+    if len(distances) != len(np.unique(distances)):
+        unique_distances, unique_indices = np.unique(distances, return_index=True)
+        distances = np.array(distances)[unique_indices]
+        distance_uncertainties = np.array(distance_uncertainties)[unique_indices]
+        brightnesses = np.array(brightnesses)[unique_indices]    
+        brightness_uncertainties = np.array(brightness_uncertainties)[unique_indices]
+    
+    threshold_fraction = 1 / 3
+    initial_brightness = brightnesses[0]
+    peak_brightness = np.max(brightnesses)
+    peak_threshold_condition = initial_brightness  + (peak_brightness - initial_brightness) * threshold_fraction
+    within_peak_threshold = np.where(brightnesses >= peak_threshold_condition)[0]
+    peak_range = slice(max(0, within_peak_threshold[0]), min(len(distances), within_peak_threshold[-1] + 1))
+    print(f"\n\nPeak range is {peak_range}")
+    
+    distances = distances[peak_range]
+    distance_uncertainties = distance_uncertainties[peak_range]
+    brightnesses = brightnesses[peak_range]
+    brightness_uncertainties = brightness_uncertainties[peak_range]
+    
+    print("Max dist uncertainty in this range is {}".format(np.max(distance_uncertainties)))
+    print("Min dist uncertainty in this range is {}".format(np.min(distance_uncertainties)))
+    
+    # Fit the Bortfeld function using ODR
+    fit_parameters, fit_parameters_uncertainties, true_uncertainties, reduced_chi_squared = fit_bortfeld_odr(
+        distances, brightnesses, distance_uncertainties, brightness_uncertainties)
+
+    # Find the Bragg peak position and uncertainties
+    bragg_peak_position_arguement, bragg_peak_position = find_peak_of_bortfeld(distances, fit_parameters)
+    lower_uncertainty_peak_position, upper_uncertainty_peak_position = find_peak_position_uncertainty(
+        distances, fit_parameters, fit_parameters_uncertainties, points_per_bin=100)
+    print(f"Bragg peak position {bragg_peak_position} + {upper_uncertainty_peak_position} - {lower_uncertainty_peak_position}")
+    return distances, distance_uncertainties, brightnesses, brightness_uncertainties, fit_parameters, fit_parameters_uncertainties, reduced_chi_squared
+
+def compute_range_and_uncertainty(distances, fit_parameters):
+    range_argument, range = find_range(distances, fit_parameters, points_per_bin=100)
+    lower_uncertainty, upper_uncertainty = (0, 0)  # Placeholder for range uncertainty calculation
+    range_uncertainty = (lower_uncertainty, upper_uncertainty)
+    print(f"Range {range} + {upper_uncertainty} - {lower_uncertainty}")
+    return range, range_uncertainty
+    
+
+def plot_physical_units_ODR_bortfeld(camera_analysis_id, distances, distance_uncertainties, brightnesses, brightness_uncertainties):
     try:
-        result = cdi.delete_physical_bortfeld_plots_by_camera_analysis_id(camera_analysis_id)
-        print(result["message"])
-        print("\n\nMinimum distance travelled through scintillator is {}".format(np.min(distances)))
-        print("\n\nMaximum distance travelled through scintillator is {}".format(np.max(distances)))
+        distances, distance_uncertainties, brightnesses, brightness_uncertainties, \
+            fit_parameters, fit_parameters_uncertainties, reduced_chi_squared = fit_physical_units_ODR_bortfeld(camera_analysis_id, distances, distance_uncertainties, brightnesses, brightness_uncertainties)
         
-        if len(distances) != len(np.unique(distances)):
-            unique_distances, unique_indices = np.unique(distances, return_index=True)
-            distances = np.array(distances)[unique_indices]
-            distance_uncertainties = np.array(distance_uncertainties)[unique_indices]
-            brightnesses = np.array(brightnesses)[unique_indices]    
-            brightness_uncertainties = np.array(brightness_uncertainties)[unique_indices]
-            
-        print("\n\nLength of distances array is {}".format(len(distances)))
-        print("\n\nLength of brightnesses array is {}".format(len(brightnesses)))
-        print("\n\nLength of distance uncertainties array is {}".format(len(distance_uncertainties)))
-        print("\n\nLength of brightness uncertainties array is {}".format(len(brightness_uncertainties)))
+        range, unc_range = compute_range_and_uncertainty(distances, fit_parameters)
         
-        threshold_fraction = 1 / 3
-        initial_brightness = brightnesses[0]
-        peak_brightness = np.max(brightnesses)
-        peak_threshold_condition = initial_brightness  + (peak_brightness - initial_brightness) * threshold_fraction
-        within_peak_threshold = np.where(brightnesses >= peak_threshold_condition)[0]
-        peak_range = slice(max(0, within_peak_threshold[0]), min(len(distances), within_peak_threshold[-1] + 1))
-        print(f"\n\nPeak range is {peak_range}")
-        
-        distances = distances[peak_range]
-        distance_uncertainties = distance_uncertainties[peak_range]
-        brightnesses = brightnesses[peak_range]
-        brightness_uncertainties = brightness_uncertainties[peak_range]
-        
-        print("Max dist uncertainty in this range is {}".format(np.max(distance_uncertainties)))
-        print("Min dist uncertainty in this range is {}".format(np.min(distance_uncertainties)))
-        
-        # Fit the Bortfeld function using ODR
-        fit_parameters, fit_parameters_uncertainties, true_uncertainties, reduced_chi_squared = fit_bortfeld_odr(
-            distances, brightnesses, distance_uncertainties, brightness_uncertainties)
-
-        # Find the Bragg peak position and uncertainties
-        bragg_peak_position_arguement, bragg_peak_position = find_peak_of_bortfeld(distances, fit_parameters)
-        lower_uncertainty_peak_position, upper_uncertainty_peak_position = find_peak_position_uncertainty(
-            distances, fit_parameters, fit_parameters_uncertainties, points_per_bin=100
-        )
-        print(f"Bragg peak position {bragg_peak_position} + {upper_uncertainty_peak_position} - {lower_uncertainty_peak_position}")
-
-        # Find the range and uncertainties
-        range_argument, range = find_range(distances, fit_parameters, points_per_bin=100)
-        lower_uncertainty, upper_uncertainty = (0, 0)  # Placeholder for range uncertainty calculation
-        print(f"Range {range} + {upper_uncertainty} - {lower_uncertainty}")
-
         # Generate fitted curve
         fitted_brightnesses = bortfeld(distances, *fit_parameters)
-
-        # Plot the data with error bars and the fitted curve
         plt.plot(distances, fitted_brightnesses, color='red', 
              label=('Fitted Bortfeld Function \n' + fr"Reduced $\chi^2$ = {reduced_chi_squared:.3g}"))
         
@@ -533,8 +535,7 @@ def plot_physical_units_ODR_bortfeld(camera_analysis_id, bragg_peak_depth, dista
         plt.errorbar(
             distances, brightnesses, 
             xerr=distance_uncertainties, yerr=brightness_uncertainties, 
-            fmt='', color='black', ecolor='blue', label='Experimental Data', ms=3
-        )
+            fmt='', color='black', ecolor='blue', label='Experimental Data', ms=3)
         
         # Add labels, legend, and grid
         plt.xlabel("Distance travelled through Scintillator (mm)")
