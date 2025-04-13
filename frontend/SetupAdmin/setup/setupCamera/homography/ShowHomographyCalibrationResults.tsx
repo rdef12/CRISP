@@ -6,14 +6,7 @@ import { HomographyPlane } from "./HomographyCalibration";
 import { useState, useEffect, useRef } from "react";
 import { GridTransformation } from "./GridTransformation";
 import { SaveHomographyButton } from "./SaveHomographyButton";
-
-type CheckboxOption = 'horizontal_flip' | 'vertical_flip' | 'swap_axes';
-
-interface HomographyPhotoData {
-  photo: string;
-  status?: boolean;
-  message?: string;
-}
+import { CheckboxOption, HomographyPhotoData } from "./types";
 
 interface CustomDataProvider extends DataProvider {
   getHomographyPhoto: (plane: string, id: string, params: Record<string, string>) => Promise<{ data: HomographyPhotoData }>;
@@ -64,8 +57,6 @@ export const ShowHomographyCalibrationResults = ({ plane, imageTaken, onImageLoa
     }));
   };
   
-  console.log('Component rendered with:', { plane, setupCameraId, imageTaken });
-  
   const { data, isPending, error, refetch } = useGetOneHomographyPhoto(
     plane,
     setupCameraId!,
@@ -79,7 +70,6 @@ export const ShowHomographyCalibrationResults = ({ plane, imageTaken, onImageLoa
   // Fetch on initial mount
   useEffect(() => {
     if (initialMount.current) {
-      console.log('Initial mount, fetching image');
       refetch();
       initialMount.current = false;
     }
@@ -88,7 +78,6 @@ export const ShowHomographyCalibrationResults = ({ plane, imageTaken, onImageLoa
   // Refetch when image is taken or checkbox states change
   useEffect(() => {
     if (imageTaken || !initialMount.current) {
-      console.log('New image taken or checkbox state changed, refetching');
       refetch();
     }
   }, [imageTaken, checkedStates]);

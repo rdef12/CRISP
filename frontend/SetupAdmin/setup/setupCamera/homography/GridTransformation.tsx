@@ -1,6 +1,5 @@
 import { Checkbox } from "@/components/ui/checkbox";
-
-type CheckboxOption = 'horizontal_flip' | 'vertical_flip' | 'swap_axes';
+import { CheckboxOption } from "./types";
 
 interface GridTransformationProps {
   checkedStates: {

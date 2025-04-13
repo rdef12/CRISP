@@ -1,3 +1,4 @@
+from datetime import datetime
 from pydantic import BaseModel
 from typing import Optional, List
 
@@ -5,6 +6,49 @@ from src.database.models import Camera, DepthDirectionEnum, ImageBeamDirectionEn
 
 class SetupCameraCreateRequest(BaseModel):
     camera_id: int
+
+class SetupCameraFullGetRequest(BaseModel):
+    id: int
+    setup_id: int
+    camera_id: int
+    optical_axis: Optional[str] = None
+    depth_direction: Optional[int] = None
+    image_beam_direction: Optional[str] = None
+    far_face_calibration_pattern_size: Optional[List[int]] = None
+    far_face_calibration_pattern_type: Optional[str] = None
+    far_face_calibration_spacing: Optional[List[float]] = None
+    far_face_calibration_spacing_unc: Optional[List[float]] = None
+    far_face_calibration_photo_camera_settings_id: Optional[int] = None
+    far_face_z_shift: Optional[float] = None
+    far_face_z_shift_unc: Optional[float] = None
+    far_face_non_z_shift: Optional[float] = None
+    far_face_non_z_shift_unc:  Optional[float] = None
+    far_face_calibration_board_thickness: Optional[float] = None
+    far_face_calibration_board_thickness_unc: Optional[float] = None
+    near_face_calibration_pattern_size: Optional[List[int]] = None
+    near_face_calibration_pattern_type: Optional[str] = None
+    near_face_calibration_spacing: Optional[List[float]] = None
+    near_face_calibration_spacing_unc: Optional[List[float]] = None
+    near_face_calibration_photo_camera_settings_id: Optional[int] = None
+    near_face_z_shift: Optional[float] = None
+    near_face_z_shift_unc: Optional[float] = None
+    near_face_non_z_shift: Optional[float] = None
+    near_face_non_z_shift_unc: Optional[float] = None
+    near_face_calibration_board_thickness: Optional[float] = None
+    near_face_calibration_board_thickness_unc: Optional[float] = None
+    do_distortion_calibration: Optional[bool] = None
+    distortion_calibration_pattern_size_z_dim: Optional[int] = None
+    distortion_calibration_pattern_size_non_z_dim: Optional[int] = None
+    distortion_calibration_pattern_type: Optional[str] = None
+    distortion_calibration_pattern_spacing: Optional[float] = None
+    scintillator_edges_photo_camera_settings_id: Optional[int] = None
+    horizontal_scintillator_start: Optional[int] = None
+    horizontal_scintillator_end: Optional[int] = None
+    vertical_scintillator_start: Optional[int] = None
+    vertical_scintillator_end: Optional[int] = None
+    distortion_calibration_camera_settings_link: Optional[int] = None
+    lens_position: Optional[float] = None
+
 
 class SetupCameraGetRequest(BaseModel):
     id: int

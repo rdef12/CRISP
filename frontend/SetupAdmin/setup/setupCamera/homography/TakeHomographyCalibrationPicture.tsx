@@ -2,6 +2,7 @@ import { useParams } from "react-router-dom";
 import { HomographyPlane } from "./HomographyCalibration";
 import { Form, useCreateController } from "react-admin";
 import { Button } from "@/components/ui/button";
+import { SubmitHandler } from "react-hook-form";
 
 interface TakeHomographyCalibrationPictureProps {
   plane: HomographyPlane;
@@ -10,16 +11,16 @@ interface TakeHomographyCalibrationPictureProps {
 
 export const TakeHomographyCalibrationPicture = ({ plane, onImageTaken }: TakeHomographyCalibrationPictureProps) => {
   const { setupCameraId } = useParams();
-  const { save, saving, isPending } = useCreateController({
+  const { save, isPending } = useCreateController({
     resource: `photo/homography-calibration/${plane}/${setupCameraId}`,
     redirect: false
   })
 
-  const handleSubmit = async (data: any) => {
-    console.log('Submitting form with data:', data);
-    await save(data);
-    console.log('Save completed, calling onImageTaken');
-    onImageTaken();
+  const handleSubmit: SubmitHandler<Record<string, unknown>> = async (data) => {
+    if (save) {
+      await save(data);
+      onImageTaken();
+    }
   };
 
   if (isPending) return null;

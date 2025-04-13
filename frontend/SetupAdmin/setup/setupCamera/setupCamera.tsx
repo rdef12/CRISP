@@ -355,6 +355,7 @@ export const SetupCameraShow = () => {
   const {record, isPending} = useShowController({ resource: "setup-camera/calibration", id: setupCameraId });  
   if (isPending) return null;
   console.log("DO DIST CAL:", record?.do_distortion_calibration)
+  console.log("Stuff", record?.do_distortion_calibration === null, record?.lens_position === null, record?.optical_axis === null, record?.depth_direction === null, record?.image_beam_direction === null)
   if (record?.do_distortion_calibration === null || record?.lens_position === null || record?.optical_axis === null || record?.depth_direction === null || record?.image_beam_direction === null)
     return (
     <EditSetupCamera/>

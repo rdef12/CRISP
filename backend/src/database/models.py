@@ -70,13 +70,13 @@ class CameraSetupLink(SQLModel, table=True):
     far_face_calibration_pattern_type: Optional[str] = Field(default=None)
     far_face_calibration_spacing: Optional[List[float]] = Field(default=None, sa_column=Column(ARRAY(Float)))
     far_face_calibration_spacing_unc: Optional[List[float]] = Field(default=None, sa_column=Column(ARRAY(Float)))
-    # far_face_calibratoin_photo_settings_id: Optional[int] = Field(default=None, foreign_key="settings.id") # Add back filling bit to settings
     far_face_calibration_photo_camera_settings_id: Optional[int] = Field(default=None, foreign_key="camerasettingslink.id")
+    far_face_homography_matrix: Optional[bytes] = Field(default=None, sa_column=PickleType)
+    far_face_homography_covariance_matrix: Optional[bytes] = Field(default=None, sa_column=PickleType)
+    # far_face_calibratoin_photo_settings_id: Optional[int] = Field(default=None, foreign_key="settings.id") # Add back filling bit to settings
     # far_face_calibration_photo: Optional[bytes] = Field(default=None, sa_column=Column(LargeBinary))
     # far_face_calibration_photo_id: Optional[int] = Field(default=None, foreign_key="photo.id")
 
-    far_face_homography_matrix: Optional[bytes] = Field(default=None, sa_column=PickleType)
-    far_face_homography_covariance_matrix: Optional[bytes] = Field(default=None, sa_column=PickleType)
     
     # NOTE - below replaced with calibraiton board thickness and Z/non-Z shifts
     # far_x_offset: Optional[float] = Field(default=None)
