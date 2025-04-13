@@ -162,6 +162,14 @@ def show_saturated_points(image: np.ndarray,
                                                                           vertical_start,
                                                                           vertical_end,
                                                                           colour_channel)
+    MAXIMUM_PIXEL_BRIGHTNESS = 255
+    threshold = 5
+    saturation_brightness = MAXIMUM_PIXEL_BRIGHTNESS - threshold
+    saturation_mask = image >= saturation_brightness
+    is_saturated = True
+    if np.all(saturation_mask == False):
+        is_saturated = False
+    
     if colour_channel == ColourChannel.RED:
         skeleton_image[:,:,0] = 0 #blue channel
         skeleton_image[:,:,1] = 0 #green channel
@@ -190,6 +198,6 @@ def show_saturated_points(image: np.ndarray,
  
     success, image_bytes = cv2.imencode('.jpg', skeleton_image)
     if success:
-        return image_bytes.tobytes()
+        return is_saturated, image_bytes.tobytes()
     else:
         raise ValueError("Error encoding the image")
