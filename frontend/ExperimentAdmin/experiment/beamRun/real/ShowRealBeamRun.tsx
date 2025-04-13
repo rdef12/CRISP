@@ -1,8 +1,6 @@
 import { useGetOne } from "react-admin";
 import { ListCamerasInExperimentReal } from "./ListCamerasInExperimentReal";
 import { useParams } from "react-router-dom";
-import { CreateBraggPeakDepth } from "./dataTaken/braggPeakDepth/CreateBraggPeakDepth";
-import { ComplexAnalysis } from "./dataTaken/ComplexAnalysis";
 import { EditMSICData } from "./dataTaken/EditMSICData";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
