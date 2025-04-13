@@ -1,3 +1,6 @@
 node_modules
-# ExperimentAdmin
-# app/experiments
+ExperimentAdmin
+app/experiments
+SetupAdmin
+app/setup_hub
+app/admin.tsx

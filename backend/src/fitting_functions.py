@@ -7,6 +7,7 @@ from itertools import product
 import math
 import io
 import base64
+import ruptures as rpt
 
 from src.modified_pybragg import *
 from src.uncertainty_functions import *
@@ -295,6 +296,24 @@ def plot_reduced_chi_squared_values(camera_analysis_id: int, fit_context: str, r
 def extract_incident_beam_angle(camera_analysis_id: int, horizontal_coords, beam_center_vertical_coords, beam_center_errors, 
                                 show_angle_plot: bool=True, save_angle_plot: bool=False):
     
+    # Pelt, Biseng, BottomUp, Dynp, Window alogirthms available
+    signal = np.column_stack((horizontal_coords, beam_center_vertical_coords))
+    # models are l1, l2, linear rbf, normal, ar 
+    model = "linear"
+    algo = rpt.Dynp(model=model, jump=5).fit(signal)
+    change_points = algo.predict(n_bkps=1)[:-1] # Remove end point change point
+    
+    # plt.plot(signal[:, 0], signal[:, 1], color="black", label="Normalised Signal")
+    # for change_point in change_points:
+    #     plt.axvline(x=signal[:, 0][change_point-1], color="red", linestyle="--", label="Change Point")
+    # plt.show()
+    # plt.close()
+    
+    angle_fitting_range = slice(0, change_points[0])
+    horizontal_coords = horizontal_coords[angle_fitting_range]
+    beam_center_vertical_coords = beam_center_vertical_coords[angle_fitting_range]
+    beam_center_errors = beam_center_errors[angle_fitting_range]
+    
     end_of_angle_fitting_range = horizontal_coords[100]
     horizontal_coords = horizontal_coords[0: end_of_angle_fitting_range]
     beam_center_vertical_coords = beam_center_vertical_coords[0: end_of_angle_fitting_range]
@@ -308,15 +327,15 @@ def extract_incident_beam_angle(camera_analysis_id: int, horizontal_coords, beam
     print("\n\nuncertainty in tan alpha = {}".format(fitted_parameter_uncertainties[0]))
     
     # TODO - edit legend label to specify if error bars are renormalised or not
-    if chi_squared_reduced > 10:
-        beam_center_errors *= np.sqrt(chi_squared_reduced) # renormalisation of error bars! - clearly underestimated uncertainties
-        # REPEAT CHI SQUARED MINIMISATION
-        fitted_line_parameters, fitted_parameter_uncertainties = least_squares_fitting_procedure(horizontal_coords, beam_center_vertical_coords, beam_center_errors)
-        predicted_beam_centers = linear_function(horizontal_coords, fitted_line_parameters)
-        chi_squared_reduced = chi_squared_function(beam_center_vertical_coords, beam_center_errors, predicted_beam_centers) / (len(horizontal_coords) - 2)
+    # if chi_squared_reduced > 10:
+    #     beam_center_errors *= np.sqrt(chi_squared_reduced) # renormalisation of error bars! - clearly underestimated uncertainties
+    #     # REPEAT CHI SQUARED MINIMISATION
+    #     fitted_line_parameters, fitted_parameter_uncertainties = least_squares_fitting_procedure(horizontal_coords, beam_center_vertical_coords, beam_center_errors)
+    #     predicted_beam_centers = linear_function(horizontal_coords, fitted_line_parameters)
+    #     chi_squared_reduced = chi_squared_function(beam_center_vertical_coords, beam_center_errors, predicted_beam_centers) / (len(horizontal_coords) - 2)
         
-        print("\n\nUpdated tan alpha = {}".format(fitted_line_parameters[0]))
-        print("\n\nUpdated uncertainty in tan alpha = {}".format(fitted_parameter_uncertainties[0]))
+    #     print("\n\nUpdated tan alpha = {}".format(fitted_line_parameters[0]))
+    #     print("\n\nUpdated uncertainty in tan alpha = {}".format(fitted_parameter_uncertainties[0]))
     
     fitted_angle = np.arctan(fitted_line_parameters[0])
     fitted_tan_angle_uncertainty = fitted_parameter_uncertainties[0]
@@ -375,13 +394,16 @@ def locate_bragg_peak_in_image(camera_analysis_id: int, x_positions, beam_center
     initial_bragg_peak_horizontal_coord_index = np.argmax(total_brightness_along_vertical_roi)
     initial_bragg_peak_horizontal_coord = x_positions[initial_bragg_peak_horizontal_coord_index]
     
-    half_window = 750
-    # Fit to +/- 100 pixels around the peak (using half max brightness includes all points!)
-    start_index = max(0, initial_bragg_peak_horizontal_coord_index - half_window)
-    end_index = min(len(x_positions), initial_bragg_peak_horizontal_coord_index + half_window + 1)
-    x_positions_slice = x_positions[start_index:end_index]
-    total_brightness_slice = total_brightness_along_vertical_roi[start_index:end_index]
-    unc_brightness_slice = unc_total_brightness_along_vertical_roi[start_index:end_index]
+    threshold_fraction = 1 / 3
+    initial_brightness = total_brightness_along_vertical_roi[0]
+    peak_brightness = np.max(total_brightness_along_vertical_roi)
+    peak_threshold_condition = initial_brightness  + (peak_brightness - initial_brightness) * threshold_fraction
+    within_peak_threshold = np.where(total_brightness_along_vertical_roi >= peak_threshold_condition)[0]
+    peak_range = slice(max(0, within_peak_threshold[0]), min(len(x_positions), within_peak_threshold[-1] + 1))
+    
+    x_positions_slice = x_positions[peak_range]
+    total_brightness_slice = total_brightness_along_vertical_roi[peak_range]
+    unc_brightness_slice = unc_total_brightness_along_vertical_roi[peak_range]
     
     bortfeld_fit = fitBP(x_positions_slice, total_brightness_slice, unc_brightness_slice)
     fit_parameters_covariance = bortfeld_fit['bortfeld_fit_cov']

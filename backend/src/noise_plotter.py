@@ -64,7 +64,6 @@ def sum_images_in_directory(image_directory):
 
 def image_to_colormap_with_histogram(image_directory, exposure_time, gain, cmap="viridis"):
     
-    
     # Load the image as grayscale
     img_array, image_count = sum_images_in_directory(image_directory)
     # Average across images

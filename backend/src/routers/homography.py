@@ -664,7 +664,7 @@ def view_test_analysis_plots_api():
         img_tags += f'<img src="data:image/{plot_format};base64,{plot_base64}" width="500px"><br>'
     html_content = f"<html><body>{img_tags}</body></html>"
     return HTMLResponse(content=html_content)
-
+\
 @router.get("/test_beam_reconstruction")
 def test_beam_reconstruction_api():
     try:

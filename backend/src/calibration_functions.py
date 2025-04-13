@@ -78,7 +78,6 @@ def generate_object_points(grid_size: tuple[int, int], spacing: float):
     objp = objp * spacing
     return objp
 
-
 ####################################### DISTANCE CALIBRATIONS START ############################################
 
 
