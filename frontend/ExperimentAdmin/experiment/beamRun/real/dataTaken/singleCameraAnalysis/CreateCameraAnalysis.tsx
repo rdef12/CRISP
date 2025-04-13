@@ -1,7 +1,6 @@
 import { useParams } from "react-router-dom";
 import { Form, required, SelectInput, useCreateController, useRecordContext } from "react-admin";
 import { FieldValues } from "react-hook-form";
-import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
 const colourChannels = [

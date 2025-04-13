@@ -338,7 +338,7 @@ def read_image_as_bytes(image_path: str):
 def fill_photos_for_beam_run(beam_run_id: int, camera_id: int, directory: DirectoryOfPopulation):
     """
     {
-      "directory": "./test_population_images/topHQ/" or /sideAR/ make sure to match the camera id in the url
+      "directory": "./test_population_images/topHQ/" (camera id 2) or /sideAR/ (Camera id 1) make sure to match the camera id in the url
     }
     """
     with Session(engine) as session:
