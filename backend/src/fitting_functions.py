@@ -517,20 +517,21 @@ def fit_physical_units_ODR_bortfeld(camera_analysis_id, distances, distance_unce
     print(f"Bragg peak position {bragg_peak_position} + {upper_uncertainty_peak_position} - {lower_uncertainty_peak_position}")
     return distances, distance_uncertainties, brightnesses, brightness_uncertainties, fit_parameters, fit_parameters_uncertainties, reduced_chi_squared
 
-def compute_range_and_uncertainty(distances, fit_parameters):
+def compute_range_and_uncertainty(camera_analysis_id, distances, fit_parameters):
     range_argument, range = find_range(distances, fit_parameters, points_per_bin=100)
     lower_uncertainty, upper_uncertainty = (0, 0)  # Placeholder for range uncertainty calculation
     range_uncertainty = (lower_uncertainty, upper_uncertainty)
+    cdi.update_range(camera_analysis_id, range)
+    cdi.update_range_uncertainty(camera_analysis_id, max(lower_uncertainty, upper_uncertainty))
     print(f"Range {range} + {upper_uncertainty} - {lower_uncertainty}")
     return range, range_uncertainty
-    
 
 def plot_physical_units_ODR_bortfeld(camera_analysis_id, distances, distance_uncertainties, brightnesses, brightness_uncertainties):
     try:
         distances, distance_uncertainties, brightnesses, brightness_uncertainties, \
             fit_parameters, fit_parameters_uncertainties, reduced_chi_squared = fit_physical_units_ODR_bortfeld(camera_analysis_id, distances, distance_uncertainties, brightnesses, brightness_uncertainties)
         
-        range, unc_range = compute_range_and_uncertainty(distances, fit_parameters)
+        range, unc_range = compute_range_and_uncertainty(camera_analysis_id, distances, fit_parameters)
         
         # Generate fitted curve
         fitted_brightnesses = bortfeld(distances, *fit_parameters)

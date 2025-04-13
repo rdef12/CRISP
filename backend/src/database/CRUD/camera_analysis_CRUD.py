@@ -157,6 +157,32 @@ def update_unc_bragg_peak_pixel(camera_analysis_id: int, unc_bragg_peak_pixel: l
     except Exception as e:
         raise RuntimeError(f"An error occurred: {str(e)}")
 
+def update_range(camera_analysis_id: int, range: float):
+    try:
+        with Session(engine) as session:
+            statement = select(CameraAnalysis).where(CameraAnalysis.id == camera_analysis_id)
+            camera_analysis = session.exec(statement).one()
+            camera_analysis.range = range
+            session.commit()
+            return {"message": f"Range updated for analysis with camera analysis id = {camera_analysis_id}."}
+    except NoResultFound:
+        raise ValueError(f"No camera analysis found with camera analysis id = {camera_analysis_id}.")
+    except Exception as e:
+        raise RuntimeError(f"An error occurred: {str(e)}")
+    
+def update_range_uncertainty(camera_analysis_id: int, range_uncertainty: float):
+    try:
+        with Session(engine) as session:
+            statement = select(CameraAnalysis).where(CameraAnalysis.id == camera_analysis_id)
+            camera_analysis = session.exec(statement).one()
+            camera_analysis.range_uncertainty = range_uncertainty
+            session.commit()
+            return {"message": f"Range uncertainty updated for analysis with camera analysis id = {camera_analysis_id}."}
+    except NoResultFound:
+        raise ValueError(f"No camera analysis found with camera analysis id = {camera_analysis_id}.")
+    except Exception as e:
+        raise RuntimeError(f"An error occurred: {str(e)}")
+
 # def update_plots(camera_analysis_id: int, plots: bytes):
 #     try:
 #         with Session(engine) as session:

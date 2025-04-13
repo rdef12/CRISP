@@ -349,6 +349,8 @@ class CameraAnalysis(SQLModel, table=True):
     unc_beam_angle: Optional[float] = Field(default=None)
     bragg_peak_pixel: Optional[List[float]] = Field(default=None, sa_column=Column(ARRAY(Float)))
     unc_bragg_peak_pixel: Optional[List[float]] = Field(default=None, sa_column=Column(ARRAY(Float)))
+    range: Optional[float] = Field(default=None)
+    unc_range: Optional[float] = Field(default=None)
 
     camera_analysis_plots: List["CameraAnalysisPlot"] = Relationship(back_populates="camera_analysis")
 

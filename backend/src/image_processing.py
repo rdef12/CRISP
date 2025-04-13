@@ -51,7 +51,7 @@ def average_pixel_over_multiple_images(camera_analysis_id: int):
         camera_matrix = cdi.get_camera_matrix(camera_id, setup_id)
         distortion_coefficients = cdi.get_distortion_coefficients(camera_id, setup_id)
         original_frame_size = determine_frame_size(image=test_image)
-        corrected_test_image = undistort_image(camera_matrix, distortion_coefficients, frame_size, image=test_image)
+        corrected_test_image = undistort_image(camera_matrix, distortion_coefficients, original_frame_size, image=test_image)
         frame_size = determine_frame_size(image=corrected_test_image)
     else:
         frame_size = determine_frame_size(image=test_image)
