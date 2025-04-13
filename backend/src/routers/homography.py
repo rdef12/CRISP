@@ -514,7 +514,7 @@ def upload_averaged_image_api():
     
     # beam_energy = 90
     # beam_energy = 150
-    beam_energy = 180
+    beam_energy = 150
     SIDE_AR_CAM_ID = 1
     TOP_HQ_CAM_ID = 2
 
@@ -541,12 +541,12 @@ def upload_averaged_image_api():
     # num_of_ar_images_in_average = 53
     
     # 150 MEV
-    # num_of_hq_images_in_average = 174
-    # num_of_ar_images_in_average = 67
+    num_of_hq_images_in_average = 174
+    num_of_ar_images_in_average = 67
     
     # 180 MEV
-    num_of_hq_images_in_average = 159
-    num_of_ar_images_in_average = 78
+    # num_of_hq_images_in_average = 159
+    # num_of_ar_images_in_average = 78
     
     # Adding mock images to test if cdi.get_num_of_successfully_captured_images_by_camera_settings_link_id() is working
     mock_bytestring = pickle.dumps("lol") #TODO ROBIN HASHED THIS, SORRY IF HE FORGOT TO ADD IT BACK
@@ -556,11 +556,11 @@ def upload_averaged_image_api():
         cdi.add_photo(camera_settings_link_id=top_HQ_camera_settings_link_id, photo=mock_bytestring)
     
     # FLOAT-16 PICKLED AVERAGED NUMPY ARRAYS
-    with open("/code/src/beam_averaged_images/180_mev_A1_averaged_image_float16.pkl", "rb") as file:
+    with open("/code/src/beam_averaged_images/150_mev_A1_averaged_image_float16.pkl", "rb") as file:
         pickled_side_AR__average_image = file.read()
     cdi.update_average_image(side_AR_analysis_id, pickled_side_AR__average_image)
     
-    with open("/code/src/beam_averaged_images/180_mev_HQ2_averaged_image_float16.pkl", "rb") as file:
+    with open("/code/src/beam_averaged_images/150_mev_HQ2_averaged_image_float16.pkl", "rb") as file:
         pickled_top_HQ_average_image = file.read()
     cdi.update_average_image(top_HQ_analysis_id, pickled_top_HQ_average_image)
     #TODO THIS IS THE END OF HIS COMMENTING
@@ -602,7 +602,6 @@ def initialize_beam_analysis_setup_api():
     1) Uploaded average image 
     2) Beam energy parameter
     3) Number of images in average
-    
     """
     add_mock_cameras_api()
     add_homography_images_with_hq_api()
@@ -698,7 +697,6 @@ def test_beam_reconstruction_api():
                                                                                                     [beam_center_incident_position, beam_direction_vector],
                                                                                                     [unc_beam_center_incident_position, unc_beam_direction_vector])
         
-        # Unc in range needs amending
         plot_physical_units_ODR_bortfeld(side_camera_analysis_id, distances_travelled_inside_scintillator, unc_distances_travelled_inside_scintillator, 
                                         total_brightness_along_vertical_roi, unc_total_brightness_along_vertical_roi)
         
@@ -706,19 +704,19 @@ def test_beam_reconstruction_api():
         
         ###################### Get beam center coords in top cam image ##################################################
     
-        top_cam_beam_center_coords, unc_top_cam_beam_center_coords, \
-        total_brightness_along_vertical_roi, unc_total_brightness_along_vertical_roi = get_beam_center_coords(beam_run_id, top_camera_analysis_id)
+        # top_cam_beam_center_coords, unc_top_cam_beam_center_coords, \
+        # total_brightness_along_vertical_roi, unc_total_brightness_along_vertical_roi = get_beam_center_coords(beam_run_id, top_camera_analysis_id)
         
-        distances_travelled_inside_scintillator, \
-        unc_distances_travelled_inside_scintillator = convert_beam_center_coords_to_penetration_depths(top_camera_analysis_id,
-                                                                                                    top_cam_beam_center_coords,
-                                                                                                    unc_top_cam_beam_center_coords,
-                                                                                                    [beam_center_incident_position, beam_direction_vector],
-                                                                                                    [unc_beam_center_incident_position, unc_beam_direction_vector])
+        # distances_travelled_inside_scintillator, \
+        # unc_distances_travelled_inside_scintillator = convert_beam_center_coords_to_penetration_depths(top_camera_analysis_id,
+        #                                                                                             top_cam_beam_center_coords,
+        #                                                                                             unc_top_cam_beam_center_coords,
+        #                                                                                             [beam_center_incident_position, beam_direction_vector],
+        #                                                                                             [unc_beam_center_incident_position, unc_beam_direction_vector])
         
         
-        plot_physical_units_ODR_bortfeld(top_camera_analysis_id, distances_travelled_inside_scintillator, unc_distances_travelled_inside_scintillator, 
-                                        total_brightness_along_vertical_roi, unc_total_brightness_along_vertical_roi)
+        # plot_physical_units_ODR_bortfeld(top_camera_analysis_id, distances_travelled_inside_scintillator, unc_distances_travelled_inside_scintillator, 
+        #                                 total_brightness_along_vertical_roi, unc_total_brightness_along_vertical_roi)
 
     
     except Exception as e:

@@ -451,11 +451,12 @@ def locate_bragg_peak_in_image(camera_analysis_id: int, x_positions, beam_center
                                  parameter_labels=parameter_labels, parameter_values=parameter_values, parameter_uncertainties=parameter_uncertainties)
     
     bortfeld_horizontal_coord = z[np.argmax(curve)]
-    peak_bounds = find_peak_position_uncertainty(x_positions, bortfeld_fit['bortfeld_fit_p'], bortfeld_fit_uncertainties, points_per_bin=100, number_of_stds=1)
-    lower_bound, upper_bound = peak_bounds
-    print("Bortfeld horizontal pixel is {0}. lower/upper bound = {1}/{2}".format(bortfeld_horizontal_coord, lower_bound, upper_bound))
+    # peak_bounds = find_peak_position_uncertainty(x_positions, bortfeld_fit['bortfeld_fit_p'], bortfeld_fit_uncertainties, points_per_bin=100, number_of_stds=1)
+    # lower_bound, upper_bound = peak_bounds
     # For the time being, use a symmetric interval with the largest unc
-    unc_bortfeld_horizontal_coord = max(lower_bound, upper_bound)
+    # unc_bortfeld_horizontal_coord = max(lower_bound, upper_bound)
+    
+    unc_bortfeld_horizontal_coord = compute_error_on_bortfeld_peak(z, bortfeld_fit['bortfeld_fit_p'], bortfeld_fit['bortfeld_fit_cov'])
     
     change_in_coord = round(bortfeld_horizontal_coord) - initial_bragg_peak_horizontal_coord
     
@@ -507,31 +508,36 @@ def fit_physical_units_ODR_bortfeld(camera_analysis_id, distances, distance_unce
     print("Min dist uncertainty in this range is {}".format(np.min(distance_uncertainties)))
     
     # Fit the Bortfeld function using ODR
-    fit_parameters, fit_parameters_uncertainties, true_uncertainties, reduced_chi_squared = fit_bortfeld_odr(
+    fit_parameters, fit_parameters_covariance, _, reduced_chi_squared = fit_bortfeld_odr(
         distances, brightnesses, distance_uncertainties, brightness_uncertainties)
 
     # Find the Bragg peak position and uncertainties
-    bragg_peak_position_arguement, bragg_peak_position = find_peak_of_bortfeld(distances, fit_parameters)
-    lower_uncertainty_peak_position, upper_uncertainty_peak_position = find_peak_position_uncertainty(
-        distances, fit_parameters, fit_parameters_uncertainties, points_per_bin=100)
-    print(f"Bragg peak position {bragg_peak_position} + {upper_uncertainty_peak_position} - {lower_uncertainty_peak_position}")
-    return distances, distance_uncertainties, brightnesses, brightness_uncertainties, fit_parameters, fit_parameters_uncertainties, reduced_chi_squared
+    bragg_peak_position = find_peak_of_bortfeld(distances, fit_parameters)
+    bragg_peak_position_error = compute_error_on_bortfeld_peak(distances, fit_parameters, fit_parameters_covariance)
+    print("\n\nBragg peak position is {}".format(bragg_peak_position))
+    print("\n\nBragg peak position uncertainty is {}".format(bragg_peak_position_error))
+    
+    # lower_uncertainty_peak_position, upper_uncertainty_peak_position = find_peak_position_uncertainty(
+    #     distances, fit_parameters, fit_parameters_uncertainties, points_per_bin=100)
+    
+    return distances, distance_uncertainties, brightnesses, brightness_uncertainties, fit_parameters, fit_parameters_covariance, reduced_chi_squared
 
-def compute_range_and_uncertainty(camera_analysis_id, distances, fit_parameters):
-    range_argument, range = find_range(distances, fit_parameters, points_per_bin=100)
-    lower_uncertainty, upper_uncertainty = (0, 0)  # Placeholder for range uncertainty calculation
-    range_uncertainty = (lower_uncertainty, upper_uncertainty)
-    cdi.update_range(camera_analysis_id, range)
-    cdi.update_range_uncertainty(camera_analysis_id, max(lower_uncertainty, upper_uncertainty))
-    print(f"Range {range} + {upper_uncertainty} - {lower_uncertainty}")
+def compute_range_and_uncertainty(camera_analysis_id, distances, fit_parameters, fit_parameter_covariance):
+    range = find_range(distances, fit_parameters, points_per_bin=1000)
+    range_uncertainty = compute_error_on_mean_range(distances, fit_parameters, fit_parameter_covariance)
+    print("\n\nRange is {}".format(range))
+    print("\n\nRange uncertainty is {}".format(range_uncertainty))
+    
+    cdi.update_range(camera_analysis_id, float(range))
+    cdi.update_range_uncertainty(camera_analysis_id, float(range_uncertainty))
     return range, range_uncertainty
 
 def plot_physical_units_ODR_bortfeld(camera_analysis_id, distances, distance_uncertainties, brightnesses, brightness_uncertainties):
     try:
         distances, distance_uncertainties, brightnesses, brightness_uncertainties, \
-            fit_parameters, fit_parameters_uncertainties, reduced_chi_squared = fit_physical_units_ODR_bortfeld(camera_analysis_id, distances, distance_uncertainties, brightnesses, brightness_uncertainties)
+            fit_parameters, fit_parameters_covariance, reduced_chi_squared = fit_physical_units_ODR_bortfeld(camera_analysis_id, distances, distance_uncertainties, brightnesses, brightness_uncertainties)
         
-        range, unc_range = compute_range_and_uncertainty(camera_analysis_id, distances, fit_parameters)
+        compute_range_and_uncertainty(camera_analysis_id, distances, fit_parameters, fit_parameters_covariance)
         
         # Generate fitted curve
         fitted_brightnesses = bortfeld(distances, *fit_parameters)
@@ -559,6 +565,7 @@ def plot_physical_units_ODR_bortfeld(camera_analysis_id, distances, distance_unc
         
         parameter_labels = ["Normalisation Constant (A)", "80% Distal Range (R80)", "Sigma", "Bragg-Kleeman Exponent (p)", "Scale factor (K)"]
         parameter_values = [float(x) for x in fit_parameters]
+        fit_parameters_uncertainties = np.sqrt(np.diag(fit_parameters_covariance))
         parameter_uncertainties = [float(x) for x in fit_parameters_uncertainties]
         cdi.add_camera_analysis_plot(camera_analysis_id, "physical_bortfeld_fit", plot_bytes, "svg",
                                     description=f"Plot showing a bortfeld function ODR fitting to the beam axis scintillation light distribution in physical units",

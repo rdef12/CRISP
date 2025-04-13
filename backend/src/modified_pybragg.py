@@ -13,6 +13,8 @@ from scipy.interpolate import interp1d
 from scipy import special
 from itertools import product
 import scipy.odr as odr
+from typing import Callable
+from functools import partial
 
 
 def fitBP(z, D, D_unc, method='bortfeld', rel_resolution=0.01):
@@ -254,6 +256,9 @@ def fitBP_odr(z, D, z_unc, D_unc, method='bortfeld', rel_resolution=0.01):
         mydata = odr.RealData(z, D, sx=z_unc, sy=D_unc)
         myodr = odr.ODR(mydata, function_model, beta0=[A, R0, sigma, p, k])
         myoutput = myodr.run()
+        
+        myoutput.pprint()
+        
         p = myoutput.beta
         c = myoutput.cov_beta
 
@@ -294,16 +299,15 @@ def fit_bortfeld_odr(z_bins, on_axis_energies, z_uncertainties, on_axis_energies
     bortfeld_fit, true_uncertainties, chi_squared_reduced = fitBP_odr(z_bins, on_axis_energies, z_uncertainties, on_axis_energies_uncertainties)
     fit_parameters = bortfeld_fit['bortfeld_fit_p']
     fit_parameters_covariance = bortfeld_fit['bortfeld_fit_cov']
-    fit_parameters_uncertainties = np.sqrt(np.diag(fit_parameters_covariance))
-    return fit_parameters, fit_parameters_uncertainties, true_uncertainties, chi_squared_reduced
+    return fit_parameters, fit_parameters_covariance, true_uncertainties, chi_squared_reduced
 
-def find_peak_of_bortfeld(z_bins, bortfeld_parameters, points_per_bin=1000):
+def find_peak_of_bortfeld(z_bins, bortfeld_parameters, points_per_bin=100):
     z_length = len(z_bins) * points_per_bin
     z_range = np.linspace(z_bins[0], z_bins[-1], z_length)
     bortfeld_output = bortfeld(z_range, *bortfeld_parameters)
     peak_argument = np.argmax(bortfeld_output)
     peak_z_position = z_range[peak_argument]
-    return peak_argument, peak_z_position
+    return peak_z_position
 
 def round_to_precision(number, precision):
     rounded_number = np.round(number / precision) * precision
@@ -332,7 +336,6 @@ def find_peak_position_uncertainty(z_bins, bortfeld_parameters, bortfeld_paramet
     return [lower_bound, upper_bound]
 
 
-
 def find_range(z_bins, bortfeld_parameters, factor_of_peak=0.5, points_per_bin=1000):
     if factor_of_peak <= 0:
         raise Exception("Factor of peak must be positive.")
@@ -342,13 +345,13 @@ def find_range(z_bins, bortfeld_parameters, factor_of_peak=0.5, points_per_bin=1
     z_range = np.linspace(z_bins[0], z_bins[-1], z_length)
     heights = bortfeld(z_range, *bortfeld_parameters)
 
-    peak_argument, peak_position = find_peak_of_bortfeld(z_bins, bortfeld_parameters, points_per_bin=points_per_bin)
+    peak_position = find_peak_of_bortfeld(z_bins, bortfeld_parameters, points_per_bin=points_per_bin)
     peak_height = bortfeld(peak_position, *bortfeld_parameters)
     half_peak_height = peak_height * factor_of_peak
 
     range_argument = np.where(heights > half_peak_height)[0][-1]
     range = z_range[range_argument]
-    return range_argument, range
+    return range
 
 
 def find_uncertainty_in_range(z_bins, bortfeld_parameters, bortfeld_parameter_uncertainties, factor_of_peak=0.5, points_per_bin=1000, number_of_stds=1):
@@ -389,3 +392,49 @@ def calculate_chi_squared_for_bortfeld_fit(bins, fit_parameters):
     return chi_squared, reduced_chi_squared, degrees_of_freedom
 
 
+########### New uncertainty calculation paradigm ################################
+
+def partial_function(func: callable, free_param_index: int, fixed_values):
+    """
+    Create a partial function by fixing all parameters except the one at free_param_index.
+    `fixed_values` should be a list of values with None at the free_param_index position.
+    """
+    def wrapper(free_arg):
+        args = fixed_values[:]
+        args[free_param_index] = free_arg
+        return func(args)
+    return wrapper
+
+def central_finite_difference(func: Callable, x):
+    """
+    Compute the central finite difference of a function at a given point.
+    We need to evaluate the gradient about the best fit Bortfeld parameters
+    """
+    epsilon = np.finfo(float).eps # Get machine epsilon
+    h = epsilon ** (1/3) * max(abs(x), 1.0)  # Optimal for central difference
+    return (func(x + h) - func(x - h)) / (2 * h)
+
+
+def multivariate_delta_method_for_bortfeld_derived_quantity(derived_quantity: Callable, fit_parameters, fit_parameter_covariance):
+    
+    grad_derived_quantities = []
+    for index, param in enumerate(fit_parameters):
+        partial_fit_parameters = fit_parameters[:]
+        partial_fit_parameters[index] = None
+        partial_derived_quantity = partial_function(derived_quantity, index, partial_fit_parameters)
+        grad_derived_quantities.append(central_finite_difference(partial_derived_quantity, param))
+        
+    grad_derived_quantities = np.array(grad_derived_quantities)
+    print(f"{grad_derived_quantities=}")
+    
+    derived_quantity_variance = grad_derived_quantities.T @ fit_parameter_covariance @ grad_derived_quantities
+    print(f"{derived_quantity_variance=}")
+    return np.sqrt(derived_quantity_variance)
+    
+def compute_error_on_bortfeld_peak(distances, fit_parameters, fit_parameter_covariance):
+    func_with_distances_populated = partial(find_peak_of_bortfeld, distances)
+    return multivariate_delta_method_for_bortfeld_derived_quantity(func_with_distances_populated, fit_parameters, fit_parameter_covariance)
+
+def compute_error_on_mean_range(distances, fit_parameters, fit_parameter_covariance):
+    func_with_distances_populated = partial(find_range, distances)
+    return multivariate_delta_method_for_bortfeld_derived_quantity(func_with_distances_populated, fit_parameters, fit_parameter_covariance)
