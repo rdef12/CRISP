@@ -19,5 +19,4 @@ class CameraAnalysisGetReponse(BaseModel):
     beamAngleUncertainty: Optional[float] = None
     braggPeakPixel: Optional[List[float]] = None
     braggPeakPixelUncertainty: Optional[List[float]] = None
-    # plots: Optional[List[CameraAnalysisPlot]] = None
     

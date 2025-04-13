@@ -9,3 +9,4 @@ from src.classes.JSON_request_bodies.photo_request_bodies import *
 from src.classes.JSON_request_bodies.camera_request_bodies import *
 from src.classes.JSON_request_bodies.camera_analysis_request_bodies import *
 from src.classes.JSON_request_bodies.homography_calibration_request_bodies import *
+from src.classes.JSON_request_bodies.camera_analysis_plot_request_bodies import *

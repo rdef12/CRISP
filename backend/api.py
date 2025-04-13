@@ -32,13 +32,14 @@ from src.routers import beam_run as beam_run_router
 from src.routers import homography as homography_router
 from src.routers import camera_analysis as camera_analysis_router
 from src.routers import homography_calibration as homography_calibration_router
+from src.routers import camera_analysis_plot as camera_analysis_plot_router
 
 
 from src.classes.JSON_request_bodies import request_bodies as rb
 
 from src.database.CRUD import CRISP_database_interaction as cdi
 from src.database.database import create_db_and_tables
-from src.database.models import Camera as CameraTable
+from src.database.models import Camera as CameraTable, CameraSettingsLink
 
 import os
 
@@ -113,6 +114,7 @@ app.include_router(beam_run_router.router)
 app.include_router(homography_router.router)
 app.include_router(camera_analysis_router.router)
 app.include_router(homography_calibration_router.router)
+app.include_router(camera_analysis_plot_router.router)
 
 @app.get("/get_pi_disk_space/{username}")
 def get_pi_disk_space_api(username: str):
@@ -315,3 +317,38 @@ def multiple_picture_test_api(username_list: List[str]):
     encoded_images = [base64.b64encode(photo).decode('utf-8') for photo in photo_bytestring_list]
     response = {"images": encoded_images}
     return JSONResponse(content=response)
+
+
+#############################################################################################################
+
+import glob
+
+class DirectoryOfPopulation(BaseModel):
+    directory: str
+
+def read_image_as_bytes(image_path: str):
+    try:
+        with open(image_path, "rb") as file:
+            image_bytes = file.read()
+        return image_bytes
+    except FileNotFoundError as e:
+        raise FileNotFoundError(f"FileNotFoundError: {e}") from e
+
+@app.post("/fill-data/beam-run/{beam_run_id}/camera/{camera_id}")
+def fill_photos_for_beam_run(beam_run_id: int, camera_id: int, directory: DirectoryOfPopulation):
+    """
+    {
+      "directory": "./test_population_images/topHQ/" or /sideAR/ make sure to match the camera id in the url
+    }
+    """
+    with Session(engine) as session:
+        camera_settings_statement = (select(CameraSettingsLink)
+                                    .where(CameraSettingsLink.beam_run_id == beam_run_id)
+                                    .where(CameraSettingsLink.camera_id == camera_id))
+        camera_settings = session.exec(camera_settings_statement).one()
+        camera_settings_id = camera_settings.id
+        general_file_name = directory.directory + "*.jp*g"
+        file_names = glob.glob(general_file_name)
+        for file_name in file_names:
+            photo_bytes = read_image_as_bytes(file_name)
+            cdi.add_photo(camera_settings_id, photo_bytes)
