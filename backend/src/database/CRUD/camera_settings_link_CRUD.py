@@ -217,17 +217,34 @@ def update_is_optimal_by_camera_settings_id(camera_settings_id: int):
     try:
         with Session(engine) as session:
             optimal_camera_settings = session.get(CameraSettingsLink, camera_settings_id)
+            beam_run = session.get(BeamRun, optimal_camera_settings.beam_run_id)
             beam_run_statement = (select(BeamRun)
                                   .join(CameraSettingsLink)
                                   .where(CameraSettingsLink.id == camera_settings_id))
             beam_run = session.exec(beam_run_statement).one()
+            beam_run_id = beam_run.id
+            experiment_id = beam_run.experiment_id
             all_related_camera_settings_statement = (select(CameraSettingsLink)
                                                      .join(BeamRun)
                                                      .join(Experiment)
+                                                     .where(CameraSettingsLink.camera_id == optimal_camera_settings.camera_id)
                                                      .where(BeamRun.ESS_beam_energy == beam_run.ESS_beam_energy)
                                                      .where(BeamRun.beam_current == beam_run.beam_current)
                                                      .where(Experiment.id == beam_run.experiment_id))
             all_related_camera_settings = session.exec(all_related_camera_settings_statement).all()
+            # all_related_test_beam_runs_statement = (select(BeamRun)
+            #                                                        .where(BeamRun.is_test == True)
+            #                                                        .where(BeamRun.ESS_beam_energy == beam_run.ESS_beam_energy)
+            #                                                        .where(BeamRun.beam_current == beam_run.beam_current)
+            #                                                        .where(BeamRun.experiment_id == beam_run.experiment_id))
+            # all_related_test_beam_runs = session.exec(all_related_test_beam_runs_statement).all()
+            # all_related_camera_settings = []
+            # for related_test_beam_run in all_related_test_beam_runs:
+            #     related_camera_settings_statement = (select(CameraSettingsLink)
+            #                                          .where(CameraSettingsLink.beam_run_id == related_test_beam_run.id)
+            #                                          .where(CameraSettingsLink.camera_id == optimal_camera_settings.camera_id))
+            #     related_camera_settings = session.exec(related_camera_settings_statement).all()
+            #     all_related_camera_settings.extend(related_camera_settings)
             for camera_settings in all_related_camera_settings:
                 camera_settings.is_optimal = False
             optimal_camera_settings.is_optimal = True

@@ -5,6 +5,8 @@ import pytz
 from sqlmodel import Session, select
 from src.database.models import BeamRun, CameraSettingsLink, CameraSetupLink, Experiment, Photo, Settings, Setup
 from src.database.database import engine
+from sqlalchemy.exc import NoResultFound
+
 
 
 from src.network_functions import *
@@ -75,26 +77,37 @@ def add_real_beam_run(experiment_id: int, beam_run_body: rb.CreateBeamRun):
                                    beam_current,
                                    is_test)
     with Session(engine) as session:
-        cameras_in_experiment_statement = select(CameraSetupLink).join(Setup).join(Experiment).where(Experiment.id == experiment_id)
+        camera_setups_in_experiment_statement = select(CameraSetupLink).join(Setup).join(Experiment).where(Experiment.id == experiment_id)
 
-        cameras_in_experiment = session.exec(cameras_in_experiment_statement).all()
-        for camera in cameras_in_experiment:
-            optimal_settings_statment = (select(Settings)
+        camera_setups_in_experiment = session.exec(camera_setups_in_experiment_statement).all()
+        camera_ids_in_experiment = set()
+        for camera_setup in camera_setups_in_experiment:
+            camera_ids_in_experiment.add(camera_setup.camera_id)
+        camera_ids_in_experiment = list(camera_ids_in_experiment)
+        print(f"{ESS_beam_energy=}")
+        print(f"{beam_current=}")
+        print(f"{experiment_id=}")
+
+
+
+        for camera_id in camera_ids_in_experiment:
+            print(f"Camera id {camera_id}")
+            optimal_settings_statement = (select(Settings)
                                          .join(CameraSettingsLink)
                                          .join(BeamRun)
                                          .join(Experiment)
                                          .where(BeamRun.ESS_beam_energy == ESS_beam_energy)
                                          .where(BeamRun.beam_current == beam_current)
                                          .where(BeamRun.is_test == True)
-                                         .where(CameraSettingsLink.camera_id == camera.id)
+                                         .where(CameraSettingsLink.camera_id == camera_id)
                                          .where(CameraSettingsLink.is_optimal == True)
                                          .where(Experiment.id == experiment_id))
 
             try:
-                optimal_settings = session.exec(optimal_settings_statment).one()
-                cdi.add_camera_settings_link_with_beam_run(camera.id, optimal_settings.id, beam_run.id)
-            except:
-                pass
+                optimal_settings = session.exec(optimal_settings_statement).one()
+                cdi.add_camera_settings_link_with_beam_run(camera_id, optimal_settings.id, beam_run.id)
+            except NoResultFound:
+                print(f"No optimal settings found for camera {camera_id}")
         
     return beam_run
 

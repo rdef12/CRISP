@@ -33,6 +33,8 @@ class HomographyCalibrationPhotoGetResponse(BaseModel):
 class TestRunPhotoGet(BaseModel):
     id: int #camera_settings_id
     photo: bytes
+    is_saturated: bool
+    colour_channel: int
 
 
 class RealRunPhotoGet(BaseModel):

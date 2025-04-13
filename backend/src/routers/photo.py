@@ -320,14 +320,17 @@ def get_test_run_overlays(camera_settings_id: int, response: Response):
         horizontal_start, horizontal_end, vertical_start, vertical_end = cdi.get_scintillator_edges_by_photo_id(photo.id)
         image = load_image_byte_string_to_opencv(photo.photo)
         for count, colour_channel in enumerate(ColourChannel):
-            overlayed_image = show_saturated_points(image,
+            is_saturated, overlayed_image = show_saturated_points(image,
                                         horizontal_start,
                                         horizontal_end,
                                         vertical_start,
                                         vertical_end,
                                         colour_channel=colour_channel)
             overlayed_image_bytes = base64.b64encode(overlayed_image).decode("utf-8") 
-            overlayed_images += [rb.TestRunPhotoGet(id=count, photo=overlayed_image_bytes)]
+            overlayed_images += [rb.TestRunPhotoGet(id=count,
+                                                    photo=overlayed_image_bytes,
+                                                    is_saturated=is_saturated,
+                                                    colour_channel=colour_channel)]
     response.headers["Content-Range"] = str(len(overlayed_images))
     return overlayed_images
             
