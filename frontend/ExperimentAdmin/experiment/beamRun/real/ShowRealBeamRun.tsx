@@ -1,11 +1,12 @@
 import { useGetOne } from "react-admin";
 import { ListCamerasInExperimentReal } from "./ListCamerasInExperimentReal";
 import { useParams } from "react-router-dom";
-import { ShowBraggPeakDepth } from "./dataTaken/ShowBraggPeakDepth";
+import { CreateBraggPeakDepth } from "./dataTaken/braggPeakDepth/CreateBraggPeakDepth";
 import { ComplexAnalysis } from "./dataTaken/ComplexAnalysis";
 import { EditMSICData } from "./dataTaken/EditMSICData";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
+import { GlobalBraggPeakDepth } from "./dataTaken/braggPeakDepth/GlobalBraggPeakDepth";
 
 export const ShowRealBeamRun = () => {
   const [showMSICDialog, setShowMSICDialog] = useState(false);
@@ -23,7 +24,7 @@ export const ShowRealBeamRun = () => {
           {showMSICDialog && <EditMSICData onClose={() => setShowMSICDialog(false)} />}
         </div>
       )}
-      {/* {dataTaken && <ShowBraggPeakDepth />} */}
+      {dataTaken && <GlobalBraggPeakDepth />}
       <ListCamerasInExperimentReal dataTaken={dataTaken} />
       {/* {dataTaken && <ComplexAnalysis/>} */}
     </div>

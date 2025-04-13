@@ -1,7 +1,7 @@
 from src.database.database import engine
 from sqlmodel import Session, select
 from sqlalchemy.orm.exc import NoResultFound
-from src.database.models import CameraSettingsLink, BeamRun, Photo, Experiment
+from src.database.models import CameraAnalysis, CameraSettingsLink, BeamRun, CameraSetupLink, OpticalAxisEnum, Photo, Experiment
 
 
 # Create
@@ -149,6 +149,48 @@ def get_num_of_successfully_captured_images_by_camera_settings_link_id(camera_se
         statement = select(Photo).where(Photo.camera_settings_link_id == camera_settings_link_id).where(Photo.photo.isnot(None))
         result = session.exec(statement).all()
         return len(result)
+
+def get_camera_settings_with_complete_analyses(beam_run_id: int):
+    with Session(engine) as session:
+        all_camera_settings_statement = select(CameraSettingsLink).where(CameraSettingsLink.beam_run_id == beam_run_id)
+        all_camera_settings = session.exec(all_camera_settings_statement)
+        completed_camera_settings = []
+        for camera_settings in all_camera_settings:
+            camera_analysis_statement = select(CameraAnalysis).where(CameraAnalysis.camera_settings_id == camera_settings.id)
+            try:
+                camera_analysis = session.exec(camera_analysis_statement).one()
+            except NoResultFound:
+                continue
+            analysis_is_complete = (camera_analysis.beam_angle is not None
+                                    and camera_analysis.unc_beam_angle is not None
+                                    and camera_analysis.bragg_peak_pixel is not None
+                                    and camera_analysis.unc_bragg_peak_pixel is not None)
+            if analysis_is_complete:
+                completed_camera_settings += [camera_settings]
+        return completed_camera_settings
+
+def separate_camera_settings_by_position(camera_settings_list: list[CameraSettingsLink]) -> tuple[list[CameraSettingsLink]]:
+    with Session(engine) as session:
+        side_cameras = []
+        top_cameras = []
+        for camera_settings in camera_settings_list:
+            beam_run = session.get(BeamRun, camera_settings.beam_run_id)
+            experiment = session.get(Experiment, beam_run.experiment_id)
+            setup_id = experiment.setup_id
+            camera_id = camera_settings.camera_id
+            setup_camera_statement = (select(CameraSetupLink)
+                                      .where(CameraSetupLink.camera_id == camera_id)
+                                      .where(CameraSetupLink.setup_id == setup_id))
+            setup_camera = session.exec(setup_camera_statement).one()
+            optical_axis = setup_camera.optical_axis
+            print(f"\n\n Optical axis: {optical_axis} \n\n optical axis type: {type(optical_axis)} \n\n OPticalenum.x type {type(OpticalAxisEnum.x)}\n\n")
+            if optical_axis == OpticalAxisEnum.x:
+                side_cameras += [camera_settings]
+            elif optical_axis == OpticalAxisEnum.y:
+                top_cameras += [camera_settings]
+            else:
+                pass
+        return top_cameras, side_cameras
 
 # Update
 

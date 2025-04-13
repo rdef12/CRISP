@@ -325,6 +325,9 @@ class BeamRun(SQLModel, table=True):
     # take_raw_images: Optional[bool] = Field(default=None)
     bragg_peak_3d_position: Optional[List[float]] = Field(default=None, sa_column=Column(ARRAY(Float)))
     unc_bragg_peak_3d_position: Optional[List[float]] = Field(default=None, sa_column=Column(ARRAY(Float)))
+    
+    bragg_peak_depth: Optional[float] = Field(default = None)
+    unc_bragg_peak_depth: Optional[float] = Field(default = None)
 
     experiment_id: int = Field(default=None, foreign_key="experiment.id")
     experiment: Experiment = Relationship(back_populates="beam_runs")

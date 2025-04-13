@@ -2,7 +2,7 @@ from sqlmodel import Session, select, PickleType
 from sqlalchemy.orm.exc import NoResultFound
 
 from src.database.database import engine
-from src.database.models import CameraAnalysis
+from src.database.models import CameraAnalysis, CameraSettingsLink
 import numpy as np
 from typing import Literal
 import pickle
@@ -90,6 +90,21 @@ def get_unc_bragg_peak_pixel(camera_analysis_id: int) -> list:
             return result.unc_bragg_peak_pixel
         else:
             raise ValueError(f"Camera analysis with id {camera_analysis_id} not found.")
+
+
+def get_camera_analysis_id_by_camera_settings(camera_settings: CameraSettingsLink):
+    with Session(engine) as session:
+        statement = select(CameraAnalysis).where(CameraAnalysis.camera_settings_id == camera_settings.id)
+        camera_analysis = session.exec(statement).one()
+        return camera_analysis.id
+
+def get_camera_analysis_ids_by_camera_settings_list(camera_settings_list: list[CameraSettingsLink]):
+    camera_analysis_ids = []
+    for camera_settings in camera_settings_list:
+        camera_analysis_id = get_camera_analysis_id_by_camera_settings(camera_settings)
+        camera_analysis_ids += [camera_analysis_id]
+    return camera_analysis_ids
+
 
 # Update
 def update_average_image(camera_analysis_id: int, average_image: PickleType):

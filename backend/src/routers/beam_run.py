@@ -1,9 +1,10 @@
 from datetime import datetime
-from fastapi import Response, APIRouter
+from fastapi import HTTPException, Response, APIRouter
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 import pytz
 from sqlmodel import Session, select
+from src.scintillation_light_pinpointing import compute_weighted_bragg_peak_depth, pinpoint_bragg_peak
 from src.database.models import BeamRun, CameraSettingsLink, CameraSetupLink, Experiment, Photo, Settings, Setup
 from src.database.database import engine
 from sqlalchemy.exc import NoResultFound
@@ -416,3 +417,75 @@ def update_MSIC_data(beam_run_id: int, payload: rb.PostMSICDataPayload):
         #     beam_run.MSIC_beam_current_unc = payload.MSIC_current_uncertainty
         session.commit()
         return JSONResponse(content={"id": beam_run_id})
+
+
+@router.get("/{position}/analysis-complete/{beam_run_id}")
+def get_side_cameras_with_complete_analysis(beam_run_id: int, position: str, response: Response):
+    camera_settings_with_complete_analyses = cdi.get_camera_settings_with_complete_analyses(beam_run_id)
+    top_camera_settings_list, side_camera_settings_list = cdi.separate_camera_settings_by_position(camera_settings_with_complete_analyses)
+    camera_settings_list = None
+    if position == "side":
+        camera_settings_list = side_camera_settings_list
+    elif position == "top":
+        camera_settings_list = top_camera_settings_list
+    else:
+        raise HTTPException(status_code=400, detail="Position must be 'top' or 'side'.")
+    camera_list_response = []
+    for camera_settings in camera_settings_list:
+        camera_id = camera_settings.camera_id
+        camera_username = cdi.get_camera_by_id(camera_id).username
+        camera_response = rb.GetCompleteAnalysisCameraSettingsResponse(id=camera_settings.id,
+                                                                       camera_id=camera_id,
+                                                                       camera_username=camera_username)
+        camera_list_response += [camera_response]
+    response.headers["Content-Range"] = str(len(camera_list_response))
+    return camera_list_response
+
+
+@router.post("/bragg-peak/{beam_run_id}")
+def update_bragg_peak_depth(beam_run_id: int):
+    camera_settings_with_complete_analyses = cdi.get_camera_settings_with_complete_analyses(beam_run_id)
+    top_camera_settings_list, side_camera_settings_list = cdi.separate_camera_settings_by_position(camera_settings_with_complete_analyses)
+    if len(top_camera_settings_list) < 1 or len(side_camera_settings_list) < 1:
+        raise HTTPException(status_code=503, detail=f"Not enough cameras. Only analyses for {len(top_camera_settings_list)} top cameras and {len(side_camera_settings_list)} side cameras.")
+    
+    side_camera_analysis_ids = cdi.get_camera_analysis_ids_by_camera_settings_list(side_camera_settings_list)
+    top_camera_analysis_ids = cdi.get_camera_analysis_ids_by_camera_settings_list(top_camera_settings_list)
+    print(f"\n\n\n SIDE CAMERA ANALYSIS IDS: {side_camera_analysis_ids}\n")
+    print(f"\n TOP CAMERA ANALYSIS IDS: {top_camera_analysis_ids}\n")
+    pinpoint_results = pinpoint_bragg_peak(side_camera_analysis_ids + top_camera_analysis_ids)
+    bragg_peak_depth, unc_bragg_peak_depth = compute_weighted_bragg_peak_depth(beam_run_id, side_camera_analysis_ids, top_camera_analysis_ids)
+    cdi.update_bragg_peak_depth(beam_run_id, float(bragg_peak_depth))
+    cdi.update_unc_bragg_peak_depth(beam_run_id, float(unc_bragg_peak_depth))
+    return JSONResponse(content={"id": beam_run_id})
+
+@router.get("/bragg-peak/{beam_run_id}")
+def get_bragg_peak(beam_run_id: int):
+    with Session(engine) as session:
+        beam_run = session.get(BeamRun, beam_run_id)
+
+        bragg_peak_x = None
+        bragg_peak_y = None
+        bragg_peak_z = None
+        bragg_peak_x_unc = None
+        bragg_peak_y_unc = None
+        bragg_peak_z_unc = None
+
+        bragg_peak_3d_position = beam_run.bragg_peak_3d_position
+        if bragg_peak_3d_position is not None:
+            bragg_peak_x, bragg_peak_y, bragg_peak_z = bragg_peak_3d_position
+
+
+        unc_bragg_peak_3d_position = beam_run.unc_bragg_peak_3d_position
+        if unc_bragg_peak_3d_position is not None:
+            bragg_peak_x_unc, bragg_peak_y_unc, bragg_peak_z_unc = unc_bragg_peak_3d_position
+
+        return rb.GetBraggPeakResponse(id=beam_run_id,
+                                       bragg_peak_x=bragg_peak_x,
+                                       bragg_peak_y=bragg_peak_y,
+                                       bragg_peak_z=bragg_peak_z,
+                                       bragg_peak_x_unc=bragg_peak_x_unc,
+                                       bragg_peak_y_unc=bragg_peak_y_unc,
+                                       bragg_peak_z_unc=bragg_peak_z_unc,
+                                       bragg_peak_depth=beam_run.bragg_peak_depth,
+                                       bragg_peak_depth_unc=beam_run.unc_bragg_peak_depth)

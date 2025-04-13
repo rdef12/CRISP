@@ -94,3 +94,22 @@ class GetMSICDataResponse(BaseModel):
     MSIC_energy_uncertainty: Optional[float] = None
     MSIC_current: Optional[float] = None
     MSIC_current_uncertainty: Optional[float] = None
+
+
+class GetCompleteAnalysisCameraSettingsResponse(BaseModel):
+    id: int
+    camera_id: int
+    camera_username: str    
+
+
+class GetBraggPeakResponse(BaseModel):
+    id: int
+
+    bragg_peak_x: Optional[float] = None
+    bragg_peak_y: Optional[float] = None
+    bragg_peak_z: Optional[float] = None
+    bragg_peak_x_unc: Optional[float] = None
+    bragg_peak_y_unc: Optional[float] = None
+    bragg_peak_z_unc: Optional[float] = None
+    bragg_peak_depth: Optional[float] = None
+    bragg_peak_depth_unc: Optional[float] = None
