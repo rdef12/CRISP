@@ -77,7 +77,6 @@ def super_gaussian_with_background_noise(w, w0, a, sgm, n, background):
     return (a/sgm) * np.exp(-(0.5 * ((w - w0)/sgm)**2)**n) + background
 
 
-
 def extract_beam_profile(image, brightness_errors, horizontal_coord, v_bounds):
     pixel_vertical_coords = np.arange(v_bounds[0], v_bounds[1]+ 1)
     column_of_brightness_vals = image[v_bounds[0]: v_bounds[1] + 1, horizontal_coord]
@@ -142,14 +141,14 @@ def fit_gaussian_to_beam_profile(pixel_vertical_coords, column_of_brightness_val
                                             absolute_sigma=True,
                                             bounds=(second_lower_bounds, second_upper_bounds))
         
-        error_on_super_gaussian_center = np.sqrt(parameter_cov[0, 0])
+        super_gauss_paramters_uncertainties = np.sqrt(np.diag(parameter_cov))
         
         num_of_dof = len(pixel_vertical_coords) - 5 # 5 fit params
         fitted_pixel_values = super_gaussian_with_background_noise(pixel_vertical_coords, *super_gauss_paramters)
         reduced_chi_squared = chi_squared_function(column_of_brightness_vals, column_of_brightness_errors, fitted_pixel_values) / num_of_dof
         
         successful_fit = True
-        return super_gauss_paramters, error_on_super_gaussian_center, reduced_chi_squared, successful_fit
+        return super_gauss_paramters, super_gauss_paramters_uncertainties, reduced_chi_squared, successful_fit
 
     except RuntimeError as e:
         successful_fit = False
@@ -172,7 +171,7 @@ def fit_beam_profile_along_full_roi(camera_analysis_id: int, fit_context: str, c
         for index, horizontal_coord in enumerate(roi_horizontal_coords):
             pixel_vertical_coords, column_of_brightness_vals, column_of_brightness_errors = extract_beam_profile(channel, channel_std, horizontal_coord, v_bounds)
             
-            fitted_parameters, error_on_beam_center, reduced_chi_squared, success = fit_gaussian_to_beam_profile(pixel_vertical_coords, column_of_brightness_vals,
+            fitted_parameters, unc_fitted_parameters, reduced_chi_squared, success = fit_gaussian_to_beam_profile(pixel_vertical_coords, column_of_brightness_vals,
                                                                                                                     column_of_brightness_errors, background_brightness)
             if not success:
                 failed_fits.append(index)
@@ -180,6 +179,7 @@ def fit_beam_profile_along_full_roi(camera_analysis_id: int, fit_context: str, c
             
             reduced_chi_squared_array.append(reduced_chi_squared)
             fitted_parameters_array = np.vstack((fitted_parameters_array, fitted_parameters))
+            error_on_beam_center = unc_fitted_parameters[0]
             beam_center_error_array = np.append(beam_center_error_array, error_on_beam_center)
             total_profile_brightness.append(np.sum(column_of_brightness_vals))
             unc_total_profile_brightness.append(normal_addition_in_quadrature(column_of_brightness_errors))
@@ -226,8 +226,8 @@ def plot_beam_profile(camera_analysis_id: int, fit_context: str, channel, channe
                       global_background_estimate, reduced_chi_squared, profile_type: str=None, show_plot: bool=False):
     
     pixel_vertical_coords, column_of_brightness_vals, column_of_brightness_errors = extract_beam_profile(channel, channel_std, horizontal_coord, v_bounds)
-    fitted_parameters, _, reduced_chi_squared, _ = fit_gaussian_to_beam_profile(pixel_vertical_coords, column_of_brightness_vals, column_of_brightness_errors,
-                                                                                                          global_background_estimate)
+    fitted_parameters, unc_fitted_parameters, reduced_chi_squared, _ = fit_gaussian_to_beam_profile(pixel_vertical_coords, column_of_brightness_vals, column_of_brightness_errors,
+                                                                                                    global_background_estimate)
 
     gaussian_center, scale_factor, sigma, n, background_noise = fitted_parameters # FOR SUPER GAUSSIAN FITTING
     
@@ -244,6 +244,10 @@ def plot_beam_profile(camera_analysis_id: int, fit_context: str, channel, channe
     axs[0].step(pixel_vertical_coords, column_of_brightness_vals, color='black', zorder=9)
     axs[0].errorbar(pixel_vertical_coords, column_of_brightness_vals, yerr=column_of_brightness_errors, 
                     color="black", label="Experimental Data", ms=5, ecolor="blue", zorder=10)
+    
+    axs[0].errorbar(gaussian_center, super_gaussian_with_background_noise(gaussian_center, gaussian_center, scale_factor, sigma, n, background_noise),
+                    xerr=unc_fitted_parameters[0], fmt="o", color="green", ecolor="purple", label="Beam Center", zorder=11, ms=3)
+                    
     axs[0].plot(pixel_height_linspace, fitted_pixel_values, color="red", label="Fitted Gaussian Profile \n" + r"$\chi^{2}_R = $" + "{:.3g}".format(reduced_chi_squared))
     axs[0].set_ylabel("Pixel Brightness Value")
     axs[0].set_title("Horizontal Coord = {}".format(horizontal_coord))
@@ -267,8 +271,14 @@ def plot_beam_profile(camera_analysis_id: int, fit_context: str, channel, channe
     plt.close()
     buf.seek(0)  # Reset the buffer's position to the beginning - else will read from the end
     plot_bytes = buf.read()
+    parameter_labels = ["Gaussian Center", "Scale Factor", "Sigma", "Sub-Gaussian Exponent", "Background Brightness"]
+    parameter_values = [float(gaussian_center), float(scale_factor), float(sigma), float(n), float(background_noise)]
+    parameter_uncertainties = [float(x) for x in unc_fitted_parameters]
+    
     cdi.add_camera_analysis_plot(camera_analysis_id, f"{fit_context}_{profile_type}_gaussian", plot_bytes, "svg",
-                                 description=f"Plot showing '{profile_type.lower()}' Gaussian fit in {fit_context}")
+                                 description=f"Plot showing '{profile_type.lower()}' Gaussian fit in {fit_context}",
+                                 parameter_labels=parameter_labels, parameter_values=parameter_values,
+                                 parameter_uncertainties=parameter_uncertainties)
 
 
 def plot_reduced_chi_squared_values(camera_analysis_id: int, fit_context: str, roi_horizontal_coords,
@@ -313,11 +323,6 @@ def extract_incident_beam_angle(camera_analysis_id: int, horizontal_coords, beam
     horizontal_coords = horizontal_coords[angle_fitting_range]
     beam_center_vertical_coords = beam_center_vertical_coords[angle_fitting_range]
     beam_center_errors = beam_center_errors[angle_fitting_range]
-    
-    end_of_angle_fitting_range = horizontal_coords[100]
-    horizontal_coords = horizontal_coords[0: end_of_angle_fitting_range]
-    beam_center_vertical_coords = beam_center_vertical_coords[0: end_of_angle_fitting_range]
-    beam_center_errors = beam_center_errors[0: end_of_angle_fitting_range]
 
     fitted_line_parameters, fitted_parameter_uncertainties = least_squares_fitting_procedure(horizontal_coords, beam_center_vertical_coords, beam_center_errors)
     predicted_beam_centers = linear_function(horizontal_coords, fitted_line_parameters)  
@@ -381,8 +386,11 @@ def extract_incident_beam_angle(camera_analysis_id: int, horizontal_coords, beam
     buf.seek(0)  # Reset the buffer's position to the beginning - else will read from the end
     plot_bytes = buf.read()
     
+    parameter_labels = ["Slope", "Offset"]
+    parameter_values = [float(x) for x in fitted_line_parameters]
     cdi.add_camera_analysis_plot(camera_analysis_id, f"angle_plot", plot_bytes, "svg",
-                                 description=f"Plot showing beam's angle when seen in the plane of the scintillator normal to the camera optical axis")
+                                 description=f"Plot showing beam's angle when seen in the plane of the scintillator normal to the camera optical axis",
+                                 parameter_labels=parameter_labels, parameter_values=parameter_values)
     
     return fitted_angle, unc_fitted_angle
 
@@ -390,10 +398,7 @@ def extract_incident_beam_angle(camera_analysis_id: int, horizontal_coords, beam
 def locate_bragg_peak_in_image(camera_analysis_id: int, x_positions, beam_center_positions, beam_center_errors, fit_parameters,
                                total_brightness_along_vertical_roi, unc_total_brightness_along_vertical_roi,
                                show_scintillation_plot: bool=False):
-    """
-    After this, we need a function which uses the beam angle and bragg peak depth to determine the depth 
-    for all over pixels.
-    """
+    
     initial_bragg_peak_horizontal_coord_index = np.argmax(total_brightness_along_vertical_roi)
     initial_bragg_peak_horizontal_coord = x_positions[initial_bragg_peak_horizontal_coord_index]
     
@@ -437,8 +442,13 @@ def locate_bragg_peak_in_image(camera_analysis_id: int, x_positions, beam_center
     buf.seek(0)  # Reset the buffer's position to the beginning - else will read from the end
     plot_bytes = buf.read()
     
+    parameter_labels = ["Normalisation Constant (A)", "80% Distal Range (R80)", "Sigma", "Bragg-Kleeman Exponent (p)", "Scale factor (K)"]
+    parameter_values = [float(x) for x in bortfeld_fit['bortfeld_fit_p']]
+    parameter_uncertainties = [float(x) for x in bortfeld_fit_uncertainties]
+    
     cdi.add_camera_analysis_plot(camera_analysis_id, f"pixel_bortfeld_fit", plot_bytes, "svg",
-                                 description=f"Plot showing a bortfeld function fitted to the on-axis pixel scintillation light distribution")
+                                 description=f"Plot showing a bortfeld function fitted to the on-axis pixel scintillation light distribution",
+                                 parameter_labels=parameter_labels, parameter_values=parameter_values, parameter_uncertainties=parameter_uncertainties)
     
     bortfeld_horizontal_coord = z[np.argmax(curve)]
     peak_bounds = find_peak_position_uncertainty(x_positions, bortfeld_fit['bortfeld_fit_p'], bortfeld_fit_uncertainties, points_per_bin=100, number_of_stds=1)
@@ -451,9 +461,6 @@ def locate_bragg_peak_in_image(camera_analysis_id: int, x_positions, beam_center
     
     bragg_peak_vertical_coord = beam_center_positions[initial_bragg_peak_horizontal_coord_index + change_in_coord]
     unc_bragg_peak_vertical_coord = beam_center_errors[initial_bragg_peak_horizontal_coord_index + change_in_coord]
-    
-    print("PIXEL BORTFELD FIT PARAMS: {}".format(bortfeld_fit['bortfeld_fit_p']))
-    print("PIXEL BORTFELD PARAM COVARIANCES: {}".format(fit_parameters_covariance))
     
     return (bortfeld_horizontal_coord, bragg_peak_vertical_coord), (unc_bortfeld_horizontal_coord, unc_bragg_peak_vertical_coord) # Uncertainty not rounded appropriately yet, nor has horizontal coord itself.
 
@@ -549,8 +556,12 @@ def plot_physical_units_ODR_bortfeld(camera_analysis_id, distances, distance_unc
         buf.seek(0)  # Reset the buffer's position to the beginning - else will read from the end
         plot_bytes = buf.read()
         
+        parameter_labels = ["Normalisation Constant (A)", "80% Distal Range (R80)", "Sigma", "Bragg-Kleeman Exponent (p)", "Scale factor (K)"]
+        parameter_values = [float(x) for x in fit_parameters]
+        parameter_uncertainties = [float(x) for x in fit_parameters_uncertainties]
         cdi.add_camera_analysis_plot(camera_analysis_id, "physical_bortfeld_fit", plot_bytes, "svg",
-                                    description=f"Plot showing a bortfeld function ODR fitting to the beam axis scintillation light distribution in physical units")
+                                    description=f"Plot showing a bortfeld function ODR fitting to the beam axis scintillation light distribution in physical units",
+                                    parameter_labels=parameter_labels, parameter_values=parameter_values, parameter_uncertainties=parameter_uncertainties)
         return None
     except Exception as e:
         raise Exception("Error in plotting physical units ODR Bortfeld: ", e)

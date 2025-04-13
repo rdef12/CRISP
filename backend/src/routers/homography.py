@@ -652,9 +652,9 @@ def view_test_analysis_plots_api():
     print(cdi.get_all_plot_types_by_camera_analysis_id(side_camera_analysis_id))
     print(cdi.get_all_plot_types_by_camera_analysis_id(top_camera_analysis_id))
     
-    # Need to return format too so can be rendered properly
-    side_plots = cdi.get_all_plot_figures_and_formats_by_camera_analysis_id(side_camera_analysis_id)
-    top_plots = cdi.get_all_plot_figures_and_formats_by_camera_analysis_id(top_camera_analysis_id)
+    # Sorted the list of dicts by the ID of each plot dict - to ensure rendered in order despite race conditions when writing to DB
+    side_plots = sorted(cdi.get_all_plot_figures_and_formats_by_camera_analysis_id(side_camera_analysis_id), key=lambda plot: int(plot["id"]))
+    top_plots = sorted(cdi.get_all_plot_figures_and_formats_by_camera_analysis_id(top_camera_analysis_id), key=lambda plot: int(plot["id"]))
     plots = side_plots + top_plots
 
     img_tags = ""

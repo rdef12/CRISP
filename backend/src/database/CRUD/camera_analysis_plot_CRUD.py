@@ -73,7 +73,7 @@ def get_all_plot_figures_and_formats_by_camera_analysis_id(camera_analysis_id: i
         )
         results = session.exec(statement).all()
         # List of dicts returned
-        return [{"figure": result.plot_figure, "format": result.figure_format} for result in results]
+        return [{"id": result.id, "figure": result.plot_figure, "format": result.figure_format} for result in results]
 
 
 # Delete
