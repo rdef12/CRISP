@@ -83,7 +83,7 @@ export const PlotDisplay = ({
                           <Label>{label}</Label>
                           <div className="text-sm">
                             {value != null && uncertainty != null 
-                              ? `${value.toFixed(4)} ± ${uncertainty.toFixed(4)}`
+                              ? `${value} ± ${uncertainty}`
                               : 'N/A'}
                           </div>
                         </div>
@@ -97,7 +97,7 @@ export const PlotDisplay = ({
             {chi_squared != null && (
               <div>
                 <Label>Chi-Squared</Label>
-                <div className="text-sm">{chi_squared.toFixed(4)}</div>
+                <div className="text-sm">{chi_squared}</div>
               </div>
             )}
           </div>
