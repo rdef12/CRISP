@@ -73,10 +73,10 @@ def get_distortion_calibration_settings(setup_camera_id: int, response: Response
     settings = cdi.get_settings_by_setup_camera_id_distortion_calibration(setup_camera_id)
     return settings
 
-@router.put("/scintillator-edges/{setup_camera_id}") #TODO Is function this right??
-def update_scintillator_edges_camera_settings(setup_camera_id: int, settings_body: rb.SettingsCreateRequest):
-    settings_id = cdi.add_settings(settings_body.frame_rate, settings_body.lens_position, settings_body.gain)
-    return {"id": settings_id}
+# @router.put("/scintillator-edges/{setup_camera_id}") #TODO Is function this right??
+# def update_scintillator_edges_camera_settings(setup_camera_id: int, settings_body: rb.SettingsCreateRequest):
+#     settings_id = cdi.add_settings(settings_body.frame_rate, settings_body.lens_position, settings_body.gain)
+#     return {"id": settings_id}
 
 @router.get("/beam-run/test/{beam_run_id}/camera/{camera_id}")
 def get_test_settings(beam_run_id: int, camera_id: int, response: Response):

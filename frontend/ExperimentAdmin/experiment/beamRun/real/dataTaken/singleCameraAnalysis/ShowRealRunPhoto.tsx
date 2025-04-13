@@ -104,22 +104,6 @@ export const ShowRealRunPhoto = () => {
 
   return (
     <div className="p-4 flex flex-col items-start gap-4">
-      <table className="w-full text-sm">
-        <tbody>
-          <tr>
-            <td className="px-4 py-2">
-              <strong>Camera Username:</strong> {record?.username}
-            </td>
-            <td className="px-4 py-2">
-              <strong>IP Address:</strong> {record?.ip_address}
-            </td>
-            <td className="px-4 py-2">
-              <strong>Camera ID:</strong> {record?.id}
-            </td>
-          </tr>
-        </tbody>
-      </table>
-
       {/* Image Display */}
       <Card className="inline-block p-4">
         {isLoading ? (
@@ -144,17 +128,23 @@ export const ShowRealRunPhoto = () => {
                 onClick={() => setIsDialogOpen(true)}
               >
                 <div className="relative h-full">
-                  <img 
-                    src={imageUrls[currentImageIndex]} 
-                    alt={`Real Run Photo ${currentImageIndex + 1}`}
-                    style={{ width: '150px', height: '150px', objectFit: 'cover' }}
-                    className="w-full h-full"
-                    onError={(e) => console.error('Image loading error:', e)}
-                    onLoad={(e) => {
-                      const img = e.target as HTMLImageElement;
-                      console.log('Loaded image dimensions:', img.width, 'x', img.height);
-                    }}
-                  />
+                  {imageUrls[currentImageIndex] ? (
+                    <img 
+                      src={imageUrls[currentImageIndex]} 
+                      alt={`Real Run Photo ${currentImageIndex + 1}`}
+                      style={{ width: '150px', height: '150px', objectFit: 'cover' }}
+                      className="w-full h-full"
+                      onError={(e) => console.error('Image loading error:', e)}
+                      onLoad={(e) => {
+                        const img = e.target as HTMLImageElement;
+                        console.log('Loaded image dimensions:', img.width, 'x', img.height);
+                      }}
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-gray-100">
+                      <span className="text-gray-500">Loading...</span>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -212,11 +202,17 @@ export const ShowRealRunPhoto = () => {
             )}
           </DialogHeader>
           <div className="relative w-full flex justify-center items-center">
-            <img
-              src={imageUrls[currentImageIndex]}
-              alt={`Full size photo ${currentImageIndex + 1}`}
-              className="max-w-full max-h-[70vh] object-contain"
-            />
+            {imageUrls[currentImageIndex] ? (
+              <img
+                src={imageUrls[currentImageIndex]}
+                alt={`Full size photo ${currentImageIndex + 1}`}
+                className="max-w-full max-h-[70vh] object-contain"
+              />
+            ) : (
+              <div className="w-full h-[70vh] flex items-center justify-center bg-gray-100">
+                <span className="text-gray-500">Loading...</span>
+              </div>
+            )}
           </div>
           <DialogFooter className="w-full">
             {photos && photos[currentImageIndex] && (
