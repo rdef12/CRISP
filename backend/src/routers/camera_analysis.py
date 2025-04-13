@@ -36,10 +36,16 @@ def create_camera_analysis(beam_run_id: int, camera_id: int, payload: rb.CameraA
                                      .where(CameraSettingsLink.beam_run_id == beam_run_id)
                                      .where(CameraSettingsLink.camera_id == camera_id))
         remnant_camera_analyses = session.exec(remnant_camera_analyses_statement).all()
-        if len(remnant_camera_analyses) > 0:
-            for remnant_camera_analysis in remnant_camera_analyses:
-                session.delete(remnant_camera_analysis)
-            session.commit()
+
+        for remnant_camera_analysis in remnant_camera_analyses:
+            remnant_camera_analysis_plots_statement = (select(CameraAnalysisPlot)
+                                                       .where(CameraAnalysisPlot.camera_analysis_id == remnant_camera_analysis.id))
+            remnant_camera_analysis_plots = session.exec(remnant_camera_analysis_plots_statement).all()
+            for remnant_camera_analysis_plot in remnant_camera_analysis_plots:
+                session.delete(remnant_camera_analysis_plot)
+            session.delete(remnant_camera_analysis)
+        session.commit()
+
         camera_settings_statement = (select(CameraSettingsLink)
                                      .where(CameraSettingsLink.beam_run_id == beam_run_id)
                                      .where(CameraSettingsLink.camera_id == camera_id))
@@ -49,10 +55,6 @@ def create_camera_analysis(beam_run_id: int, camera_id: int, payload: rb.CameraA
         camera_analysis_id = cdi.add_camera_analysis(camera_settings_id, colour_channel)["id"]
         average_pixel_over_multiple_images(camera_analysis_id)
         results = get_beam_angle_and_bragg_peak_pixel(camera_analysis_id)
-        cdi.update_beam_angle(camera_analysis_id, float(results["beam_angle"]))
-        cdi.update_unc_beam_angle(camera_analysis_id, float(results["beam_angle_error"]))
-        cdi.update_bragg_peak_pixel(camera_analysis_id, [float(x) for x in results["bragg_peak_pixel"].flatten()])
-        cdi.update_unc_bragg_peak_pixel(camera_analysis_id, [float(x) for x in results["bragg_peak_pixel_error"].flatten()])
     return rb.CameraAnalysisPostResponse(id=camera_analysis_id)
 
 @router.get("/beam-run/{beam_run_id}/camera/{camera_id}")
@@ -66,6 +68,18 @@ def get_camera_analysis(beam_run_id: int, camera_id: int):
             camera_analysis = session.exec(camera_analysis_statement).one()
         except:
             return rb.CameraAnalysisGetReponse(id=camera_id)
+        
+        if camera_analysis.average_image is None:
+            return rb.CameraAnalysisGetReponse(id=camera_id,
+                                    cameraSettingsId=camera_analysis.camera_settings_id,
+                                    colourChannel=camera_analysis.colour_channel,
+                                    beamAngle=camera_analysis.beam_angle,
+                                    beamAngleUncertainty=camera_analysis.unc_beam_angle,
+                                    braggPeakPixel=camera_analysis.bragg_peak_pixel,
+                                    braggPeakPixelUncertainty=camera_analysis.unc_bragg_peak_pixel,
+                                    )
+
+        # if camera_analysis.average_image is not None:
         unpickled_image = pickle.loads(camera_analysis.average_image)
         unpickled_image = unpickled_image.astype(np.uint8)
 
@@ -105,24 +119,36 @@ def get_camera_analysis(beam_run_id: int, camera_id: int):
             averaged_photo = base64.b64encode(image_bytes).decode("utf-8")
         else:
             raise ValueError("Could not encode image")
-        # plots_statement = (select(CameraAnalysisPlot)
-        #                    .where(CameraAnalysisPlot.camera_analysis_id == camera_analysis.id))
-        # plots = session.exec(plots_statement).all()
 
         return rb.CameraAnalysisGetReponse(id=camera_id,
-                                           cameraSettingsId=camera_analysis.camera_settings_id,
-                                           colourChannel=camera_analysis.colour_channel,
-                                           averageImage=averaged_photo,
-                                           beamAngle=camera_analysis.beam_angle,
-                                           beamAngleUncertainty=camera_analysis.unc_beam_angle,
-                                           braggPeakPixel=camera_analysis.bragg_peak_pixel,
-                                           braggPeakPixelUncertainty=camera_analysis.unc_bragg_peak_pixel,
-                                        #    plots=plots
-                                           )
+                                        cameraSettingsId=camera_analysis.camera_settings_id,
+                                        colourChannel=camera_analysis.colour_channel,
+                                        averageImage=averaged_photo,
+                                        beamAngle=camera_analysis.beam_angle,
+                                        beamAngleUncertainty=camera_analysis.unc_beam_angle,
+                                        braggPeakPixel=camera_analysis.bragg_peak_pixel,
+                                        braggPeakPixelUncertainty=camera_analysis.unc_bragg_peak_pixel,
+                                        )
 
-@router.get("/plots/beam-run/{beam_run_id}/camera/{camera_id}")
-def get_cameras_plots(beam_run_id: int, camera_id: int, response: Response):
+@router.delete("/beam-run/{beam_run_id}/camera/{camera_id}")
+def delete_camera_analysis(beam_run_id: int, camera_id: int):
+    with Session(engine) as session:
+        remnant_camera_analyses_statement = (select(CameraAnalysis)
+                                     .join(CameraSettingsLink)
+                                     .where(CameraSettingsLink.beam_run_id == beam_run_id)
+                                     .where(CameraSettingsLink.camera_id == camera_id))
+        remnant_camera_analyses = session.exec(remnant_camera_analyses_statement).all()
+
+        for remnant_camera_analysis in remnant_camera_analyses:
+            remnant_camera_analysis_plots_statement = (select(CameraAnalysisPlot)
+                                                       .where(CameraAnalysisPlot.camera_analysis_id == remnant_camera_analysis.id))
+            remnant_camera_analysis_plots = session.exec(remnant_camera_analysis_plots_statement).all()
+            for remnant_camera_analysis_plot in remnant_camera_analysis_plots:
+                session.delete(remnant_camera_analysis_plot)
+            session.delete(remnant_camera_analysis)
+        session.commit()
     return
+
 
 # @router.get("/plots/beam-run/{beam_run_id}/camera/{camera_id}")
 # def get_beam_run_plots(beam_run_id: int, camera_id: int):

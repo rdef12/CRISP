@@ -23,9 +23,9 @@ export const ShowRealBeamRun = () => {
           {showMSICDialog && <EditMSICData onClose={() => setShowMSICDialog(false)} />}
         </div>
       )}
-      {dataTaken && <ShowBraggPeakDepth />}
+      {/* {dataTaken && <ShowBraggPeakDepth />} */}
       <ListCamerasInExperimentReal dataTaken={dataTaken} />
-      {dataTaken && <ComplexAnalysis/>}
+      {/* {dataTaken && <ComplexAnalysis/>} */}
     </div>
   );
 }
