@@ -158,4 +158,32 @@ def update_unc_bragg_peak_3d_position(beam_run_id: int, unc_bragg_peak_3d_positi
         raise RuntimeError(f"An error occurred: {str(e)}")
 
 
+def update_bragg_peak_depth(beam_run_id: int, bragg_peak_depth: float):
+    try:
+        with Session(engine) as session:
+            statement = select(BeamRun).where(BeamRun.id == beam_run_id)
+            result = session.exec(statement).one()
+            result.bragg_peak_depth = bragg_peak_depth
+            session.commit()
+            return {"message": f"Beam run with id: {beam_run_id} updated with bragg peak depth: {bragg_peak_depth}"}
+    except NoResultFound:
+        raise ValueError(f"No beam run found for beam_run_id={beam_run_id}.")
+    except Exception as e:
+        raise RuntimeError(f"An error occurred: {str(e)}")
+
+def update_unc_bragg_peak_depth(beam_run_id: int, unc_bragg_peak_depth: float):
+    try:
+        with Session(engine) as session:
+            statement = select(BeamRun).where(BeamRun.id == beam_run_id)
+            result = session.exec(statement).one()
+            result.unc_bragg_peak_depth = unc_bragg_peak_depth
+            session.commit()
+            return {"message": f"Beam run with id: {beam_run_id} updated with bragg peak depth: {unc_bragg_peak_depth}"}
+    except NoResultFound:
+        raise ValueError(f"No beam run found for beam_run_id={beam_run_id}.")
+    except Exception as e:
+        raise RuntimeError(f"An error occurred: {str(e)}")
+
+
+
 # Delete

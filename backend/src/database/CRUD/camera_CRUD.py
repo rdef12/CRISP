@@ -1,7 +1,7 @@
 from sqlmodel import Session, select
 
 from src.database.database import engine
-from src.database.models import Camera
+from src.database.models import Camera, CameraSettingsLink
 
 # Create
 
@@ -64,7 +64,6 @@ def get_all_cameras_for_react_admin() -> list[Camera]:
 def get_camera_by_id(id: int) -> Camera:
     with Session(engine) as session:
         return session.get(Camera, id)
-    
 
 # Update
 

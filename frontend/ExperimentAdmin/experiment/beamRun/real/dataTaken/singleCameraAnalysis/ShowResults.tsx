@@ -21,7 +21,7 @@ export const ShowResults = ({
             <div>
               <h3 className="text-lg font-semibold mb-2">Beam Angle</h3>
               <p className="text-sm">
-                {beamAngle?.toFixed(2)} ± {beamAngleUncertainty?.toFixed(2)} degrees
+                {beamAngle} ± {beamAngleUncertainty} degrees
               </p>
             </div>
             <div>
