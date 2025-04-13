@@ -314,6 +314,8 @@ class BeamRun(SQLModel, table=True):
     # ESS_beam_energy_unc: float #????
     MSIC_beam_energy: Optional[float] = Field(default=None)
     MSIC_beam_energy_unc: Optional[float] = Field(default=None)
+    # MSIC_beam_current: Optional[float] = Field(default=None)
+    # MSIC_beam_current_unc: Optional[float] = Field(default=None)
 
     #Any other beam parameters?
 
