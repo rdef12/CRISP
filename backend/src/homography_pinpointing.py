@@ -530,8 +530,10 @@ def calculate_intersection_point(first_equation_line_vectors, second_equation_li
       if not np.all(np.abs(closest_point_on_second_line_to_first_line - closest_point_on_first_line_to_second_line) <= 5 * total_closest_points_error): # CURRENTLY, LESS THAN 5 COMBINED STD
          
         # 5 standard deviations because operating on a huge number of beam center coords across all image sets, it becomes quite possible that one component has an error exceeding 5 STD.
-        raise Exception("\n\nThe seperation of two closest points is not consistent within 5 standard deviation of each of these points.")
-    
+        # raise Exception("\n\nThe seperation of two closest points is not consistent within 5 standard deviation of each of these points.")
+        print("\n\nThe seperation of two closest points is not consistent within 5 standard deviation of each of these points.")
+        return float("nan"), float("nan") # check for this and note that fit failed
+        
       # NEW VERSION - uses weighted intersection point of closest points to determine the event's pinpointed location
       numerator = (closest_point_on_second_line_to_first_line/ unc_closest_point_on_second_line_to_first_line**2) + (closest_point_on_first_line_to_second_line / unc_closest_point_on_first_line_to_second_line**2) 
       denominator = 1 / unc_closest_point_on_second_line_to_first_line**2 + 1 / unc_closest_point_on_first_line_to_second_line**2
@@ -713,6 +715,7 @@ def extract_weighted_average_3d_physical_position(list_of_camera_objects, list_o
 
     intersection_point_array = []
     unc_intersection_point_array = []
+    num_of_failed_pinpoints = 0
     
     for camera_combination, pixel_combination, unc_pixel_combination in zip(possible_camera_combinations, possible_pixel_combinations, possible_pixel_unc_combinations):
         
@@ -722,9 +725,16 @@ def extract_weighted_average_3d_physical_position(list_of_camera_objects, list_o
         
         line_intersection_point, unc_line_intersection_point = extract_3d_physical_position(camera_1, pixel_coords_1, camera_2, pixel_coords_2,
                                                                                             unc_pixel_coords_1, unc_pixel_coords_2, scintillator_present=scintillator_present)
+        
+        if np.isnan(line_intersection_point).any() or np.isnan(unc_line_intersection_point).any():
+            print("\n\nIntersection point is NaN, skipping this camera combination.")
+            num_of_failed_pinpoints += 1
+            continue
         intersection_point_array.append(line_intersection_point)
         unc_intersection_point_array.append(unc_line_intersection_point)
-    
+        
+    if num_of_failed_pinpoints > 0:
+        print("\n\nNumber of failed pinpoints omitted from weighted calculations is: {}".format(num_of_failed_pinpoints))
     if num_of_combinations == 1:
         return line_intersection_point, unc_line_intersection_point
     
@@ -791,6 +801,10 @@ def perform_homography_pinpointing_between_camera_pair_for_GUI(setup_id, first_c
         intersection_point, unc_intersection_point = extract_3d_physical_position(top_cam, red_brick_corner_top_cam_pixel, side_cam, red_brick_corner_side_cam_pixel,
                                                                                 unc_red_brick_corner_top_cam_pixel, unc_red_brick_corner_side_cam_pixel,
                                                                                 scintillator_present=False)
+        
+        if np.isnan(intersection_point).any() or np.isnan(unc_intersection_point).any():
+            print("\n\nIntersection point is NaN, pinpointing failed!!.")
+            return 1
 
         print("\n\nIntersection Point of red brick corner is {0} +/- {1}".format(intersection_point, unc_intersection_point))
         return 0

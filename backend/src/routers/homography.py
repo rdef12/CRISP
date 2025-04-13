@@ -549,20 +549,20 @@ def upload_averaged_image_api():
     # num_of_ar_images_in_average = 78
     
     # Adding mock images to test if cdi.get_num_of_successfully_captured_images_by_camera_settings_link_id() is working
-    # mock_bytestring = pickle.dumps("lol") #TODO ROBIN HASHED THIS, SORRY IF HE FORGOT TO ADD IT BACK
-    # for i in range(num_of_ar_images_in_average):
-    #     cdi.add_photo(camera_settings_link_id=side_AR_camera_settings_link_id, photo=mock_bytestring)
-    # for i in range(num_of_hq_images_in_average):
-    #     cdi.add_photo(camera_settings_link_id=top_HQ_camera_settings_link_id, photo=mock_bytestring)
+    mock_bytestring = pickle.dumps("lol") #TODO ROBIN HASHED THIS, SORRY IF HE FORGOT TO ADD IT BACK
+    for i in range(num_of_ar_images_in_average):
+        cdi.add_photo(camera_settings_link_id=side_AR_camera_settings_link_id, photo=mock_bytestring)
+    for i in range(num_of_hq_images_in_average):
+        cdi.add_photo(camera_settings_link_id=top_HQ_camera_settings_link_id, photo=mock_bytestring)
     
-    # # FLOAT-16 PICKLED AVERAGED NUMPY ARRAYS
-    # with open("/code/src/beam_averaged_images/150_mev_A1_averaged_image_float16.pkl", "rb") as file:
-    #     pickled_side_AR__average_image = file.read()
-    # cdi.update_average_image(side_AR_analysis_id, pickled_side_AR__average_image)
+    # FLOAT-16 PICKLED AVERAGED NUMPY ARRAYS
+    with open("/code/src/beam_averaged_images/150_mev_A1_averaged_image_float16.pkl", "rb") as file:
+        pickled_side_AR__average_image = file.read()
+    cdi.update_average_image(side_AR_analysis_id, pickled_side_AR__average_image)
     
-    # with open("/code/src/beam_averaged_images/150_mev_HQ2_averaged_image_float16.pkl", "rb") as file:
-    #     pickled_top_HQ_average_image = file.read()
-    # cdi.update_average_image(top_HQ_analysis_id, pickled_top_HQ_average_image)
+    with open("/code/src/beam_averaged_images/150_mev_HQ2_averaged_image_float16.pkl", "rb") as file:
+        pickled_top_HQ_average_image = file.read()
+    cdi.update_average_image(top_HQ_analysis_id, pickled_top_HQ_average_image)
     # #TODO THIS IS THE END OF HIS COMMENTING
     return None
 
@@ -683,40 +683,35 @@ def test_beam_reconstruction_api():
         # beam_direction_vector, unc_beam_direction_vector = build_directional_vector_of_beam_center_for_camera_pair(side_camera_analysis_id, top_camera_analysis_id)
         
         # METHOD 2 - produces weighted beam path vector
-        beam_center_incident_position, unc_beam_center_incident_position, \
-        beam_direction_vector, unc_beam_direction_vector = build_weighted_directional_vector_of_beam_center([side_camera_analysis_id], [top_camera_analysis_id])
+        build_weighted_directional_vector_of_beam_center([side_camera_analysis_id], [top_camera_analysis_id])
         
         ###################### Get beam center coords in side cam image ##################################################
         side_cam_beam_center_coords, unc_side_cam_beam_center_coords, \
         total_brightness_along_vertical_roi, unc_total_brightness_along_vertical_roi = get_beam_center_coords(beam_run_id, side_camera_analysis_id)
         
         distances_travelled_inside_scintillator, \
-        unc_distances_travelled_inside_scintillator = convert_beam_center_coords_to_penetration_depths(side_camera_analysis_id,
+        unc_distances_travelled_inside_scintillator, num_of_failed_pinpoints = convert_beam_center_coords_to_penetration_depths(side_camera_analysis_id,
                                                                                                     side_cam_beam_center_coords,
-                                                                                                    unc_side_cam_beam_center_coords,
-                                                                                                    [beam_center_incident_position, beam_direction_vector],
-                                                                                                    [unc_beam_center_incident_position, unc_beam_direction_vector])
+                                                                                                    unc_side_cam_beam_center_coords)
         
         plot_physical_units_ODR_bortfeld(side_camera_analysis_id, distances_travelled_inside_scintillator, unc_distances_travelled_inside_scintillator, 
-                                        total_brightness_along_vertical_roi, unc_total_brightness_along_vertical_roi)
+                                        total_brightness_along_vertical_roi, unc_total_brightness_along_vertical_roi, num_of_failed_pinpoints)
         
         ######################################################## ONLY THE ABOVE NEEDED FOR PRODUCING ONE ODR BORTFELD ####################################################
         
         ###################### Get beam center coords in top cam image ##################################################
     
-        # top_cam_beam_center_coords, unc_top_cam_beam_center_coords, \
-        # total_brightness_along_vertical_roi, unc_total_brightness_along_vertical_roi = get_beam_center_coords(beam_run_id, top_camera_analysis_id)
+        top_cam_beam_center_coords, unc_top_cam_beam_center_coords, \
+        total_brightness_along_vertical_roi, unc_total_brightness_along_vertical_roi = get_beam_center_coords(beam_run_id, top_camera_analysis_id)
         
-        # distances_travelled_inside_scintillator, \
-        # unc_distances_travelled_inside_scintillator = convert_beam_center_coords_to_penetration_depths(top_camera_analysis_id,
-        #                                                                                             top_cam_beam_center_coords,
-        #                                                                                             unc_top_cam_beam_center_coords,
-        #                                                                                             [beam_center_incident_position, beam_direction_vector],
-        #                                                                                             [unc_beam_center_incident_position, unc_beam_direction_vector])
+        distances_travelled_inside_scintillator, \
+        unc_distances_travelled_inside_scintillator, num_of_failed_pinpoints = convert_beam_center_coords_to_penetration_depths(top_camera_analysis_id,
+                                                                                                    top_cam_beam_center_coords,
+                                                                                                    unc_top_cam_beam_center_coords)
         
         
-        # plot_physical_units_ODR_bortfeld(top_camera_analysis_id, distances_travelled_inside_scintillator, unc_distances_travelled_inside_scintillator, 
-        #                                 total_brightness_along_vertical_roi, unc_total_brightness_along_vertical_roi)
+        plot_physical_units_ODR_bortfeld(top_camera_analysis_id, distances_travelled_inside_scintillator, unc_distances_travelled_inside_scintillator, 
+                                        total_brightness_along_vertical_roi, unc_total_brightness_along_vertical_roi)
 
     
     except Exception as e:

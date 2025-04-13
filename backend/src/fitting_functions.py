@@ -532,7 +532,8 @@ def compute_range_and_uncertainty(camera_analysis_id, distances, fit_parameters,
     cdi.update_range_uncertainty(camera_analysis_id, float(range_uncertainty))
     return range, range_uncertainty
 
-def plot_physical_units_ODR_bortfeld(camera_analysis_id, distances, distance_uncertainties, brightnesses, brightness_uncertainties):
+def plot_physical_units_ODR_bortfeld(camera_analysis_id, distances, distance_uncertainties, brightnesses, brightness_uncertainties,
+                                     num_of_failed_pinpoints):
     try:
         distances, distance_uncertainties, brightnesses, brightness_uncertainties, \
             fit_parameters, fit_parameters_covariance, reduced_chi_squared = fit_physical_units_ODR_bortfeld(camera_analysis_id, distances, distance_uncertainties, brightnesses, brightness_uncertainties)
@@ -546,10 +547,11 @@ def plot_physical_units_ODR_bortfeld(camera_analysis_id, distances, distance_unc
         
         # plt.step(distances, brightnesses, where='mid')
         # Suppress markers for error bars only
+        failed_points_label = f"\nNumber of failed pinpoints: {num_of_failed_pinpoints}" if num_of_failed_pinpoints > 0 else ""
         plt.errorbar(
             distances, brightnesses, 
-            xerr=distance_uncertainties, yerr=brightness_uncertainties, 
-            fmt='', color='black', ecolor='blue', label='Experimental Data', ms=3)
+            xerr=distance_uncertainties, yerr=brightness_uncertainties,
+            fmt='', color='black', ecolor='blue', label=f'Experimental Data {failed_points_label}', ms=3)
         
         # Add labels, legend, and grid
         plt.xlabel("Distance travelled through Scintillator (mm)")

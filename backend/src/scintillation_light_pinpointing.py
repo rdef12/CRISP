@@ -165,10 +165,16 @@ def build_weighted_directional_vector_of_beam_center(side_camera_analysis_id_lis
     weighted_top_cam_beam_angle, unc_weighted_top_cam_beam_angle = compute_weighted_mean_of_array(top_cam_beam_angle_array, unc_top_cam_beam_angle_array)
     
     # Beam vector constructed using weighted angles seen by side and top cameras
-    return build_directional_vector_of_beam_center_for_beam_run(beam_run_id, weighted_side_cam_beam_angle, unc_weighted_side_cam_beam_angle,
-                                                                weighted_top_cam_beam_angle, unc_weighted_top_cam_beam_angle)
+    beam_center_incident_position, unc_beam_center_incident_position, \
+        beam_direction_vector, unc_beam_directional_vector = build_directional_vector_of_beam_center_for_beam_run(beam_run_id, weighted_side_cam_beam_angle, unc_weighted_side_cam_beam_angle,
+                                                                                                                  weighted_top_cam_beam_angle, unc_weighted_top_cam_beam_angle)
     
-
+    cdi.update_beam_incident_3d_position(beam_run_id, [float(x) for x in beam_center_incident_position.flatten()])
+    cdi.update_unc_beam_incident_3d_position(beam_run_id, [float(x) for x in unc_beam_center_incident_position.flatten()])
+    cdi.update_beam_path_vector(beam_run_id, [float(x) for x in beam_direction_vector.flatten()])
+    cdi.update_unc_beam_path_vector(beam_run_id, [float(x) for x in unc_beam_directional_vector.flatten()])
+    return None
+    
 
 def compute_bragg_peak_depth(beam_run_id: int, side_camera_analysis_id: int, top_camera_analysis_id: int):
     
@@ -216,14 +222,11 @@ def compute_weighted_bragg_peak_depth(beam_run_id: int, side_camera_analysis_id_
 
 
 def convert_beam_center_coords_to_penetration_depths(camera_analysis_id: int, unrotated_beam_center_coords: np.ndarray[float],
-                                                     unc_on_beam_center_coords, beam_center_line_vectors, unc_camera_line_vectors):
+                                                     unc_on_beam_center_coords):
     """
     The unrotated beam center coords is stressed because homography will only work when the image has the orientation
     it was calibrated to work with.
-    
-    Does this work for top cam as well as side cam?
     """
-    unc_beam_center_initial_position, unc_beam_center_directional_vector = unc_camera_line_vectors
     
     # Create camera object
     camera_settings_link_id = cdi.get_camera_settings_link_id_by_camera_analysis_id(camera_analysis_id)
@@ -233,22 +236,36 @@ def convert_beam_center_coords_to_penetration_depths(camera_analysis_id: int, un
     setup_id = cdi.get_setup_id_from_experiment_id(experiment_id)
     camera = AbstractCamera.setup(camera_id, setup_id)
     
+    beam_center_incident_position = cdi.get_beam_incident_3d_position(beam_run_id)
+    unc_beam_center_initial_position = cdi.get_unc_beam_incident_3d_position(beam_run_id)
+    beam_center_directional_vector = cdi.get_beam_path_vector(beam_run_id)
+    unc_beam_center_directional_vector = cdi.get_unc_beam_path_vector(beam_run_id)
+    beam_center_line_vectors = [beam_center_incident_position, beam_center_directional_vector]
+    
     # Pinpoint beam centers
     physical_3d_beam_centers = np.array([])
     unc_physical_3d_beam_centers = np.array([])
+    
     distance_of_closest_approach_list = []
+    num_of_failed_pinpoints = 0
+    
     for beam_center_pixel, unc_beam_center_pixel in zip(unrotated_beam_center_coords, unc_on_beam_center_coords):
         
         beam_center, beam_center_uncertainty, \
         distance_of_closest_approach = extract_beam_center_position(camera, tuple(beam_center_pixel), tuple(unc_beam_center_pixel), beam_center_line_vectors, 
                                                                     unc_beam_center_initial_position, unc_beam_center_directional_vector)
         
+        if np.isnan(beam_center).any() or np.isnan(beam_center_uncertainty).any():
+            print(f"Beam center or uncertainty is NaN for pixel {beam_center_pixel} with uncertainty {unc_beam_center_pixel}.")
+            print(f"Distance of closest approach for this pixel is {distance_of_closest_approach}.")
+            num_of_failed_pinpoints += 1
+            continue
+        
         physical_3d_beam_centers = np.vstack([physical_3d_beam_centers, beam_center]) if physical_3d_beam_centers.size else np.array([beam_center])
         unc_physical_3d_beam_centers = np.vstack([unc_physical_3d_beam_centers, beam_center_uncertainty]) if unc_physical_3d_beam_centers.size else np.array([beam_center_uncertainty])
         distance_of_closest_approach_list.append(distance_of_closest_approach)
     
-    print("\n\nPhysical 3D beam centers shape", physical_3d_beam_centers.shape)
-    print("\n\nUncertainty 3D beam centers shape", unc_physical_3d_beam_centers.shape)
+    print("\n\nTotal number of failed pinpoints = ", num_of_failed_pinpoints)
     
     max_uncertainty_index = np.unravel_index(np.argmax(unc_physical_3d_beam_centers, axis=None), unc_physical_3d_beam_centers.shape)
     max_uncertainty_vector = unc_physical_3d_beam_centers[max_uncertainty_index[0]]
@@ -264,9 +281,6 @@ def convert_beam_center_coords_to_penetration_depths(camera_analysis_id: int, un
     penetration_depth_vectors = np.array([(physical_beam_center_position - beam_center_incident_position) for physical_beam_center_position in physical_3d_beam_centers])
     distances_travelled_inside_scintillator = np.array([calculate_3d_euclidian_distance(penetration_depth_vector) for penetration_depth_vector in penetration_depth_vectors])
     
-    print("\n\nPenetration depth vectors shape", penetration_depth_vectors.shape)
-    print("\n\nDistances travelled inside scintillator shape", distances_travelled_inside_scintillator.shape)
-    
     # Calculate component-wise errors for depth displacement
     penetration_depth_vector_errors = np.array([
         [
@@ -276,8 +290,6 @@ def convert_beam_center_coords_to_penetration_depths(camera_analysis_id: int, un
         for unc_physical_beam_center_position in unc_physical_3d_beam_centers
     ])
     
-    print("\n\nPenetration depth vector errors shape", penetration_depth_vector_errors.shape)
-    
     # plt.plot(physical_3d_beam_centers[-1], ) # Plot of z against beam center error magnitude
 
     # Calculate uncertainties for distances traveled inside the scintillator
@@ -286,8 +298,7 @@ def convert_beam_center_coords_to_penetration_depths(camera_analysis_id: int, un
         for penetration_depth_vector, penetration_depth_vector_error, distance_travelled in zip(penetration_depth_vectors, penetration_depth_vector_errors, distances_travelled_inside_scintillator)
     ])
     
-    print("\n\nUncertainties for distances travelled inside scintillator shape", unc_distances_travelled_inside_scintillator.shape)
     print("\n\nMax uncertainty for distance travelled inside scintillator", np.max(unc_distances_travelled_inside_scintillator))
     print("\n\nMin uncertainty for distance travelled inside scintillator", np.min(unc_distances_travelled_inside_scintillator))
     
-    return distances_travelled_inside_scintillator, unc_distances_travelled_inside_scintillator
+    return distances_travelled_inside_scintillator, unc_distances_travelled_inside_scintillator, num_of_failed_pinpoints

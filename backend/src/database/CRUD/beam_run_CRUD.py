@@ -87,6 +87,42 @@ def get_unc_bragg_peak_3d_position(beam_run_id: int) -> list[float]:
             return result.unc_bragg_peak_3d_position
         else:
             raise ValueError(f"Beam run with id {beam_run_id} cannot be found.")
+        
+def get_beam_incident_3d_position(beam_run_id: int) -> list[float]:
+    with Session(engine) as session:
+        statement = select(BeamRun).where(BeamRun.id == beam_run_id)
+        result = session.exec(statement).one()
+        if result:
+            return result.beam_incident_3d_position
+        else:
+            raise ValueError(f"Beam run with id {beam_run_id} cannot be found.")
+        
+def get_unc_beam_incident_3d_position(beam_run_id: int) -> list[float]:
+    with Session(engine) as session:
+        statement = select(BeamRun).where(BeamRun.id == beam_run_id)
+        result = session.exec(statement).one()
+        if result:
+            return result.unc_beam_incident_3d_position
+        else:
+            raise ValueError(f"Beam run with id {beam_run_id} cannot be found.")
+
+def get_beam_path_vector(beam_run_id: int) -> list[float]:
+    with Session(engine) as session:
+        statement = select(BeamRun).where(BeamRun.id == beam_run_id)
+        result = session.exec(statement).one()
+        if result:
+            return result.beam_path_vector
+        else:
+            raise ValueError(f"Beam run with id {beam_run_id} cannot be found.")
+        
+def get_unc_beam_path_vector(beam_run_id: int) -> list[float]:
+    with Session(engine) as session:
+        statement = select(BeamRun).where(BeamRun.id == beam_run_id)
+        result = session.exec(statement).one()
+        if result:
+            return result.unc_beam_path_vector
+        else:
+            raise ValueError(f"Beam run with id {beam_run_id} cannot be found.")
     
 # Update
 
@@ -156,7 +192,61 @@ def update_unc_bragg_peak_3d_position(beam_run_id: int, unc_bragg_peak_3d_positi
         raise ValueError(f"No beam run found for beam_run_id={beam_run_id}.")
     except Exception as e:
         raise RuntimeError(f"An error occurred: {str(e)}")
+    
+def update_beam_incident_3d_position(beam_run_id: int, beam_incident_3d_position: list[float]):
+    try:
+        with Session(engine) as session:
+            statement = select(BeamRun).where(BeamRun.id == beam_run_id)
+            result = session.exec(statement).one()
+            result.beam_incident_3d_position = beam_incident_3d_position
+            session.commit()
+            return {"message": f"Beam run with id: {beam_run_id} updated with beam incident position: {beam_incident_3d_position}"}
+    except NoResultFound:
+        raise ValueError(f"No beam run found for beam_run_id={beam_run_id}.")
+    except Exception as e:
+        raise RuntimeError(f"An error occurred: {str(e)}")
+    
+def update_unc_beam_incident_3d_position(beam_run_id: int, unc_beam_incident_3d_position: list[float]):
+    try:
+        with Session(engine) as session:
+            statement = select(BeamRun).where(BeamRun.id == beam_run_id)
+            result = session.exec(statement).one()
+            result.unc_beam_incident_3d_position = unc_beam_incident_3d_position
+            session.commit()
+            return {"message": f"Beam run with id: {beam_run_id} updated with beam incident position uncertainty: {unc_beam_incident_3d_position}"}
+    except NoResultFound:
+        raise ValueError(f"No beam run found for beam_run_id={beam_run_id}.")
+    except Exception as e:
+        raise RuntimeError(f"An error occurred: {str(e)}")
 
+    
+def update_beam_path_vector(beam_run_id: int, beam_path_vector: list[float]):
+    try:
+        with Session(engine) as session:
+            statement = select(BeamRun).where(BeamRun.id == beam_run_id)
+            result = session.exec(statement).one()
+            result.beam_path_vector = beam_path_vector
+            session.commit()
+            return {"message": f"Beam run with id: {beam_run_id} updated with beam path vector: {beam_path_vector}"}
+    except NoResultFound:
+        raise ValueError(f"No beam run found for beam_run_id={beam_run_id}.")
+    except Exception as e:
+        raise RuntimeError(f"An error occurred: {str(e)}")
+    
+    
+def update_unc_beam_path_vector(beam_run_id: int, unc_beam_path_vector: list[float]):
+    try:
+        with Session(engine) as session:
+            statement = select(BeamRun).where(BeamRun.id == beam_run_id)
+            result = session.exec(statement).one()
+            result.unc_beam_path_vector = unc_beam_path_vector
+            session.commit()
+            return {"message": f"Beam run with id: {beam_run_id} updated with beam path vector error: {unc_beam_path_vector}"}
+    except NoResultFound:
+        raise ValueError(f"No beam run found for beam_run_id={beam_run_id}.")
+    except Exception as e:
+        raise RuntimeError(f"An error occurred: {str(e)}")
+    
 
 def update_bragg_peak_depth(beam_run_id: int, bragg_peak_depth: float):
     try:

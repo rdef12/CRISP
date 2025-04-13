@@ -326,6 +326,11 @@ class BeamRun(SQLModel, table=True):
     bragg_peak_3d_position: Optional[List[float]] = Field(default=None, sa_column=Column(ARRAY(Float)))
     unc_bragg_peak_3d_position: Optional[List[float]] = Field(default=None, sa_column=Column(ARRAY(Float)))
     
+    beam_incident_3d_position: Optional[List[float]] = Field(default=None, sa_column=Column(ARRAY(Float)))
+    unc_beam_incident_3d_position: Optional[List[float]] = Field(default=None, sa_column=Column(ARRAY(Float)))
+    beam_path_vector: Optional[List[float]] = Field(default=None, sa_column=Column(ARRAY(Float)))
+    unc_beam_path_vector: Optional[List[float]] = Field(default=None, sa_column=Column(ARRAY(Float)))
+    
     bragg_peak_depth: Optional[float] = Field(default = None)
     unc_bragg_peak_depth: Optional[float] = Field(default = None)
 
