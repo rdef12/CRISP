@@ -6,9 +6,11 @@ import {
   HoverCardContent,
   HoverCardTrigger,
 } from "@/components/ui/hover-card";
+import { useEffect } from "react";
 
 interface CreateBraggPeakDepthProps {
   onSuccess?: () => void;
+  cameraAnalysisCreated: boolean;
 }
 
 interface BraggPeakData {
@@ -16,19 +18,24 @@ interface BraggPeakData {
   [key: string]: unknown;
 }
 
-export const CreateBraggPeakDepth = ({ onSuccess }: CreateBraggPeakDepthProps) => {
+export const CreateBraggPeakDepth = ({ onSuccess, cameraAnalysisCreated }: CreateBraggPeakDepthProps) => {
   const { beamRunId } = useParams();
-  const { data: topCameras } = useGetList(
+  const { data: topCameras, refetch: refetchTopCameras } = useGetList(
     `beam-run/top/analysis-complete/${beamRunId}`
   )
-  const { data: sideCameras } = useGetList(
+  const { data: sideCameras, isPending: isPendingGetList, refetch: refetchSideCameras } = useGetList(
     `beam-run/side/analysis-complete/${beamRunId}`
   )
 
-  const { save } = useCreateController({
+  const { save, isPending: isPendingCreate } = useCreateController({
     resource: `beam-run/bragg-peak/${beamRunId}`,
     redirect: false
   })
+
+  useEffect(() => {
+    refetchTopCameras();
+    refetchSideCameras();
+  }, [cameraAnalysisCreated, refetchTopCameras, refetchSideCameras]);
 
   const handleSubmit = async (data: BraggPeakData) => {
     if (!save) return;
@@ -41,13 +48,13 @@ export const CreateBraggPeakDepth = ({ onSuccess }: CreateBraggPeakDepthProps) =
   };
 
   const isDisabled = !topCameras?.length || !sideCameras?.length;
-
+  if (isPendingGetList || isPendingCreate) return null;
   return (
     <Form onSubmit={handleSubmit}>
       <HoverCard>
         <HoverCardTrigger asChild>
-          <div>
-            <Button disabled={isDisabled}>Generate Bragg peak position</Button>
+          <div className="w-full">
+            <Button disabled={isDisabled} className="w-full">Generate Bragg peak position</Button>
           </div>
         </HoverCardTrigger>
         {isDisabled && (

@@ -2,13 +2,19 @@ import { CreateCameraAnalysis } from "./singleCameraAnalysis/CreateCameraAnalysi
 import { ShowAnalyses } from "./singleCameraAnalysis/ShowAnalyses"
 import { useState } from "react"
 
-export const ShowCameraWithData = () => {
+interface ShowCameraWithDataProps {
+  onCameraAnalysisCreated: () => void;
+  onAnalysisDeleted?: () => void;
+}
+
+export const ShowCameraWithData = ({ onCameraAnalysisCreated, onAnalysisDeleted }: ShowCameraWithDataProps) => {
   const [refreshTrigger, setRefreshTrigger] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
 
   const handleAnalysisCreated = () => {
     setRefreshTrigger(prev => !prev);
     setIsCreating(false);
+    onCameraAnalysisCreated();
   };
 
   const handleAnalysisCreating = () => {
@@ -21,7 +27,11 @@ export const ShowCameraWithData = () => {
         onAnalysisCreated={handleAnalysisCreated} 
         onAnalysisCreating={handleAnalysisCreating}
       />
-      <ShowAnalyses refreshTrigger={refreshTrigger} isCreating={isCreating} />
+      <ShowAnalyses 
+        refreshTrigger={refreshTrigger} 
+        isCreating={isCreating} 
+        onAnalysisDeleted={onAnalysisDeleted}
+      />
     </div>
   )
 }

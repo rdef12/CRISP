@@ -34,7 +34,14 @@ def get_beam_runs(experiment_id: int, response: Response) -> list[BeamRun]:
         results = results if results else []
         response.headers["Content-Range"] = str(len(results))
         return results
-    
+
+@router.get("/just-one/{beam_run_id}")
+def get_beam_run(beam_run_id: int) -> BeamRun:
+    with Session(engine) as session:
+        beam_run_statement = select(BeamRun).where(BeamRun.id == beam_run_id)
+        beam_run = session.exec(beam_run_statement).one()
+        return beam_run
+
 # @router.post("/real/{experiment_id}")
 # def add_real_beam_run(experiment_id: int, beam_run_body: rb.CreateBeamRun):
 #     beam_run_number = beam_run_body.beam_run_number

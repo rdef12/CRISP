@@ -217,7 +217,17 @@ const NumberOfImagesButton = ({ onSave, refreshTrigger }: SettingsButtonProps) =
   );
 };
 
-export const ListCamerasInExperimentReal = ({ dataTaken } : { dataTaken: boolean }) => {
+interface ListCamerasInExperimentRealProps {
+  dataTaken: boolean;
+  onCameraAnalysisCreated: () => void;
+  onAnalysisDeleted?: () => void;
+}
+
+export const ListCamerasInExperimentReal = ({ 
+  dataTaken, 
+  onCameraAnalysisCreated,
+  onAnalysisDeleted 
+}: ListCamerasInExperimentRealProps) => {
   const { experimentId } = useParams();
   const [refreshTrigger, setRefreshTrigger] = useState(false);
   const { isPending, resource, record } = useShowController({ 
@@ -257,7 +267,10 @@ export const ListCamerasInExperimentReal = ({ dataTaken } : { dataTaken: boolean
       <Datagrid 
         data={record.cameras} 
         bulkActionButtons={false}
-        expand={<ShowCameraWithData />}
+        expand={<ShowCameraWithData 
+          onCameraAnalysisCreated={onCameraAnalysisCreated} 
+          onAnalysisDeleted={onAnalysisDeleted}
+        />}
       >
         <TextField source="username" />
         <TextField source="ip_address" />
