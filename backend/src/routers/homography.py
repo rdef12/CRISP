@@ -585,21 +585,21 @@ def upload_averaged_image_api():
     # num_of_ar_images_in_average = 78
     
     # Adding mock images to test if cdi.get_num_of_successfully_captured_images_by_camera_settings_link_id() is working
-    mock_bytestring = pickle.dumps("lol") #TODO ROBIN HASHED THIS, SORRY IF HE FORGOT TO ADD IT BACK
-    for i in range(num_of_ar_images_in_average):
-        cdi.add_photo(camera_settings_link_id=side_AR_camera_settings_link_id, photo=mock_bytestring)
-    for i in range(num_of_hq_images_in_average):
-        cdi.add_photo(camera_settings_link_id=top_HQ_camera_settings_link_id, photo=mock_bytestring)
+    # mock_bytestring = pickle.dumps("lol") #TODO ROBIN HASHED THIS, SORRY IF HE FORGOT TO ADD IT BACK
+    # for i in range(num_of_ar_images_in_average):
+    #     cdi.add_photo(camera_settings_link_id=side_AR_camera_settings_link_id, photo=mock_bytestring)
+    # for i in range(num_of_hq_images_in_average):
+    #     cdi.add_photo(camera_settings_link_id=top_HQ_camera_settings_link_id, photo=mock_bytestring)
     
-    # FLOAT-16 PICKLED AVERAGED NUMPY ARRAYS
-    with open("/code/src/beam_averaged_images/130_mev_A1_averaged_image_float16.pkl", "rb") as file:
-        pickled_side_AR__average_image = file.read()
-    cdi.update_average_image(side_AR_analysis_id, pickled_side_AR__average_image)
+    # # FLOAT-16 PICKLED AVERAGED NUMPY ARRAYS
+    # with open("/code/src/beam_averaged_images/130_mev_A1_averaged_image_float16.pkl", "rb") as file:
+    #     pickled_side_AR__average_image = file.read()
+    # cdi.update_average_image(side_AR_analysis_id, pickled_side_AR__average_image)
     
-    with open("/code/src/beam_averaged_images/130_mev_HQ2_averaged_image_float16.pkl", "rb") as file:
-        pickled_top_HQ_average_image = file.read()
-    cdi.update_average_image(top_HQ_analysis_id, pickled_top_HQ_average_image)
-    # # #TODO THIS IS THE END OF HIS COMMENTING
+    # with open("/code/src/beam_averaged_images/130_mev_HQ2_averaged_image_float16.pkl", "rb") as file:
+    #     pickled_top_HQ_average_image = file.read()
+    # cdi.update_average_image(top_HQ_analysis_id, pickled_top_HQ_average_image)
+    # # # #TODO THIS IS THE END OF HIS COMMENTING
     return None
 
 
