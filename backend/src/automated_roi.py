@@ -2,7 +2,6 @@ import cv2 as cv
 import numpy as np
 import matplotlib.pyplot as plt
 from src.edge_detection_functions import find_beam_contour_extremes
-import base64
 import io
 
 # SIDE_SCINTILLATOR_HORIZONTAL_ROI = [875, 3500]
@@ -18,9 +17,9 @@ def get_scintillator_pixel_dimensions(scintillator_horizontal_roi, scintillator_
     return horizontal_pixel_width, vertical_pixel_width
 
     
-def roi_determination_inside_scintillator(image, scintillator_horizontal_roi, scintillator_vertical_roi,
+def roi_determination_inside_scintillator(camera_analysis_id, image, scintillator_horizontal_roi, scintillator_vertical_roi,
                                           use_edge_detection: bool=True, verbose_output: bool=False,
-                                          show_plots: bool=False, fraction: float=0.15):
+                                          show_plots: bool=False, fraction: float=0.15, save_to_database: bool=False):
     """
     NOTE - Greyscale image expected as input. In our case, this is from the blue channel of the
     original averaged image.
@@ -47,7 +46,8 @@ def roi_determination_inside_scintillator(image, scintillator_horizontal_roi, sc
     binary_image = (mask.astype(np.uint8)) * 255
     
     if use_edge_detection:
-        x_bounds, y_bounds = find_beam_contour_extremes(binary_image, horizontal_pixel_width, vertical_pixel_width, show_image=show_plots)
+        x_bounds, y_bounds = find_beam_contour_extremes(camera_analysis_id, binary_image, horizontal_pixel_width, vertical_pixel_width, show_image=show_plots,
+                                                        save_to_database=save_to_database)
     else:
         columns, rows = np.where(mask)
         x_bounds = np.array([rows.min(), rows.max()])
@@ -85,8 +85,8 @@ def get_image_with_roi(image, horizontal_roi, vertical_roi, show_plot: bool=Fals
     buf.seek(0)  # Reset the buffer's position to the beginning - else will read from the end
     return buf.read()
 
-def get_automated_roi(image, scintillator_horizontal_roi, scintillator_vertical_roi, show_images: bool=False,
-                      fraction: float=0.15):
+def get_automated_roi(camera_analysis_id, image, scintillator_horizontal_roi, scintillator_vertical_roi, show_images: bool=False,
+                      fraction: float=0.15, save_to_database: bool=False):
     """
     Expects an image with a single colour channel inputted (includes greyscale)
     """
@@ -100,8 +100,8 @@ def get_automated_roi(image, scintillator_horizontal_roi, scintillator_vertical_
         # print("\n\nScintillator vertical ROI: ", scintillator_vertical_roi)
         scintillator_region = image[scintillator_vertical_roi[0]:scintillator_vertical_roi[-1], scintillator_horizontal_roi[0]:scintillator_horizontal_roi[-1]]
         
-        x_bounds, y_bounds = roi_determination_inside_scintillator(scintillator_region, scintillator_horizontal_roi, scintillator_vertical_roi, 
-                                                                show_plots=show_images, fraction=fraction)
+        x_bounds, y_bounds = roi_determination_inside_scintillator(camera_analysis_id, scintillator_region, scintillator_horizontal_roi, scintillator_vertical_roi, 
+                                                                   show_plots=show_images, fraction=fraction, save_to_database=save_to_database)
         # print("\n\nx bounds: ", x_bounds)
         # print("\n\ny bounds: ", y_bounds)
         

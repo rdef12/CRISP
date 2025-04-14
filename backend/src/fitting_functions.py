@@ -472,6 +472,14 @@ def overlay_bragg_peak_coord(camera_analysis_id, averaged_image, bragg_peak_coor
     image_with_bragg_peak = cv.cvtColor(image_with_bragg_peak, cv.COLOR_GRAY2BGR)
     image_with_bragg_peak = cv.circle(image_with_bragg_peak, bragg_peak_coord, 10, (0, 0, 255), -1)  # args = radius, colour, thickness
     
+    text = "Overlayed Bragg peak position"
+    font = cv.FONT_HERSHEY_SIMPLEX
+    font_scale = 3
+    color = (0, 0, 255)
+    thickness = 2
+    position = (50, 50)  # x=10, y=30 pixels from top-left
+    image = cv.putText(image_with_bragg_peak, text, position, font, font_scale, color, thickness, cv.LINE_AA)
+    
     _, image_bytes = cv.imencode('.png', image_with_bragg_peak)  # Encode the image as a PNG
     cdi.add_camera_analysis_plot(camera_analysis_id, f"overlayed_bragg_peak_coord", image_bytes, "png",
                                  description=f"Overlayed Bragg peak coordinate identified onto averaged image")
@@ -484,6 +492,14 @@ def overlay_beam_center_coords(camera_analysis_id, averaged_image, beam_center_c
     for coord in beam_center_coords:
         coord = tuple(map(int, coord))
         image_with_beam_centers_overlayed = cv.circle(image_with_beam_centers_overlayed, coord, 3, (0, 0, 255), -1)
+        
+    text = "Overlayed beam centers"
+    font = cv.FONT_HERSHEY_SIMPLEX
+    font_scale = 3
+    color = (0, 0, 255)
+    thickness = 2
+    position = (50, 50)  # x=10, y=30 pixels from top-left
+    image = cv.putText(image_with_beam_centers_overlayed, text, position, font, font_scale, color, thickness, cv.LINE_AA)
 
     _, image_bytes = cv.imencode('.png', image_with_beam_centers_overlayed)  # Encode the image as a PNG
     cdi.add_camera_analysis_plot(camera_analysis_id, f"overlayed_beam_center_coords", image_bytes, "png",

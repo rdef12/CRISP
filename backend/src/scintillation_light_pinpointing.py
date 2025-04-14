@@ -228,15 +228,20 @@ def overlay_failed_pinpoints_on_image(camera_analysis_id, failed_beam_center_coo
     """
     image = cdi.get_average_image(camera_analysis_id).astype(np.uint8)
     image = cv.cvtColor(image, cv.COLOR_GRAY2BGR)
-    print("B")
     for coord in failed_beam_center_coords:
         print(coord)
         coord = tuple(map(int, coord))
         image = cv.circle(image, coord, 3, (128, 0, 128), -1) # purple circles
-    print("C")
+        
+    text = "Overlayed pinpoint failures"
+    font = cv.FONT_HERSHEY_SIMPLEX
+    font_scale = 3
+    color = (128, 0, 128)
+    thickness = 2
+    position = (50, 50)  # x=10, y=30 pixels from top-left
+    image = cv.putText(image, text, position, font, font_scale, color, thickness, cv.LINE_AA)
 
     _, image_bytes = cv.imencode('.png', image)  # Encode the image as a PNG
-    print("D")
     cdi.add_camera_analysis_plot(camera_analysis_id, f"overlayed_failed_pinpoint_coords", image_bytes, "png",
                                  description=f"Overlayed positions of beam center coords which had their pinpointing fail")
     return image_bytes

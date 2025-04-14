@@ -1,6 +1,8 @@
 import cv2
 import numpy as np
 import matplotlib.pyplot as plt
+from src.database.CRUD import CRISP_database_interaction as cdi
+import io
 
 
 def calculate_threshold(img):
@@ -52,7 +54,8 @@ def auto_digital_gain_calculation(image):
   return digital_gain
 
 
-def find_beam_contour_extremes(image, horizontal_pixel_width, vertical_pixel_width, show_image: bool=False):
+def find_beam_contour_extremes(camera_analysis_id, image, horizontal_pixel_width, vertical_pixel_width, show_image: bool=False,
+                               save_to_database: bool=False):
     """
     Binary/greyscale image assumed as input. In our case, it is for the blue channel of the image.
     """
@@ -107,7 +110,7 @@ def find_beam_contour_extremes(image, horizontal_pixel_width, vertical_pixel_wid
     # epsilon = 0.5 * longest_perimeter # epsilon = how close the approximation is to the original contour
     # longest_contour = cv2.approxPolyDP(longest_contour, epsilon, True) # smoothened out
             
-    if show_image:
+    if show_image or save_to_database:
       plt.imshow(image)
       plt.title("Valid contours")
       for contour in valid_contours.values():
@@ -117,7 +120,18 @@ def find_beam_contour_extremes(image, horizontal_pixel_width, vertical_pixel_wid
           continue
         plt.scatter(coords[:, 0], coords[:, 1], s=1, color='red')
       plt.legend()
-      plt.show()
+      if show_image:
+        plt.show()
+        plt.close()
+      elif save_to_database:
+        buf = io.BytesIO()  # Create an in-memory binary stream (buffer)
+        plt.savefig(buf, format="svg", dpi=600)  # Save the current plot to the buffer
+        plt.close()
+        buf.seek(0)  # Reset the buffer's position to the beginning - else will read from the end
+        plot_bytes = buf.read()
+        cdi.add_camera_analysis_plot(camera_analysis_id, f"beam_contour_plot", plot_bytes, "svg",
+                                     description=f"Plot showing the identified beam contours extracted by edge detection")
+      
     
     # if longest_contour is None:
     #     raise Exception("No valid beam contour found!")
