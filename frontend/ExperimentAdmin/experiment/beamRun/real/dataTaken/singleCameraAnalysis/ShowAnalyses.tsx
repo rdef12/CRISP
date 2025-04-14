@@ -36,6 +36,7 @@ export interface Analyses {
 interface ShowAnalysesProps {
   refreshTrigger: boolean;
   isCreating: boolean;
+  onAnalysisDeleted?: () => void;
 }
 
 export const DeleteButton = ({ record, onDelete }: { record: RaRecord | undefined, onDelete: () => void }) => {
@@ -84,7 +85,7 @@ export const DeleteButton = ({ record, onDelete }: { record: RaRecord | undefine
   );
 }
 
-export const ShowAnalyses = ({ refreshTrigger, isCreating }: ShowAnalysesProps) => {
+export const ShowAnalyses = ({ refreshTrigger, isCreating, onAnalysisDeleted }: ShowAnalysesProps) => {
   const [imageUrl, setImageUrl] = useState<string>("");
   const [showPlotsDialog, setShowPlotsDialog] = useState(false);
 
@@ -176,6 +177,11 @@ export const ShowAnalyses = ({ refreshTrigger, isCreating }: ShowAnalysesProps) 
                       cameraAnalysis?.colourChannel && 
                       hasAllResults;
 
+  const handleDelete = () => {
+    refetch();
+    onAnalysisDeleted?.();
+  };
+
   return (
     <div className="space-y-4">
       <div className="w-full">
@@ -240,7 +246,7 @@ export const ShowAnalyses = ({ refreshTrigger, isCreating }: ShowAnalysesProps) 
       </div>
       
       <div>
-        <DeleteButton record={record} onDelete={refetch} />
+        <DeleteButton record={record} onDelete={handleDelete} />
       </div>
     </div>
   )   

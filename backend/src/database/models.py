@@ -44,7 +44,6 @@ class Setup(SQLModel, table=True):
     block_z_dimension_unc: Optional[float]
     block_refractive_index: Optional[float]
     block_refractive_index_unc: Optional[float]
-    # e_log_entry: Optional[bytes] #How is this going to be stored, surely theres a better way than just a string?
 
     experiments: list["Experiment"] = Relationship(back_populates="setup")
     camera_links: list["CameraSetupLink"] = Relationship(back_populates="setup")
@@ -130,8 +129,6 @@ class CameraSetupLink(SQLModel, table=True):
     distortion_calibration_camera_settings_link: Optional[int] = Field(default=None, foreign_key="camerasettingslink.id")
 # Others
     lens_position: Optional[float] = Field(default=None)
-    # e_log_entry: #How is this going to be stored, surely theres a better way than just a string?
-
 
 
 class Experiment(SQLModel, table=True):
@@ -143,6 +140,7 @@ class Experiment(SQLModel, table=True):
     setup: Setup = Relationship(back_populates="experiments")
 
     beam_runs: list["BeamRun"] = Relationship(back_populates="experiment")
+    e_log_entry: Optional[bytes] = Field(default=None, sa_column=PickleType)
 
 
 # class BeamRunNumber(SQLModel, table=True):
@@ -336,6 +334,8 @@ class BeamRun(SQLModel, table=True):
 
     experiment_id: int = Field(default=None, foreign_key="experiment.id")
     experiment: Experiment = Relationship(back_populates="beam_runs")
+    e_log_entry: Optional[bytes] = Field(default=None, sa_column=PickleType)
+
 
     # camera_settings_link_id: Optional[int] = Field(default=None, foreign_key="camerasettingslink.id")
     # camera_settings_link: Optional["CameraSettingsLink"] = Relationship(back_populates="beam_runs")

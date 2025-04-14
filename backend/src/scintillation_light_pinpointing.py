@@ -157,17 +157,17 @@ def build_weighted_directional_vector_of_beam_center(side_camera_analysis_id_lis
         except Exception as e:
             print(f"Error when retrieving beam angles for side camera {side_camera_analysis_id} and top camera {top_camera_analysis_id}: {e}")
     
-    if num_pairings == 1:
-        beam_center_incident_position, unc_beam_center_incident_position, \
+    # if num_pairings == 1:
+    #     beam_center_incident_position, unc_beam_center_incident_position, \
+    #     beam_direction_vector, unc_beam_directional_vector = build_directional_vector_of_beam_center_for_beam_run(beam_run_id, weighted_side_cam_beam_angle, unc_weighted_side_cam_beam_angle,
+    #                                                                                                               weighted_top_cam_beam_angle, unc_weighted_top_cam_beam_angle)
+    # else:
+    weighted_side_cam_beam_angle, unc_weighted_side_cam_beam_angle = compute_weighted_mean_of_array(side_cam_beam_angle_array, unc_side_cam_beam_angle_array)
+    weighted_top_cam_beam_angle, unc_weighted_top_cam_beam_angle = compute_weighted_mean_of_array(top_cam_beam_angle_array, unc_top_cam_beam_angle_array)
+    
+    # Beam vector constructed using weighted angles seen by side and top cameras
+    beam_center_incident_position, unc_beam_center_incident_position, \
         beam_direction_vector, unc_beam_directional_vector = build_directional_vector_of_beam_center_for_beam_run(beam_run_id, weighted_side_cam_beam_angle, unc_weighted_side_cam_beam_angle,
-                                                                                                                  weighted_top_cam_beam_angle, unc_weighted_top_cam_beam_angle)
-    else:
-        weighted_side_cam_beam_angle, unc_weighted_side_cam_beam_angle = compute_weighted_mean_of_array(side_cam_beam_angle_array, unc_side_cam_beam_angle_array)
-        weighted_top_cam_beam_angle, unc_weighted_top_cam_beam_angle = compute_weighted_mean_of_array(top_cam_beam_angle_array, unc_top_cam_beam_angle_array)
-        
-        # Beam vector constructed using weighted angles seen by side and top cameras
-        beam_center_incident_position, unc_beam_center_incident_position, \
-            beam_direction_vector, unc_beam_directional_vector = build_directional_vector_of_beam_center_for_beam_run(beam_run_id, weighted_side_cam_beam_angle, unc_weighted_side_cam_beam_angle,
                                                                                                                     weighted_top_cam_beam_angle, unc_weighted_top_cam_beam_angle)
     
     cdi.update_beam_incident_3d_position(beam_run_id, [float(x) for x in beam_center_incident_position.flatten()])

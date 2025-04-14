@@ -1,32 +1,43 @@
 import { useParams } from "react-router-dom";
 import { useShowController } from "react-admin";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
 
-export const ShowBraggPeakDepth = () => {
+interface ShowBraggPeakDepthProps {
+  isCreating?: boolean;
+}
+
+export const ShowBraggPeakDepth = ({ isCreating }: ShowBraggPeakDepthProps) => {
   const { beamRunId } = useParams();
   const { record, isPending, error } = useShowController({
     resource: `beam-run/bragg-peak`,
     id: beamRunId
   });
 
-  if (isPending) {
+  console.log("ShowBraggPeakDepth - isCreating:", isCreating, "isPending:", isPending);
+
+  if (isPending || isCreating) {
+    console.log("Showing loading spinner");
     return (
-      <Card className="w-[400px]">
-        <CardHeader>
-          <Skeleton className="h-4 w-[100px]" />
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-2">
-            {[...Array(4)].map((_, i) => (
-              <Skeleton key={i} className="h-4 w-[300px]" />
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+      <div className="h-full flex items-center justify-center">
+        <div style={{ 
+          width: '150px',
+          height: '150px',
+          border: '4px solid #E5E7EB',
+          borderRadius: '50%',
+          animation: 'spin 1s linear infinite',
+          borderTopColor: '#4B5563',
+          borderRightColor: 'transparent',
+          borderBottomColor: 'transparent',
+          borderLeftColor: 'transparent'
+        }}></div>
+        <style jsx>{`
+          @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
+        `}</style>
+      </div>
     );
   }
-
   if (error) {
     return <div className="text-red-500">Error loading data</div>;
   }
@@ -42,30 +53,23 @@ export const ShowBraggPeakDepth = () => {
   };
 
   return (
-    <Card className="w-[400px]">
-      <CardHeader>
-        <CardTitle>Bragg Peak Measurements</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="space-y-2">
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">X Position:</span>
-            <span className="font-mono">{formatValue(record.bragg_peak_x, record.bragg_peak_x_unc) ?? "-"}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">Y Position:</span>
-            <span className="font-mono">{formatValue(record.bragg_peak_y, record.bragg_peak_y_unc) ?? "-"}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">Z Position:</span>
-            <span className="font-mono">{formatValue(record.bragg_peak_z, record.bragg_peak_z_unc) ?? "-"}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">Depth:</span>
-            <span className="font-mono">{formatValue(record.bragg_peak_depth, record.bragg_peak_depth_unc) ?? "-"}</span>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
+    <div className="space-y-2">
+      <div className="flex justify-between">
+        <span className="text-muted-foreground">X Position:</span>
+        <span className="font-mono">{formatValue(record.bragg_peak_x, record.bragg_peak_x_unc) ?? "-"}</span>
+      </div>
+      <div className="flex justify-between">
+        <span className="text-muted-foreground">Y Position:</span>
+        <span className="font-mono">{formatValue(record.bragg_peak_y, record.bragg_peak_y_unc) ?? "-"}</span>
+      </div>
+      <div className="flex justify-between">
+        <span className="text-muted-foreground">Z Position:</span>
+        <span className="font-mono">{formatValue(record.bragg_peak_z, record.bragg_peak_z_unc) ?? "-"}</span>
+      </div>
+      <div className="flex justify-between">
+        <span className="text-muted-foreground">Depth:</span>
+        <span className="font-mono">{formatValue(record.bragg_peak_depth, record.bragg_peak_depth_unc) ?? "-"}</span>
+      </div>
+    </div>
   );
 };

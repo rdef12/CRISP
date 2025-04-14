@@ -2,6 +2,7 @@ import { Button } from "@/components/ui/button"
 import { Form, useCreateController } from "react-admin";
 import { useParams } from "react-router-dom";
 import { FlagDisconnectedCameras } from "./FlagDisconnectedCameras";
+import { Breadcrumbs } from "@/ExperimentAdmin/components/Breadcrumbs";
 
 export const TakeRealData = () => {
   const { experimentId, beamRunId } = useParams();
@@ -13,6 +14,7 @@ export const TakeRealData = () => {
   if (saving) return (<h1>Taking data</h1>);
   return (
     <div>
+    <Breadcrumbs />
     <Form onSubmit={save} >
       <Button> Start data collection </Button>
     </Form>

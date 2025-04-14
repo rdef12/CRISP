@@ -1,6 +1,8 @@
 import { Button } from "@/components/ui/button"
 import { useParams } from "react-router-dom";
 import { Form, useCreateController } from "react-admin"
+import { FlagDisconnectedCameras } from "../../real/takeData/FlagDisconnectedCameras";
+import { Breadcrumbs } from "@/ExperimentAdmin/components/Breadcrumbs";
 
 // const LoadingBar = ({ onComplete }) => {
 //   const [progress, setProgress] = useState(0);
@@ -74,11 +76,14 @@ export const TakeTestData = () => {
   if (isPending) return null;
   if (saving) return (<h1>Taking data</h1>);
   return (
-    <Form onSubmit={save}>
-      <Button>
-        Start data collection
-      </Button>
-    </Form>
-
+    <div>
+      <Breadcrumbs />
+      <Form onSubmit={save}>
+        <Button>
+          Start data collection
+        </Button>
+      </Form>
+      <FlagDisconnectedCameras />
+    </div>
   )
 }
