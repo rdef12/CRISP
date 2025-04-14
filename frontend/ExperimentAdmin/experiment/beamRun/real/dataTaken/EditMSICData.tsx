@@ -9,7 +9,7 @@ interface EditMSICDataProps {
 
 export const EditMSICData = ({ onClose }: EditMSICDataProps) => {
   const { beamRunId } = useParams();
-  const { isPending, save } = useEditController({
+  const { record, isPending, save } = useEditController({
     resource: `beam-run/MSIC`,
     id: beamRunId,
     redirect: false,
@@ -31,12 +31,12 @@ export const EditMSICData = ({ onClose }: EditMSICDataProps) => {
         <DialogHeader>
           <DialogTitle>Edit MSIC Data</DialogTitle>
         </DialogHeader>
-        <Form onSubmit={handleSubmit} sanitizeEmptyValues>
+        <Form onSubmit={handleSubmit} sanitizeEmptyValues defaultValues={record}>
           <div className="space-y-4">
-            <NumberInput source="MSIC_energy" />
-            <NumberInput source="MSIC_energy_uncertainty" />
-            {/* <NumberInput source="MSIC_beam_current" />
-            <NumberInput source="MSIC_beam_current_unc" /> */}
+            <NumberInput source="MSIC_energy" label="Energy (MeV)" />
+            <NumberInput source="MSIC_energy_uncertainty" label="Energy Uncertainty (MeV)" />
+            <NumberInput source="MSIC_current" label="Beam Current (nA)" />
+            <NumberInput source="MSIC_current_uncertainty" label="Beam Current Uncertainty (nA)" />
             <div className="flex justify-end">
               <Button type="submit">Save</Button>
             </div>
