@@ -1,6 +1,11 @@
 import { useParams } from "react-router-dom";
 import { Form, useCreateController, useGetList } from "react-admin";
 import { Button } from "@/components/ui/button";
+import {
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+} from "@/components/ui/hover-card";
 
 interface CreateBraggPeakDepthProps {
   onSuccess?: () => void;
@@ -39,7 +44,23 @@ export const CreateBraggPeakDepth = ({ onSuccess }: CreateBraggPeakDepthProps) =
 
   return (
     <Form onSubmit={handleSubmit}>
-      <Button disabled={isDisabled}> Generate bragg peak position </Button>     
+      <HoverCard>
+        <HoverCardTrigger asChild>
+          <div>
+            <Button disabled={isDisabled}>Generate Bragg peak position</Button>
+          </div>
+        </HoverCardTrigger>
+        {isDisabled && (
+          <HoverCardContent className="w-64">
+            <div className="space-y-1">
+              <h4 className="text-sm font-semibold">Requirements not met</h4>
+              <p className="text-sm">
+                You must complete at least one single camera analysis for both a side and top camera before being able to generate the Bragg peak position.
+              </p>
+            </div>
+          </HoverCardContent>
+        )}
+      </HoverCard>
     </Form>
   )
 }

@@ -4,7 +4,9 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 import pytz
 from sqlmodel import Session, select
-from src.scintillation_light_pinpointing import compute_weighted_bragg_peak_depth, pinpoint_bragg_peak
+from src.fitting_functions import plot_physical_units_ODR_bortfeld
+from src.single_camera_analysis import get_beam_center_coords
+from src.scintillation_light_pinpointing import compute_weighted_bragg_peak_depth, convert_beam_center_coords_to_penetration_depths, pinpoint_bragg_peak
 from src.database.models import BeamRun, CameraSettingsLink, CameraSetupLink, Experiment, Photo, Settings, Setup
 from src.database.database import engine
 from sqlalchemy.exc import NoResultFound
@@ -399,8 +401,8 @@ def get_MSIC_data(beam_run_id: int):
         return rb.GetMSICDataResponse(id=beam_run_id,
                                       MSIC_energy=beam_run.MSIC_beam_energy,
                                       MSIC_energy_uncertainty=beam_run.MSIC_beam_energy_unc,
-                                    #   MSIC_current=beam_run.MSIC_beam_current,
-                                    #   MSIC_current_uncertainty=beam_run.MSIC_beam_current_unc
+                                      MSIC_current=beam_run.MSIC_beam_current,
+                                      MSIC_current_uncertainty=beam_run.MSIC_beam_current_unc
                                       )
 
 @router.put("/MSIC/{beam_run_id}")
@@ -411,10 +413,10 @@ def update_MSIC_data(beam_run_id: int, payload: rb.PostMSICDataPayload):
             beam_run.MSIC_beam_energy = payload.MSIC_energy
         if payload.MSIC_energy_uncertainty is not None:
             beam_run.MSIC_beam_energy_unc = payload.MSIC_energy_uncertainty
-        # if payload.MSIC_current is not None:
-        #     beam_run.MSIC_beam_current = payload.MSIC_current
-        # if payload.MSIC_current_uncertainty is not None:
-        #     beam_run.MSIC_beam_current_unc = payload.MSIC_current_uncertainty
+        if payload.MSIC_current is not None:
+            beam_run.MSIC_beam_current = payload.MSIC_current
+        if payload.MSIC_current_uncertainty is not None:
+            beam_run.MSIC_beam_current_unc = payload.MSIC_current_uncertainty
         session.commit()
         return JSONResponse(content={"id": beam_run_id})
 
@@ -428,6 +430,8 @@ def get_side_cameras_with_complete_analysis(beam_run_id: int, position: str, res
         camera_settings_list = side_camera_settings_list
     elif position == "top":
         camera_settings_list = top_camera_settings_list
+    elif position == "both":
+        camera_settings_list = side_camera_settings_list + top_camera_settings_list
     else:
         raise HTTPException(status_code=400, detail="Position must be 'top' or 'side'.")
     camera_list_response = []
@@ -489,3 +493,20 @@ def get_bragg_peak(beam_run_id: int):
                                        bragg_peak_z_unc=bragg_peak_z_unc,
                                        bragg_peak_depth=beam_run.bragg_peak_depth,
                                        bragg_peak_depth_unc=beam_run.unc_bragg_peak_depth)
+
+
+# @router.post("/range/{beam_run_id}")
+# def do_range_analysis(beam_run_id: int):
+#     side_cam_beam_center_coords, unc_side_cam_beam_center_coords, \
+#     total_brightness_along_vertical_roi, unc_total_brightness_along_vertical_roi = get_beam_center_coords(beam_run_id, side_camera_analysis_id)
+    
+#     distances_travelled_inside_scintillator, \
+#     unc_distances_travelled_inside_scintillator = convert_beam_center_coords_to_penetration_depths(side_camera_analysis_id,
+#                                                                                                 side_cam_beam_center_coords,
+#                                                                                                 unc_side_cam_beam_center_coords,
+#                                                                                                 [beam_center_incident_position, beam_direction_vector],
+#                                                                                                 [unc_beam_center_incident_position, unc_beam_direction_vector])
+    
+#     plot_physical_units_ODR_bortfeld(side_camera_analysis_id, distances_travelled_inside_scintillator, unc_distances_travelled_inside_scintillator, 
+#                                     total_brightness_along_vertical_roi, unc_total_brightness_along_vertical_roi)
+        
