@@ -113,3 +113,15 @@ class GetBraggPeakResponse(BaseModel):
     bragg_peak_z_unc: Optional[float] = None
     bragg_peak_depth: Optional[float] = None
     bragg_peak_depth_unc: Optional[float] = None
+
+class GetBeamPathParametersResponse(BaseModel):
+    id: int
+    beam_incident_3d_position: Optional[list[float]] = None
+    unc_beam_incident_3d_position: Optional[list[float]] = None
+    beam_path_vector: Optional[list[float]] = None
+    unc_beam_path_vector: Optional[list[float]] = None
+
+class GetRangeResponse(BaseModel):
+    id: int
+    range: Optional[float] = None
+    range_uncertainty: Optional[float] = None

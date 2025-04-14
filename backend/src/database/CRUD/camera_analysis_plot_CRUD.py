@@ -106,3 +106,31 @@ def delete_physical_bortfeld_plots_by_camera_analysis_id(camera_analysis_id: int
         session.commit()
     return {"message": f"All physical Bortfeld plots deleted for camera analysis with id {camera_analysis_id}."}
     
+def delete_overlayed_beam_centers_image_by_camera_analysis_id(camera_analysis_id: int):
+    with Session(engine) as session:
+        statement = select(CameraAnalysisPlot).where(
+            CameraAnalysisPlot.camera_analysis_id == camera_analysis_id,
+            CameraAnalysisPlot.plot_type == "overlayed_beam_center_coords"
+        )
+        results = session.exec(statement).all()
+        if not results:
+            return {"message": f"No overlayed beam center images found for camera analysis with id {camera_analysis_id}."}
+        for result in results:
+            session.delete(result)
+        session.commit()
+    return {"message": f"All overlayed beam center images deleted for camera analysis with id {camera_analysis_id}."}
+
+
+def delete_failed_pinpoints_image_by_camera_analysis_id(camera_analysis_id: int):
+    with Session(engine) as session:
+        statement = select(CameraAnalysisPlot).where(
+            CameraAnalysisPlot.camera_analysis_id == camera_analysis_id,
+            CameraAnalysisPlot.plot_type == "overlayed_failed_pinpoint_coords"
+        )
+        results = session.exec(statement).all()
+        if not results:
+            return {"message": f"No failed pinpoint images found for camera analysis with id {camera_analysis_id}."}
+        for result in results:
+            session.delete(result)
+        session.commit()
+    return {"message": f"All failed pinpoint images deleted for camera analysis with id {camera_analysis_id}."}

@@ -242,7 +242,8 @@ def update_is_optimal(photo_id: int):
                                                      .join(Experiment)
                                                      .where(BeamRun.ESS_beam_energy == beam_run.ESS_beam_energy)
                                                      .where(BeamRun.beam_current == beam_run.beam_current)
-                                                     .where(Experiment.id == beam_run.experiment_id))
+                                                     .where(Experiment.id == beam_run.experiment_id)
+                                                     .where(CameraSettingsLink.camera_id == optimal_camera_settings.camera_id))
             all_related_camera_settings = session.exec(all_related_camera_settings_statement).all()
             for camera_settings in all_related_camera_settings:
                 camera_settings.is_optimal = False

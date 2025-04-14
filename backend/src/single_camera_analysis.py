@@ -146,8 +146,8 @@ def source_params_from_database(camera_analysis_id: int):
     
     image_beam_direction = cdi.get_image_beam_direction(camera_id, setup_id)
     colour_channel = cdi.get_colour_channel(camera_analysis_id)
-    scintillator_edges = [cdi.get_horizontal_scintillator_limits(camera_id, setup_id),
-                          cdi.get_vertical_scintillator_limits(camera_id, setup_id)] # [horizontal_roi_dimensions, vertical_roi_dimensions]
+    scintillator_edges = np.array([cdi.get_horizontal_scintillator_limits(camera_id, setup_id),
+                          cdi.get_vertical_scintillator_limits(camera_id, setup_id)]) # [horizontal_roi_dimensions, vertical_roi_dimensions]
     return beam_energy, image_beam_direction, colour_channel, average_image, unc_average_image, scintillator_edges
 
 
@@ -163,6 +163,13 @@ def get_beam_angle_and_bragg_peak_pixel(camera_analysis_id: int):
         
         beam_energy, image_beam_direction, colour_channel, average_image, brightness_error, scintillator_edges = source_params_from_database(camera_analysis_id)
         average_rounded_image = average_image.astype(np.uint8)  # could be moved inside automated roi function
+        
+        # ###### MOCK ROTATION #################
+        # mock_rotation = 270
+        # image_beam_direction = "bottom"
+        # average_image, average_rounded_image, brightness_error, scintillator_edges = apply_rotations_for_analysis(average_image, average_rounded_image, 
+        #                                                                                                   brightness_error, scintillator_edges, mock_rotation)
+        # ######################################
         
         average_image, average_rounded_image, brightness_error, \
         scintillator_edges =  get_beam_direction_from_the_left(image_beam_direction, average_image, average_rounded_image, brightness_error, scintillator_edges)
@@ -217,7 +224,7 @@ def get_beam_angle_and_bragg_peak_pixel(camera_analysis_id: int):
         
         average_image, average_rounded_image, brightness_error, \
         scintillator_edges =  return_to_original_beam_direction(image_beam_direction, average_image, average_rounded_image, brightness_error, scintillator_edges)
-        overlay_bragg_peak_coord(camera_analysis_id, rotated_rounded_image, bragg_peak_coord)
+        overlay_bragg_peak_coord(camera_analysis_id, average_rounded_image, bragg_peak_coord)
         return {"message": "successful single camera analysis"}
     
     except Exception as e:
@@ -232,10 +239,20 @@ def get_beam_center_coords(beam_run_id: int, camera_analysis_id: int):
     camera matrices, etc.
     """
     try:
-        #### DB Readingg #####
+        cdi.delete_overlayed_beam_centers_image_by_camera_analysis_id(camera_analysis_id)
+        #### DB Reading #####
         beam_energy, image_beam_direction, colour_channel, average_image, brightness_error, scintillator_edges = source_params_from_database(camera_analysis_id)
         beam_angle = cdi.get_beam_angle(camera_analysis_id)
         ######################
+        
+        # ###### MOCK ROTATION #################
+        # average_rounded_image = average_image.astype(np.uint8)
+        # mock_rotation = 270
+        # image_beam_direction = "bottom"
+        # average_image, average_rounded_image, brightness_error, scintillator_edges = apply_rotations_for_analysis(average_image, average_rounded_image, 
+        #                                                                                                           brightness_error, scintillator_edges,
+        #                                                                                                           mock_rotation)
+        # ######################################
         
         average_rounded_image = average_image.astype(np.uint8) # could be moved inside automated roi function
         
@@ -272,12 +289,11 @@ def get_beam_center_coords(beam_run_id: int, camera_analysis_id: int):
         print("\n\n\n")
         
         result = np.array([rotate_pixel_back_to_original_beam_direction(image_beam_direction, pixel_coord, unc_pixel_coord, average_rounded_image) for pixel_coord, unc_pixel_coord in zip(unrotated_beam_center_coords, unrotated_beam_center_error_vectors)])
-        print(result.shape)
         original_beam_direction_beam_center_coords = result[:, 0]
         original_beam_direction_beam_center_coords_unc = result[:, 1]
         
-        print(original_beam_direction_beam_center_coords, original_beam_direction_beam_center_coords.shape)
-        print(original_beam_direction_beam_center_coords_unc, original_beam_direction_beam_center_coords_unc.shape)
+        _, average_rounded_image, *_ =  return_to_original_beam_direction(image_beam_direction, average_image, average_rounded_image, brightness_error, scintillator_edges)
+        overlay_beam_center_coords(camera_analysis_id, average_rounded_image, original_beam_direction_beam_center_coords)
         
         return original_beam_direction_beam_center_coords, original_beam_direction_beam_center_coords_unc, total_brightness_along_vertical_roi, unc_total_brightness_along_vertical_roi
     

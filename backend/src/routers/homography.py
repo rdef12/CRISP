@@ -6,7 +6,7 @@ from src.database.CRUD import CRISP_database_interaction as cdi
 from src.classes.Camera import PhotoContext, CalibrationImageSettings
 from src.create_homographies import *
 from fastapi.responses import JSONResponse, FileResponse, HTMLResponse
-from src.homography_pinpointing import perform_homography_pinpointing_between_camera_pair_for_GUI
+from src.homography_pinpointing import perform_homography_pinpointing_between_camera_pair_for_GUI, perform_second_homography_pinpointing_between_camera_pair_for_GUI
 import os
 import pickle
 from src.single_camera_analysis import get_beam_angle_and_bragg_peak_pixel, get_beam_center_coords
@@ -393,8 +393,8 @@ def initialize_homography_setup():
 
 
 
-@router.get("/homography_pinpointing_test")
-def homography_pinpointing_test_api():
+@router.get("/semester_one_homography_pinpointing_test")
+def semester_one_homography_pinpointing_test_api():
     """
     1) use docs to execute initialize_full_homography_setup
     2) use docs to execute homography_pinpointing_test
@@ -403,6 +403,38 @@ def homography_pinpointing_test_api():
     side_camera_id = 1
     top_camera_id = 2
     perform_homography_pinpointing_between_camera_pair_for_GUI(setup_id, top_camera_id, side_camera_id)
+    return {"message": "pinpointing complete"}
+
+
+@router.get("/semester_two_homography_pinpointing_test")
+def semester_two_homography_pinpointing_test_api():
+    setup_id = 1
+    # usernames: raspi4b3, raspi4b2, c09796mb, raspi5n2
+    camera_id_list = [2,3,4,5]
+    pixel_coord_list = [
+        (1964, 1597),
+        (1164, 2003),
+        (3563, 1766),
+        # (3034, 1361)
+        (2820, 1960)
+    ]
+    unc_pixel_coord_list= [
+        (4,4),
+        (4,4),
+        (4,4),
+        (4,4)
+    ]
+    # camera_id_list = [4,5]
+    # pixel_coord_list = [
+    #     (3563, 1766),
+    #     (2820, 1960)
+    # ]
+    # unc_pixel_coord_list= [
+    #     (4,4),
+    #     (4,4)
+    # ]
+    perform_second_homography_pinpointing_between_camera_pair_for_GUI(setup_id, camera_id_list, pixel_coord_list,
+                                                                     unc_pixel_coord_list)
     return {"message": "pinpointing complete"}
 
 
@@ -514,7 +546,7 @@ def upload_averaged_image_api():
     
     # beam_energy = 90
     # beam_energy = 150
-    beam_energy = 150
+    beam_energy = 130
     SIDE_AR_CAM_ID = 1
     TOP_HQ_CAM_ID = 2
 
@@ -540,29 +572,33 @@ def upload_averaged_image_api():
     # num_of_hq_images_in_average = 64
     # num_of_ar_images_in_average = 53
     
+    # 130 MEV
+    num_of_hq_images_in_average = 64
+    num_of_ar_images_in_average = 73
+    
     # 150 MEV
-    num_of_hq_images_in_average = 174
-    num_of_ar_images_in_average = 67
+    # num_of_hq_images_in_average = 174
+    # num_of_ar_images_in_average = 67
     
     # 180 MEV
     # num_of_hq_images_in_average = 159
     # num_of_ar_images_in_average = 78
     
     # Adding mock images to test if cdi.get_num_of_successfully_captured_images_by_camera_settings_link_id() is working
-    # mock_bytestring = pickle.dumps("lol") #TODO ROBIN HASHED THIS, SORRY IF HE FORGOT TO ADD IT BACK
-    # for i in range(num_of_ar_images_in_average):
-    #     cdi.add_photo(camera_settings_link_id=side_AR_camera_settings_link_id, photo=mock_bytestring)
-    # for i in range(num_of_hq_images_in_average):
-    #     cdi.add_photo(camera_settings_link_id=top_HQ_camera_settings_link_id, photo=mock_bytestring)
+    mock_bytestring = pickle.dumps("lol") #TODO ROBIN HASHED THIS, SORRY IF HE FORGOT TO ADD IT BACK
+    for i in range(num_of_ar_images_in_average):
+        cdi.add_photo(camera_settings_link_id=side_AR_camera_settings_link_id, photo=mock_bytestring)
+    for i in range(num_of_hq_images_in_average):
+        cdi.add_photo(camera_settings_link_id=top_HQ_camera_settings_link_id, photo=mock_bytestring)
     
-    # # FLOAT-16 PICKLED AVERAGED NUMPY ARRAYS
-    # with open("/code/src/beam_averaged_images/150_mev_A1_averaged_image_float16.pkl", "rb") as file:
-    #     pickled_side_AR__average_image = file.read()
-    # cdi.update_average_image(side_AR_analysis_id, pickled_side_AR__average_image)
+    # FLOAT-16 PICKLED AVERAGED NUMPY ARRAYS
+    with open("/code/src/beam_averaged_images/130_mev_A1_averaged_image_float16.pkl", "rb") as file:
+        pickled_side_AR__average_image = file.read()
+    cdi.update_average_image(side_AR_analysis_id, pickled_side_AR__average_image)
     
-    # with open("/code/src/beam_averaged_images/150_mev_HQ2_averaged_image_float16.pkl", "rb") as file:
-    #     pickled_top_HQ_average_image = file.read()
-    # cdi.update_average_image(top_HQ_analysis_id, pickled_top_HQ_average_image)
+    with open("/code/src/beam_averaged_images/130_mev_HQ2_averaged_image_float16.pkl", "rb") as file:
+        pickled_top_HQ_average_image = file.read()
+    cdi.update_average_image(top_HQ_analysis_id, pickled_top_HQ_average_image)
     # # #TODO THIS IS THE END OF HIS COMMENTING
     return None
 
@@ -710,7 +746,7 @@ def test_beam_reconstruction_api():
         
         
         plot_physical_units_ODR_bortfeld(top_camera_analysis_id, distances_travelled_inside_scintillator, unc_distances_travelled_inside_scintillator, 
-                                        total_brightness_along_vertical_roi, unc_total_brightness_along_vertical_roi)
+                                        total_brightness_along_vertical_roi, unc_total_brightness_along_vertical_roi, num_of_failed_pinpoints)
 
     
     except Exception as e:

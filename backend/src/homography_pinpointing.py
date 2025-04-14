@@ -65,6 +65,7 @@ class AbstractCamera(ABC):
                                          refractive_index_unc=cdi.get_block_refractive_index_unc(setup_id))
         
         self.setup_id = setup_id
+        self.camera_id = camera_id
         self.front_homography_matrix= cdi.get_near_face_homography_matrix(camera_id, setup_id)
         self.front_homography_covariance = cdi.get_near_face_homography_covariance_matrix(camera_id, setup_id)
         self.back_homography_matrix = cdi.get_far_face_homography_matrix(camera_id, setup_id)
@@ -122,6 +123,8 @@ class AbstractCamera(ABC):
         """
         Includes error introduced by homography and origin shift. Does not include the depth uncertainty due to scintillator dimensions/calibration board thickness.
         """
+        print("\n\ntwo_dimensional_homography_errors: ", two_dimensional_homography_errors)
+        print("\n\ntwo_dimensional_origin_shift_errors: ", two_dimensional_origin_shift_errors)
         horizontal_errror = normal_addition_in_quadrature([two_dimensional_homography_errors[0], two_dimensional_origin_shift_errors[0]])
         vertical_error = normal_addition_in_quadrature([two_dimensional_homography_errors[1], two_dimensional_origin_shift_errors[1]])
         return [horizontal_errror, vertical_error]
@@ -176,6 +179,8 @@ class AbstractCamera(ABC):
             case ("near", -1):
                 depth = 0 # used to be negative calibration board thickness when I did not appreciate the wooden blocks restricting calibration board placement
                 unc_depth = 0
+                
+        print("\n\nunc_depth: ", unc_depth)
 
         if plane_type == "far":
             # Below is the origin transformation! For this to work, the user-inputted origin shifts need to be signed correctly (although should always be positive)?
@@ -189,8 +194,11 @@ class AbstractCamera(ABC):
             two_dimensional_position_relative_to_calibration_board_corner = np.array(physical_position_on_calibration_plane) + np.array(self.near_origin_shift) # mm units
             two_dimensional_position_relative_to_calibration_board_corner_unc = self._calculate_calibration_plane_physical_position_error(two_dimensional_homography_errors, self.near_origin_shift_uncertainty)
         
+        print("\n\two_dimensional_position_relative_to_calibration_board_corner_unc: ", two_dimensional_position_relative_to_calibration_board_corner_unc)
+                
         physical_position_in_box_coords = self.map_image_coord_to_3d_point(two_dimensional_position_relative_to_calibration_board_corner, depth)
         physical_position_in_box_coords_uncertainty = self.map_image_coord_to_3d_point(two_dimensional_position_relative_to_calibration_board_corner_unc, unc_depth)
+        print("\n\nphysical_position_in_box_coords_uncertainty: ", physical_position_in_box_coords_uncertainty)
         
         return (physical_position_in_box_coords, 
                 physical_position_in_box_coords_uncertainty, 
@@ -688,8 +696,8 @@ def extract_3d_physical_position(first_camera: AbstractCamera, occupied_pixel_on
     first_camera_line_vectors = [first_camera_initial_position, first_camera_direction_vector]
     second_camera_line_vectors = [second_camera_initial_position, second_camera_direction_vector]
     
-    # print("\n\nFirst camera line vectors:", first_camera_line_vectors)
-    # print("\n\nSecond camera line vectors:", second_camera_line_vectors)
+    print("\n\nFirst camera line vectors:", first_camera_line_vectors)
+    print("\n\nSecond camera line vectors:", second_camera_line_vectors)
 
     if plot_line_equations:
         plot_3d_lines(first_camera_line_vectors, second_camera_line_vectors, first_camera.setup_id)
@@ -723,8 +731,13 @@ def extract_weighted_average_3d_physical_position(list_of_camera_objects, list_o
         pixel_coords_1, pixel_coords_2 = pixel_combination
         unc_pixel_coords_1, unc_pixel_coords_2 = unc_pixel_combination
         
+        if camera_1.axes_mapping.optical_axis == camera_2.axes_mapping.optical_axis:
+            continue # skip past the pairings in which the cameras have the same optical_axis
+        
         line_intersection_point, unc_line_intersection_point = extract_3d_physical_position(camera_1, pixel_coords_1, camera_2, pixel_coords_2,
                                                                                             unc_pixel_coords_1, unc_pixel_coords_2, scintillator_present=scintillator_present)
+        
+        print(f"\n\n Intersection point of camera pair ({camera_1.camera_id}, {camera_2.camera_id}) is {line_intersection_point} +/- {unc_line_intersection_point}\n\n")
         
         if np.isnan(line_intersection_point).any() or np.isnan(unc_line_intersection_point).any():
             print("\n\nIntersection point is NaN, skipping this camera combination.")
@@ -733,6 +746,17 @@ def extract_weighted_average_3d_physical_position(list_of_camera_objects, list_o
         intersection_point_array.append(line_intersection_point)
         unc_intersection_point_array.append(unc_line_intersection_point)
         
+    
+        # Print intersection points and uncertainties in a tabular form
+        print("\n\nIntersection Points and Uncertainties:")
+        print(f"{'Camera Pair':<20} {'Intersection Point':<40} {'Uncertainty':<40}")
+        print("-" * 100)
+        for camera_combination, intersection_point, unc_intersection_point in zip(possible_camera_combinations, intersection_point_array, unc_intersection_point_array):
+            camera_pair = f"({camera_combination[0].camera_id}, {camera_combination[1].camera_id})"
+            intersection_point_str = f"({intersection_point[0]:.2f}, {intersection_point[1]:.2f}, {intersection_point[2]:.2f})"
+            uncertainty_str = f"({unc_intersection_point[0]:.2f}, {unc_intersection_point[1]:.2f}, {unc_intersection_point[2]:.2f})"
+            print(f"{camera_pair:<20} {intersection_point_str:<40} {uncertainty_str:<40}")
+    
     if num_of_failed_pinpoints > 0:
         print("\n\nNumber of failed pinpoints omitted from weighted calculations is: {}".format(num_of_failed_pinpoints))
     if num_of_combinations == 1:
@@ -807,6 +831,25 @@ def perform_homography_pinpointing_between_camera_pair_for_GUI(setup_id, first_c
             return 1
 
         print("\n\nIntersection Point of red brick corner is {0} +/- {1}".format(intersection_point, unc_intersection_point))
+        return 0
+    
+    except Exception as e:
+        print("Error in homography pinpointing algorithm: {}".format(e))
+        return 1
+    
+    
+def perform_second_homography_pinpointing_between_camera_pair_for_GUI(setup_id, camera_id_list, pixel_coord_list,
+                                                                      unc_pixel_coord_list):
+    try:
+        cameras = [AbstractCamera.setup(camera_id, setup_id) for camera_id in camera_id_list]
+
+        intersection_point, unc_intersection_point = extract_weighted_average_3d_physical_position(cameras, pixel_coord_list, unc_pixel_coord_list, scintillator_present=False)
+        
+        if np.isnan(intersection_point).any() or np.isnan(unc_intersection_point).any():
+            print("\n\nWeighted intersection point is NaN, pinpointing failed!!.")
+            return 1
+
+        print("\n\nWeighted intersection Point of blue brick corner is {0} +/- {1}".format(intersection_point, unc_intersection_point))
         return 0
     
     except Exception as e:

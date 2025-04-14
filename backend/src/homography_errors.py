@@ -258,14 +258,14 @@ def generate_homography_covariance_matrix(image_grid_positions, homography_matri
 def generate_world_point_uncertainty(image_point, x_pixel_uncertainty, y_pixel_uncertainty, homography_matrix, homography_covariance):
     
     covariance_from_homography = calculate_homography_position_covariance(image_point, homography_matrix, homography_covariance)   
-    print("Covariance from Homography:", covariance_from_homography)
+    # print("Covariance from Homography:", covariance_from_homography)
     covariance_from_pixel_selection = calculate_covariance_from_pixel_selection(image_point, homography_matrix, x_pixel_uncertainty, y_pixel_uncertainty)
-    print("Covariance from Pixel Selection:", covariance_from_pixel_selection)
+    # print("Covariance from Pixel Selection:", covariance_from_pixel_selection)
     
     world_point_covariance = covariance_from_homography + covariance_from_pixel_selection
-    print("World Point Covariance Matrix:", world_point_covariance)
+    # print("World Point Covariance Matrix:", world_point_covariance)
     x_variance, y_variance = world_point_covariance[0, 0],  world_point_covariance[1, 1]
-    print("X Variance:", x_variance, "Y Variance:", y_variance)
+    # print("X Variance:", x_variance, "Y Variance:", y_variance)
     x_uncertainty, y_uncertainty = np.sqrt(x_variance), np.sqrt(y_variance)
     
     return [x_uncertainty, y_uncertainty]

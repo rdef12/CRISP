@@ -9,6 +9,7 @@ from src.database.CRUD import CRISP_database_interaction as cdi
 from src.uncertainty_functions import *
 from itertools import product
 import matplotlib.pyplot as plt
+import cv2 as cv
 
 def pinpoint_bragg_peak(camera_analysis_id_list):
     try:
@@ -221,6 +222,24 @@ def compute_weighted_bragg_peak_depth(beam_run_id: int, side_camera_analysis_id_
     unc_weighted_bragg_peak_depth = np.sqrt(1 /denominator_array)
     return weighted_mean_bragg_peak_depth, unc_weighted_bragg_peak_depth
 
+def overlay_failed_pinpoints_on_image(camera_analysis_id, failed_beam_center_coords):
+    """
+    Only create if failed_pinpoints > 0
+    """
+    image = cdi.get_average_image(camera_analysis_id).astype(np.uint8)
+    image = cv.cvtColor(image, cv.COLOR_GRAY2BGR)
+    print("B")
+    for coord in failed_beam_center_coords:
+        print(coord)
+        coord = tuple(map(int, coord))
+        image = cv.circle(image, coord, 3, (128, 0, 128), -1) # purple circles
+    print("C")
+
+    _, image_bytes = cv.imencode('.png', image)  # Encode the image as a PNG
+    print("D")
+    cdi.add_camera_analysis_plot(camera_analysis_id, f"overlayed_failed_pinpoint_coords", image_bytes, "png",
+                                 description=f"Overlayed positions of beam center coords which had their pinpointing fail")
+    return image_bytes
 
 def convert_beam_center_coords_to_penetration_depths(camera_analysis_id: int, unrotated_beam_center_coords: np.ndarray[float],
                                                      unc_on_beam_center_coords):
@@ -228,6 +247,7 @@ def convert_beam_center_coords_to_penetration_depths(camera_analysis_id: int, un
     The unrotated beam center coords is stressed because homography will only work when the image has the orientation
     it was calibrated to work with.
     """
+    cdi.delete_failed_pinpoints_image_by_camera_analysis_id(camera_analysis_id)
     
     # Create camera object
     camera_settings_link_id = cdi.get_camera_settings_link_id_by_camera_analysis_id(camera_analysis_id)
@@ -249,6 +269,7 @@ def convert_beam_center_coords_to_penetration_depths(camera_analysis_id: int, un
     
     distance_of_closest_approach_list = []
     num_of_failed_pinpoints = 0
+    failed_beam_center_coords = []
     
     for beam_center_pixel, unc_beam_center_pixel in zip(unrotated_beam_center_coords, unc_on_beam_center_coords):
         
@@ -260,6 +281,7 @@ def convert_beam_center_coords_to_penetration_depths(camera_analysis_id: int, un
             print(f"Beam center or uncertainty is NaN for pixel {beam_center_pixel} with uncertainty {unc_beam_center_pixel}.")
             print(f"Distance of closest approach for this pixel is {distance_of_closest_approach}.")
             num_of_failed_pinpoints += 1
+            failed_beam_center_coords += [beam_center_pixel]
             continue
         
         physical_3d_beam_centers = np.vstack([physical_3d_beam_centers, beam_center]) if physical_3d_beam_centers.size else np.array([beam_center])
@@ -267,6 +289,9 @@ def convert_beam_center_coords_to_penetration_depths(camera_analysis_id: int, un
         distance_of_closest_approach_list.append(distance_of_closest_approach)
     
     print("\n\nTotal number of failed pinpoints = ", num_of_failed_pinpoints)
+    if num_of_failed_pinpoints > 0:
+        print("\n\nAttempting overlay...")
+        overlay_failed_pinpoints_on_image(camera_analysis_id, failed_beam_center_coords)
     
     max_uncertainty_index = np.unravel_index(np.argmax(unc_physical_3d_beam_centers, axis=None), unc_physical_3d_beam_centers.shape)
     max_uncertainty_vector = unc_physical_3d_beam_centers[max_uncertainty_index[0]]

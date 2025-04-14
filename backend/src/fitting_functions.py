@@ -477,6 +477,18 @@ def overlay_bragg_peak_coord(camera_analysis_id, averaged_image, bragg_peak_coor
                                  description=f"Overlayed Bragg peak coordinate identified onto averaged image")
     return image_bytes
 
+def overlay_beam_center_coords(camera_analysis_id, averaged_image, beam_center_coords):
+    
+    image_with_beam_centers_overlayed = np.copy(averaged_image)
+    image_with_beam_centers_overlayed = cv.cvtColor(image_with_beam_centers_overlayed, cv.COLOR_GRAY2BGR)
+    for coord in beam_center_coords:
+        coord = tuple(map(int, coord))
+        image_with_beam_centers_overlayed = cv.circle(image_with_beam_centers_overlayed, coord, 3, (0, 0, 255), -1)
+
+    _, image_bytes = cv.imencode('.png', image_with_beam_centers_overlayed)  # Encode the image as a PNG
+    cdi.add_camera_analysis_plot(camera_analysis_id, f"overlayed_beam_center_coords", image_bytes, "png",
+                                 description=f"Overlayed beam center coordinates on the averaged image")
+    return image_bytes
 
 def fit_physical_units_ODR_bortfeld(camera_analysis_id, distances, distance_uncertainties, brightnesses, brightness_uncertainties):
     
@@ -510,6 +522,8 @@ def fit_physical_units_ODR_bortfeld(camera_analysis_id, distances, distance_unce
     # Fit the Bortfeld function using ODR
     fit_parameters, fit_parameters_covariance, _, reduced_chi_squared = fit_bortfeld_odr(
         distances, brightnesses, distance_uncertainties, brightness_uncertainties)
+    
+    print(f"\n\n\n R80 = {fit_parameters[2]} +/- {np.sqrt(np.diag(fit_parameters_covariance))[2]}")
 
     # Find the Bragg peak position and uncertainties
     bragg_peak_position = find_peak_of_bortfeld(distances, fit_parameters)

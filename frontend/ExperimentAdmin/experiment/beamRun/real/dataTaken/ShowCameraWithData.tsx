@@ -1,4 +1,4 @@
-import { CreateRangeCalculation } from "./rangeCalculation/CreateRangeCalculation";
+import { RangeCalculation } from "./rangeCalculation/RangeCalculation";
 import { CreateCameraAnalysis } from "./singleCameraAnalysis/CreateCameraAnalysis"
 import { ShowAnalyses } from "./singleCameraAnalysis/ShowAnalyses"
 import { useState } from "react"
@@ -33,7 +33,7 @@ export const ShowCameraWithData = ({ onCameraAnalysisCreated, onAnalysisDeleted 
         isCreating={isCreating} 
         onAnalysisDeleted={onAnalysisDeleted}
       />
-      <CreateRangeCalculation />
+      <RangeCalculation/>
     </div>
   )
 }
