@@ -6,8 +6,8 @@ import pytz
 from sqlmodel import Session, select
 from src.fitting_functions import plot_physical_units_ODR_bortfeld
 from src.single_camera_analysis import get_beam_center_coords
-from src.scintillation_light_pinpointing import compute_weighted_bragg_peak_depth, convert_beam_center_coords_to_penetration_depths, pinpoint_bragg_peak
-from src.database.models import BeamRun, CameraSettingsLink, CameraSetupLink, Experiment, Photo, Settings, Setup
+from src.scintillation_light_pinpointing import build_weighted_directional_vector_of_beam_center, compute_weighted_bragg_peak_depth, convert_beam_center_coords_to_penetration_depths, pinpoint_bragg_peak
+from src.database.models import BeamRun, CameraAnalysis, CameraSettingsLink, CameraSetupLink, Experiment, Photo, Settings, Setup
 from src.database.database import engine
 from sqlalchemy.exc import NoResultFound
 
@@ -468,6 +468,7 @@ def update_bragg_peak_depth(beam_run_id: int):
     bragg_peak_depth, unc_bragg_peak_depth = compute_weighted_bragg_peak_depth(beam_run_id, side_camera_analysis_ids, top_camera_analysis_ids)
     cdi.update_bragg_peak_depth(beam_run_id, float(bragg_peak_depth))
     cdi.update_unc_bragg_peak_depth(beam_run_id, float(unc_bragg_peak_depth))
+    build_weighted_directional_vector_of_beam_center(side_camera_analysis_ids, top_camera_analysis_ids)
     return JSONResponse(content={"id": beam_run_id})
 
 @router.get("/bragg-peak/{beam_run_id}")
@@ -502,18 +503,30 @@ def get_bragg_peak(beam_run_id: int):
                                        bragg_peak_depth_unc=beam_run.unc_bragg_peak_depth)
 
 
-# @router.post("/range/{beam_run_id}")
-# def do_range_analysis(beam_run_id: int):
-#     side_cam_beam_center_coords, unc_side_cam_beam_center_coords, \
-#     total_brightness_along_vertical_roi, unc_total_brightness_along_vertical_roi = get_beam_center_coords(beam_run_id, side_camera_analysis_id)
-    
-#     distances_travelled_inside_scintillator, \
-#     unc_distances_travelled_inside_scintillator = convert_beam_center_coords_to_penetration_depths(side_camera_analysis_id,
-#                                                                                                 side_cam_beam_center_coords,
-#                                                                                                 unc_side_cam_beam_center_coords,
-#                                                                                                 [beam_center_incident_position, beam_direction_vector],
-#                                                                                                 [unc_beam_center_incident_position, unc_beam_direction_vector])
-    
-#     plot_physical_units_ODR_bortfeld(side_camera_analysis_id, distances_travelled_inside_scintillator, unc_distances_travelled_inside_scintillator, 
-#                                     total_brightness_along_vertical_roi, unc_total_brightness_along_vertical_roi)
+# @router.get("/")
+
+@router.post("/range/{beam_run_id}/camera/{camera_id}")
+def do_range_analysis(beam_run_id: int, camera_id: int):
+    with Session(engine) as session:
+        camera_settings_statement = (select(CameraSettingsLink)
+                                     .where(CameraSettingsLink.beam_run_id == beam_run_id)
+                                     .where(CameraSettingsLink.camera_id == camera_id))
+        camera_settings = session.exec(camera_settings_statement).one()
+        camera_analysis_statement = select(CameraAnalysis).where(CameraAnalysis.camera_settings_id == camera_settings.id)
+        camera_analysis = session.exec(camera_analysis_statement).one()
+        camera_analysis_id = camera_analysis.id
+
+
+        side_cam_beam_center_coords, unc_side_cam_beam_center_coords, \
+        total_brightness_along_vertical_roi, unc_total_brightness_along_vertical_roi = get_beam_center_coords(beam_run_id, camera_analysis_id)
+        
+        distances_travelled_inside_scintillator, \
+        unc_distances_travelled_inside_scintillator = convert_beam_center_coords_to_penetration_depths(camera_analysis_id,
+                                                                                                    side_cam_beam_center_coords,
+                                                                                                    unc_side_cam_beam_center_coords,
+                                                                                                    [beam_center_incident_position, beam_direction_vector],
+                                                                                                    [unc_beam_center_incident_position, unc_beam_direction_vector])
+        
+        plot_physical_units_ODR_bortfeld(camera_analysis_id, distances_travelled_inside_scintillator, unc_distances_travelled_inside_scintillator, 
+                                        total_brightness_along_vertical_roi, unc_total_brightness_along_vertical_roi)
         

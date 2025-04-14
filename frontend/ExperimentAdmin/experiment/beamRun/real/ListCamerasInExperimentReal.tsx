@@ -166,7 +166,7 @@ const NumberOfImagesButton = ({ onSave, refreshTrigger }: SettingsButtonProps) =
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
-              Edit Number of Images
+              Edit Image Collection
             </DialogTitle>
           </DialogHeader>
           <ScrollArea className="h-[60vh]">
@@ -196,7 +196,7 @@ const NumberOfImagesButton = ({ onSave, refreshTrigger }: SettingsButtonProps) =
               className="w-full"
               disabled={!hasSettings}
             >
-              Edit Images
+              Edit Image Collection
             </Button>
           </HoverCardTrigger>
           <HoverCardContent variant={selectedNumberOfImages?.has_settings ? "default" : "red"} className="w-80">

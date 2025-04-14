@@ -1,5 +1,5 @@
 import { useParams } from "react-router-dom";
-import { Form, useCreateController, useGetList } from "react-admin";
+import { useCreate, useGetList } from "react-admin";
 import { Button } from "@/components/ui/button";
 import {
   HoverCard,
@@ -7,18 +7,15 @@ import {
   HoverCardTrigger,
 } from "@/components/ui/hover-card";
 import { useEffect } from "react";
+import { Dispatch, SetStateAction } from "react";
 
 interface CreateBraggPeakDepthProps {
   onSuccess?: () => void;
   cameraAnalysisCreated: boolean;
+  setIsCreating: Dispatch<SetStateAction<boolean>>;
 }
 
-interface BraggPeakData {
-  // Add any specific fields if needed
-  [key: string]: unknown;
-}
-
-export const CreateBraggPeakDepth = ({ onSuccess, cameraAnalysisCreated }: CreateBraggPeakDepthProps) => {
+export const CreateBraggPeakDepth = ({ onSuccess, cameraAnalysisCreated, setIsCreating }: CreateBraggPeakDepthProps) => {
   const { beamRunId } = useParams();
   const { data: topCameras, refetch: refetchTopCameras } = useGetList(
     `beam-run/top/analysis-complete/${beamRunId}`
@@ -27,47 +24,54 @@ export const CreateBraggPeakDepth = ({ onSuccess, cameraAnalysisCreated }: Creat
     `beam-run/side/analysis-complete/${beamRunId}`
   )
 
-  const { save, isPending: isPendingCreate } = useCreateController({
-    resource: `beam-run/bragg-peak/${beamRunId}`,
-    redirect: false
-  })
+  const [create, { isLoading: isCreating }] = useCreate();
 
   useEffect(() => {
     refetchTopCameras();
     refetchSideCameras();
   }, [cameraAnalysisCreated, refetchTopCameras, refetchSideCameras]);
 
-  const handleSubmit = async (data: BraggPeakData) => {
-    if (!save) return;
+  useEffect(() => {
+    console.log("isCreating changed:", isCreating);
+    setIsCreating(isCreating);
+  }, [isCreating, setIsCreating]);
+
+  const handleClick = async () => {
     try {
-      await save(data);
+      console.log("Starting create...");
+      await create(`beam-run/bragg-peak/${beamRunId}`, { data: {} });
+      console.log("Create completed");
       onSuccess?.();
     } catch (error) {
-      console.error('Failed to save:', error);
+      console.error('Failed to create:', error);
     }
   };
 
   const isDisabled = !topCameras?.length || !sideCameras?.length;
-  if (isPendingGetList || isPendingCreate) return null;
+  if (isPendingGetList || isCreating) return null;
   return (
-    <Form onSubmit={handleSubmit}>
-      <HoverCard>
-        <HoverCardTrigger asChild>
-          <div className="w-full">
-            <Button disabled={isDisabled} className="w-full">Generate Bragg peak position</Button>
+    <HoverCard>
+      <HoverCardTrigger asChild>
+        <div className="w-full">
+          <Button 
+            onClick={handleClick}
+            disabled={isDisabled || isCreating} 
+            className="w-full"
+          >
+            Generate Bragg peak position
+          </Button>
+        </div>
+      </HoverCardTrigger>
+      {isDisabled && (
+        <HoverCardContent className="w-64">
+          <div className="space-y-1">
+            <h4 className="text-sm font-semibold">Requirements not met</h4>
+            <p className="text-sm">
+              You must complete at least one single camera analysis for both a side and top camera before being able to generate the Bragg peak position.
+            </p>
           </div>
-        </HoverCardTrigger>
-        {isDisabled && (
-          <HoverCardContent className="w-64">
-            <div className="space-y-1">
-              <h4 className="text-sm font-semibold">Requirements not met</h4>
-              <p className="text-sm">
-                You must complete at least one single camera analysis for both a side and top camera before being able to generate the Bragg peak position.
-              </p>
-            </div>
-          </HoverCardContent>
-        )}
-      </HoverCard>
-    </Form>
+        </HoverCardContent>
+      )}
+    </HoverCard>
   )
 }

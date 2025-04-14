@@ -1,32 +1,43 @@
 import { useParams } from "react-router-dom";
 import { useShowController } from "react-admin";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
 
-export const ShowBraggPeakDepth = () => {
+interface ShowBraggPeakDepthProps {
+  isCreating?: boolean;
+}
+
+export const ShowBraggPeakDepth = ({ isCreating }: ShowBraggPeakDepthProps) => {
   const { beamRunId } = useParams();
   const { record, isPending, error } = useShowController({
     resource: `beam-run/bragg-peak`,
     id: beamRunId
   });
 
-  // if (isPending) {
-  //   return (
-  //     <Card className="w-[400px]">
-  //       <CardHeader>
-  //         <Skeleton className="h-4 w-[100px]" />
-  //       </CardHeader>
-  //       <CardContent>
-  //         <div className="space-y-2">
-  //           {[...Array(4)].map((_, i) => (
-  //             <Skeleton key={i} className="h-4 w-[300px]" />
-  //           ))}
-  //         </div>
-  //       </CardContent>
-  //     </Card>
-  //   );
-  // }
-  if (isPending) return null;
+  console.log("ShowBraggPeakDepth - isCreating:", isCreating, "isPending:", isPending);
+
+  if (isPending || isCreating) {
+    console.log("Showing loading spinner");
+    return (
+      <div className="h-full flex items-center justify-center">
+        <div style={{ 
+          width: '150px',
+          height: '150px',
+          border: '4px solid #E5E7EB',
+          borderRadius: '50%',
+          animation: 'spin 1s linear infinite',
+          borderTopColor: '#4B5563',
+          borderRightColor: 'transparent',
+          borderBottomColor: 'transparent',
+          borderLeftColor: 'transparent'
+        }}></div>
+        <style jsx>{`
+          @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
+        `}</style>
+      </div>
+    );
+  }
   if (error) {
     return <div className="text-red-500">Error loading data</div>;
   }

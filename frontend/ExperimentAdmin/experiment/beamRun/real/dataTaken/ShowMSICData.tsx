@@ -50,7 +50,7 @@ export const ShowMSICData = () => {
 
   return (
     <>
-      <Card className="w-full">
+      <Card className="w-[400px] h-full">
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>MSIC Measurements</CardTitle>
           <Button

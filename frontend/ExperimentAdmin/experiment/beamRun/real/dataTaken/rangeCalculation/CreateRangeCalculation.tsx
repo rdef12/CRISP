@@ -1,25 +1,26 @@
 import { Button } from "@/components/ui/button";
-import { Form, required, SelectInput, useCreate, useGetList } from "react-admin";
+import { Form, required, SelectInput, useCreate, useCreateController, useGetList, useRecordContext } from "react-admin";
 import { useParams } from "react-router-dom";
 import { FieldValues } from "react-hook-form";
 
 export const CreateRangeCalculation = () => {
   const { beamRunId } = useParams();
-  const { data: cameras, isPending: isGetting } = useGetList(
-    `beam-run/both/analysis-complete/${beamRunId}`
-  )
+  const record = useRecordContext();
 
-  const [create, { isPending: isCreating }] = useCreate();
+  // const [create, { isPending: isCreating }] = useCreate();
 
-  const handleSubmit = (data: FieldValues) => {
-    create(`beam-run/range/${beamRunId}`, { data });
-  };
+  // const handleSubmit = (data: FieldValues) => {
+  //   create(`beam-run/range/${beamRunId}/camera/${record?.id}`, { data });
+  // };
 
-  if (isGetting) return null;
-  if (isCreating) return null;
+  const { save, saving, isPending } = useCreateController({
+    resource: `beam-run/range/${beamRunId}/camera/${record?.id}`,
+    redirect: false
+  })
+
+  if (isPending) return null;
   return (
-    <Form onSubmit={handleSubmit}>
-      <SelectInput source="camera_id" optionText="camera_username" choices={cameras} validate={required()}/>
+    <Form onSubmit={save}>
       <Button> Generate range analysis </Button>
     </Form>
   )
