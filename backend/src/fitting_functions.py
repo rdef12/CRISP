@@ -228,6 +228,7 @@ def plot_beam_profile(camera_analysis_id: int, fit_context: str, channel, channe
     pixel_vertical_coords, column_of_brightness_vals, column_of_brightness_errors = extract_beam_profile(channel, channel_std, horizontal_coord, v_bounds)
     fitted_parameters, unc_fitted_parameters, reduced_chi_squared, _ = fit_gaussian_to_beam_profile(pixel_vertical_coords, column_of_brightness_vals, column_of_brightness_errors,
                                                                                                     global_background_estimate)
+    chi_squared = reduced_chi_squared * (len(pixel_vertical_coords) - 5) # 5 fit params
 
     gaussian_center, scale_factor, sigma, n, background_noise = fitted_parameters # FOR SUPER GAUSSIAN FITTING
     
@@ -278,8 +279,8 @@ def plot_beam_profile(camera_analysis_id: int, fit_context: str, channel, channe
     cdi.add_camera_analysis_plot(camera_analysis_id, f"{fit_context}_{profile_type}_gaussian", plot_bytes, "svg",
                                  description=f"Plot showing '{profile_type.lower()}' Gaussian fit in {fit_context}",
                                  parameter_labels=parameter_labels, parameter_values=parameter_values,
-                                 parameter_uncertainties=parameter_uncertainties)
-
+                                 parameter_uncertainties=parameter_uncertainties, chi_squared=float(chi_squared),
+                                 number_of_data_points=len(pixel_vertical_coords))
 
 def plot_reduced_chi_squared_values(camera_analysis_id: int, fit_context: str, roi_horizontal_coords,
                                     reduced_chi_squared_array, show_plot: bool=False):
@@ -326,7 +327,8 @@ def extract_incident_beam_angle(camera_analysis_id: int, horizontal_coords, beam
 
     fitted_line_parameters, fitted_parameter_uncertainties = least_squares_fitting_procedure(horizontal_coords, beam_center_vertical_coords, beam_center_errors)
     predicted_beam_centers = linear_function(horizontal_coords, fitted_line_parameters)  
-    chi_squared_reduced = chi_squared_function(beam_center_vertical_coords, beam_center_errors, predicted_beam_centers) / (len(horizontal_coords) - 2)
+    chi_squared = chi_squared_function(beam_center_vertical_coords, beam_center_errors, predicted_beam_centers)
+    chi_squared_reduced =  chi_squared / (len(horizontal_coords) - 2)
     
     print("\n\ntan alpha = {}".format(fitted_line_parameters[0]))
     print("\n\nuncertainty in tan alpha = {}".format(fitted_parameter_uncertainties[0]))
@@ -390,7 +392,8 @@ def extract_incident_beam_angle(camera_analysis_id: int, horizontal_coords, beam
     parameter_values = [float(x) for x in fitted_line_parameters]
     cdi.add_camera_analysis_plot(camera_analysis_id, f"angle_plot", plot_bytes, "svg",
                                  description=f"Plot showing beam's angle when seen in the plane of the scintillator normal to the camera optical axis",
-                                 parameter_labels=parameter_labels, parameter_values=parameter_values)
+                                 parameter_labels=parameter_labels, parameter_values=parameter_values, number_of_data_points=len(horizontal_coords),
+                                 chi_squared=float(chi_squared))
     
     return fitted_angle, unc_fitted_angle
 
@@ -448,7 +451,8 @@ def locate_bragg_peak_in_image(camera_analysis_id: int, x_positions, beam_center
     
     cdi.add_camera_analysis_plot(camera_analysis_id, f"pixel_bortfeld_fit", plot_bytes, "svg",
                                  description=f"Plot showing a bortfeld function fitted to the on-axis pixel scintillation light distribution",
-                                 parameter_labels=parameter_labels, parameter_values=parameter_values, parameter_uncertainties=parameter_uncertainties)
+                                 parameter_labels=parameter_labels, parameter_values=parameter_values, parameter_uncertainties=parameter_uncertainties,
+                                 number_of_data_points=len(x_positions_slice), chi_squared=float(chi_squared))
     
     bortfeld_horizontal_coord = z[np.argmax(curve)]
     # peak_bounds = find_peak_position_uncertainty(x_positions, bortfeld_fit['bortfeld_fit_p'], bortfeld_fit_uncertainties, points_per_bin=100, number_of_stds=1)
@@ -568,7 +572,7 @@ def plot_physical_units_ODR_bortfeld(camera_analysis_id, distances, distance_unc
         distances, distance_uncertainties, brightnesses, brightness_uncertainties, \
             fit_parameters, fit_parameters_covariance, reduced_chi_squared = fit_physical_units_ODR_bortfeld(camera_analysis_id, distances, distance_uncertainties, brightnesses, brightness_uncertainties)
         
-        compute_range_and_uncertainty(camera_analysis_id, distances, fit_parameters, fit_parameters_covariance)
+        range, unc_range = compute_range_and_uncertainty(camera_analysis_id, distances, fit_parameters, fit_parameters_covariance)
         
         # Generate fitted curve
         fitted_brightnesses = bortfeld(distances, *fit_parameters)
@@ -578,10 +582,11 @@ def plot_physical_units_ODR_bortfeld(camera_analysis_id, distances, distance_unc
         # plt.step(distances, brightnesses, where='mid')
         # Suppress markers for error bars only
         failed_points_label = f"\nNumber of failed pinpoints: {num_of_failed_pinpoints}" if num_of_failed_pinpoints > 0 else ""
+        range_label = f"\n Range = {range:.3g} \u00B1 {unc_range:.3g}"
         plt.errorbar(
             distances, brightnesses, 
             xerr=distance_uncertainties, yerr=brightness_uncertainties,
-            fmt='', color='black', ecolor='blue', label=f'Experimental Data {failed_points_label}', ms=3)
+            fmt='', color='black', ecolor='blue', label=f'Experimental Data {range_label} {failed_points_label}', ms=3)
         
         # Add labels, legend, and grid
         plt.xlabel("Distance travelled through Scintillator (mm)")

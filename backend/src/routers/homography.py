@@ -596,15 +596,15 @@ def upload_averaged_image_api():
     #     cdi.add_photo(camera_settings_link_id=top_HQ_camera_settings_link_id, photo=mock_bytestring)
     
     # FLOAT-16 PICKLED AVERAGED NUMPY ARRAYS
-    with open("/code/src/beam_averaged_images/170_mev_A1_averaged_image_float16.pkl", "rb") as file:
-        pickled_side_AR__average_image = file.read()
-    cdi.update_average_image(side_AR_analysis_id, pickled_side_AR__average_image)
+    # with open("/code/src/beam_averaged_images/170_mev_A1_averaged_image_float16.pkl", "rb") as file:
+    #     pickled_side_AR__average_image = file.read()
+    # cdi.update_average_image(side_AR_analysis_id, pickled_side_AR__average_image)
     
-    with open("/code/src/beam_averaged_images/170_mev_HQ2_averaged_image_float16.pkl", "rb") as file:
-        pickled_top_HQ_average_image = file.read()
-    cdi.update_average_image(top_HQ_analysis_id, pickled_top_HQ_average_image)
-    # # #TODO THIS IS THE END OF HIS COMMENTING
-    return None
+    # with open("/code/src/beam_averaged_images/170_mev_HQ2_averaged_image_float16.pkl", "rb") as file:
+    #     pickled_top_HQ_average_image = file.read()
+    # cdi.update_average_image(top_HQ_analysis_id, pickled_top_HQ_average_image)
+    # # # #TODO THIS IS THE END OF HIS COMMENTING
+    # return None
 
 
 def populate_scintillator_edges_api():
