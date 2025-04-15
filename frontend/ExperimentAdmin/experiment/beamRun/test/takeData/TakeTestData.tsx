@@ -3,6 +3,9 @@ import { useParams } from "react-router-dom";
 import { Form, useCreateController } from "react-admin"
 import { FlagDisconnectedCameras } from "../../real/takeData/FlagDisconnectedCameras";
 import { Breadcrumbs } from "@/ExperimentAdmin/components/Breadcrumbs";
+import { Timer } from "./Timer";
+import { useTestData } from "../TestDataContext";
+
 
 // const LoadingBar = ({ onComplete }) => {
 //   const [progress, setProgress] = useState(0);
@@ -72,9 +75,16 @@ export const TakeTestData = () => {
   const { save, saving, isPending } = useCreateController({
     resource: `photo/beam-run/test/${beamRunId}`,
     redirect: `/experiment/${experimentId}/beam-run/test/${beamRunId}`
-  })
+  });
+  const { duration } = useTestData();
+  console.log("DURSATION:", duration);
   if (isPending) return null;
-  if (saving) return (<h1>Taking data</h1>);
+  if (saving) return (
+    <div className="flex flex-col items-center justify-center space-y-4">
+      <h1 className="text-2xl font-bold">Taking data</h1>
+      <Timer duration={duration} />
+    </div>
+  );
   return (
     <div>
       <Breadcrumbs />

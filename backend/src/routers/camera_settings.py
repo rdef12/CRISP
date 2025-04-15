@@ -5,6 +5,8 @@ from pydantic import BaseModel
 import pytz
 from sqlmodel import Session, select
 from src.database.database import engine
+from sqlalchemy.orm.exc import NoResultFound
+
 
 
 from src.network_functions import *
@@ -51,3 +53,26 @@ def get_real_settings(beam_run_id: int, camera_id: int):
         except:
             return JSONResponse(content={"id": camera_id,
                                          "has_settings": False})
+
+
+@router.get("/time-to-take-data/{beam_run_id}/camera/{camera_id}")
+def get_time_to_take_data(beam_run_id: int, camera_id: int):
+    with Session(engine) as session:
+        camera_settings_statement = (select(CameraSettingsLink)
+                                     .where(CameraSettingsLink.beam_run_id == beam_run_id)
+                                     .where(CameraSettingsLink.camera_id == camera_id))
+        try:
+            camera_settings = session.exec(camera_settings_statement).one()
+        except NoResultFound:
+            return JSONResponse(content={"id": camera_id, "duration": None})
+        number_of_images = camera_settings.number_of_images
+        take_raw = camera_settings.take_raw_images
+        if number_of_images is None or take_raw is None:
+            return JSONResponse(content={"id": camera_id, "duration": None})
+        duration = number_of_images
+        if take_raw:
+            duration += number_of_images * 2.05
+        else:
+            duration += number_of_images * 0.77
+        return JSONResponse(content={"id": camera_id, "duration": duration})
+        
