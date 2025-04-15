@@ -41,7 +41,7 @@ export const ShowRange = ({ isSaving, onSaveComplete }: ShowRangeProps) => {
             <div>
               <p className="text-sm font-medium">Range:</p>
               <p className="text-sm">
-                {data?.range ? `${data.range} ± ${data.range_uncertainty} mm` : "-"}
+                {data?.range ? `${data.range} ± ${data.range_uncertainty?.toFixed(2)} mm` : "-"}
               </p>
             </div>
           </div>

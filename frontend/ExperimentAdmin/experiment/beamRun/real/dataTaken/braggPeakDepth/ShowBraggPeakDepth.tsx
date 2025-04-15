@@ -1,20 +1,39 @@
 import { useParams } from "react-router-dom";
-import { useShowController } from "react-admin";
+import { useGetOne } from "react-admin";
+import { useEffect } from "react";
 
 interface ShowBraggPeakDepthProps {
   isCreating?: boolean;
 }
 
+interface BraggPeakRecord {
+  id: string;
+  bragg_peak_x: number | null;
+  bragg_peak_x_unc: number | null;
+  bragg_peak_y: number | null;
+  bragg_peak_y_unc: number | null;
+  bragg_peak_z: number | null;
+  bragg_peak_z_unc: number | null;
+  bragg_peak_depth: number | null;
+  bragg_peak_depth_unc: number | null;
+}
+
 export const ShowBraggPeakDepth = ({ isCreating }: ShowBraggPeakDepthProps) => {
   const { beamRunId } = useParams();
-  const { record, isPending, error } = useShowController({
-    resource: `beam-run/bragg-peak`,
-    id: beamRunId
-  });
+  const { data: record, isLoading, error, refetch } = useGetOne<BraggPeakRecord>(
+    `beam-run/bragg-peak`,
+    { id: beamRunId }
+  );
 
-  console.log("ShowBraggPeakDepth - isCreating:", isCreating, "isPending:", isPending);
+  useEffect(() => {
+    if (isCreating === false) {
+      refetch();
+    }
+  }, [isCreating, refetch]);
 
-  if (isPending || isCreating) {
+  console.log("ShowBraggPeakDepth - isCreating:", isCreating, "isLoading:", isLoading);
+
+  if (isLoading || isCreating) {
     console.log("Showing loading spinner");
     return (
       <div className="h-full flex items-center justify-center">
@@ -56,19 +75,19 @@ export const ShowBraggPeakDepth = ({ isCreating }: ShowBraggPeakDepthProps) => {
     <div className="space-y-2">
       <div className="flex justify-between">
         <span className="text-muted-foreground">X Position:</span>
-        <span className="font-mono">{formatValue(record.bragg_peak_x, record.bragg_peak_x_unc) ?? "-"}</span>
+        <span className="font-mono">{formatValue(record?.bragg_peak_x, record?.bragg_peak_x_unc) ?? "-"}</span>
       </div>
       <div className="flex justify-between">
         <span className="text-muted-foreground">Y Position:</span>
-        <span className="font-mono">{formatValue(record.bragg_peak_y, record.bragg_peak_y_unc) ?? "-"}</span>
+        <span className="font-mono">{formatValue(record?.bragg_peak_y, record?.bragg_peak_y_unc) ?? "-"}</span>
       </div>
       <div className="flex justify-between">
         <span className="text-muted-foreground">Z Position:</span>
-        <span className="font-mono">{formatValue(record.bragg_peak_z, record.bragg_peak_z_unc) ?? "-"}</span>
+        <span className="font-mono">{formatValue(record?.bragg_peak_z, record?.bragg_peak_z_unc) ?? "-"}</span>
       </div>
       <div className="flex justify-between">
         <span className="text-muted-foreground">Depth:</span>
-        <span className="font-mono">{formatValue(record.bragg_peak_depth, record.bragg_peak_depth_unc) ?? "-"}</span>
+        <span className="font-mono">{formatValue(record?.bragg_peak_depth, record?.bragg_peak_depth_unc) ?? "-"}</span>
       </div>
     </div>
   );

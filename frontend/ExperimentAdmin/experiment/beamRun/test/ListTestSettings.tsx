@@ -3,6 +3,7 @@ import { Datagrid, ListBase, NumberField, useRecordContext, useDataProvider, Boo
 import { useEffect, useState } from "react";
 import { Card, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { ShowTestRunPhoto } from "./ShowTestRunPhoto";
+import { useTestData } from "./TestDataContext";
 
 interface TestSetting {
   id: number;
@@ -26,6 +27,7 @@ export const ListTestSettings = ({ refreshTrigger, dataTaken }: ListTestSettings
   const [isLoading, setIsLoading] = useState(true);
   const [selectedSetting, setSelectedSetting] = useState<TestSetting | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const { setDuration } = useTestData();
   
   console.log('[Settings] Render with refreshTrigger:', refreshTrigger);
   console.log('IM IN THE THING Data taken. ', dataTaken)
@@ -62,6 +64,14 @@ export const ListTestSettings = ({ refreshTrigger, dataTaken }: ListTestSettings
     return false;
   };
 
+  const sumOfReciprocals = data.reduce((sum, setting) => sum + (1 / setting.frame_rate), 0);
+  const numberOfPhotos = data.length;
+  const duration = sumOfReciprocals + numberOfPhotos * 0.77 + numberOfPhotos; //CONSTRAINTS: frame rate, write time, copy time
+
+  useEffect(() => {
+    setDuration(duration);
+  }, [duration, setDuration]);
+
   if (!record) return null;
 
   if (isLoading) {
@@ -73,16 +83,13 @@ export const ListTestSettings = ({ refreshTrigger, dataTaken }: ListTestSettings
     );
   }
 
-  const sumOfReciprocals = data.reduce((sum, setting) => sum + (1 / setting.frame_rate), 0);
-  const numberOfPhotos = data.length
-
   console.log('[Settings] Rendering List with data:', data);
   
   if (!dataTaken) return (
     <div>
         <Card>
           <CardHeader>
-            <CardTitle>Minimum time for data collection: {sumOfReciprocals} s</CardTitle>
+            <CardTitle>Minimum estimated time for data collection: {duration.toFixed(2)} s</CardTitle>
           </CardHeader>
           <CardFooter> Number of photos: {numberOfPhotos}</CardFooter>
         </Card>
@@ -107,7 +114,7 @@ export const ListTestSettings = ({ refreshTrigger, dataTaken }: ListTestSettings
     <div>
       <Card>
         <CardHeader>
-          <CardTitle>Minimum time for data collection: {sumOfReciprocals} s</CardTitle>
+          <CardTitle>Minimum estimated time for data collection: {duration.toFixed(2)} s</CardTitle>
         </CardHeader>
         <CardFooter> Number of photos: {numberOfPhotos}</CardFooter>
       </Card>

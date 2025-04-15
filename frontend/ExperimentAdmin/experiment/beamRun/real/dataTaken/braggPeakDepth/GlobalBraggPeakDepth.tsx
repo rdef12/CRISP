@@ -8,7 +8,6 @@ interface GlobalBraggPeakDepthProps {
 }
 
 export const GlobalBraggPeakDepth = ({ cameraAnalysisCreated }: GlobalBraggPeakDepthProps) => {
-  const [refreshKey, setRefreshKey] = useState(0);
   const [isCreating, setIsCreating] = useState(false);
 
   return (
@@ -17,10 +16,10 @@ export const GlobalBraggPeakDepth = ({ cameraAnalysisCreated }: GlobalBraggPeakD
         <CardTitle>Bragg Peak Measurements</CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
-        <ShowBraggPeakDepth key={refreshKey} isCreating={isCreating} />
+        <ShowBraggPeakDepth isCreating={isCreating} />
         <div className="w-full">
           <CreateBraggPeakDepth 
-            onSuccess={() => setRefreshKey(prev => prev + 1)} 
+            onSuccess={() => setIsCreating(false)}
             cameraAnalysisCreated={cameraAnalysisCreated}
             setIsCreating={setIsCreating}
           />
