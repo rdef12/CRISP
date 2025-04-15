@@ -1,0 +1,2 @@
+pg_dump -U postgres -F c -d crisp_database -h 127.0.0.1 -b -f /media/robin/Seagate\ Portable\ Drive/crisp_database_backup/beam_day_backup_$(date -u +%Y.%m.%d.%H-%M).sql
+
