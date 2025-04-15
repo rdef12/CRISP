@@ -10,6 +10,7 @@ import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/h
 import { MoveToRealRunButton } from "./dataNotTaken/MoveToRealRunButton";
 import { EditNumberOfImagesAndRaw } from "./dataNotTaken/EditNumberOfImagesAndRaw";
 import { ShowCameraWithData } from "./dataTaken/ShowCameraWithData";
+import { useRealData } from "./RealDataContext";
 
 type DialogMode = 'create' | 'view' | null;
 
@@ -217,6 +218,56 @@ const NumberOfImagesButton = ({ onSave, refreshTrigger }: SettingsButtonProps) =
   );
 };
 
+const TimeToTakeData = ({ refreshTrigger }: { refreshTrigger?: boolean }) => {
+  const record = useRecordContext();
+  const { beamRunId } = useParams();
+  const { setDuration } = useRealData();
+
+  const { data, isLoading } = useGetOne(
+    `camera-settings/time-to-take-data/${beamRunId}/camera`,
+    { 
+      id: record?.id || '',
+      meta: { refresh: refreshTrigger }
+    }
+  );
+
+  useEffect(() => {
+    if (data?.duration != null) {
+      setDuration(data.duration);
+    }
+  }, [data, setDuration]);
+
+  if (isLoading) {
+    return <div>Loading...</div>;
+  }
+
+  if (!data || !record) {
+    return <div>No data available</div>;
+  }
+  const duration = data?.duration;
+  return (
+    <div className="w-[140px]">
+      <HoverCard>
+        <HoverCardTrigger asChild>
+          { duration != null && (
+            <Button variant="outline" className="w-full">
+              Estimated duration: {(duration)} s
+            </Button>
+          )}
+        </HoverCardTrigger>
+        <HoverCardContent className="w-80">
+          <div className="space-y-1">
+            <h4 className="text-sm font-semibold">Estimated Time</h4>
+            <p className="text-sm">
+              This is the estimated minimum time required to take all images with the current settings.
+            </p>
+          </div>
+        </HoverCardContent>
+      </HoverCard>
+    </div>
+  );
+};
+
 interface ListCamerasInExperimentRealProps {
   dataTaken: boolean;
   onCameraAnalysisCreated: () => void;
@@ -257,6 +308,7 @@ export const ListCamerasInExperimentReal = ({
           onSave={handleSave} 
           refreshTrigger={refreshTrigger}
         />
+        <TimeToTakeData refreshTrigger={refreshTrigger} />
       </Datagrid>
       <MoveToRealRunButton refreshTrigger={refreshTrigger} />
     </ListBase>

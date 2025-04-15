@@ -530,6 +530,11 @@ def do_range_analysis(beam_run_id: int, camera_id: int):
         camera_analysis = session.exec(camera_analysis_statement).one()
         camera_analysis_id = camera_analysis.id
 
+        cdi.delete_failed_pinpoints_image_by_camera_analysis_id(camera_analysis_id)
+        camera_analysis.range = None
+        camera_analysis.range_uncertainty = None
+        session.commit()
+
         beam_center_coords, unc_beam_center_coords, \
         total_brightness_along_vertical_roi, unc_total_brightness_along_vertical_roi = get_beam_center_coords(beam_run_id, camera_analysis_id)
         
@@ -540,6 +545,7 @@ def do_range_analysis(beam_run_id: int, camera_id: int):
         
         plot_physical_units_ODR_bortfeld(camera_analysis_id, distances_travelled_inside_scintillator, unc_distances_travelled_inside_scintillator, 
                                         total_brightness_along_vertical_roi, unc_total_brightness_along_vertical_roi, num_of_failed_pinpoints)
+            
         return JSONResponse(content={"id": camera_id})
 
 

@@ -175,7 +175,7 @@ def get_beam_angle_and_bragg_peak_pixel(camera_analysis_id: int):
         scintillator_edges =  get_beam_direction_from_the_left(image_beam_direction, average_image, average_rounded_image, brightness_error, scintillator_edges)
         
         (h_bounds, v_bounds), roi_image_bytes = get_automated_roi(camera_analysis_id, average_rounded_image, scintillator_edges[0], scintillator_edges[1], 
-                                                                   show_images=False, fraction=0.16, save_to_database=True)
+                                                                   show_images=False, fraction=0.3, save_to_database=True)
         
         cdi.add_camera_analysis_plot(camera_analysis_id, "automated_roi", roi_image_bytes, "svg")
         
@@ -199,7 +199,7 @@ def get_beam_angle_and_bragg_peak_pixel(camera_analysis_id: int):
         
         rotated_rounded_image = rotated_image.astype(np.uint8)
         (h_bounds, v_bounds), _ = get_automated_roi(camera_analysis_id, rotated_rounded_image, scintillator_edges[0], scintillator_edges[1], 
-                                                    show_images=False, fraction=0.16)
+                                                    show_images=False, fraction=0.3)
 
         # Fit beam profile on rotated image
         (horizontal_coords, fit_parameters_array, beam_center_errors, _,  total_brightness_along_vertical_roi,
@@ -259,14 +259,14 @@ def get_beam_center_coords(beam_run_id: int, camera_analysis_id: int):
         average_image, average_rounded_image, brightness_error, \
         scintillator_edges =  get_beam_direction_from_the_left(image_beam_direction, average_image, average_rounded_image, brightness_error, scintillator_edges)
         
-        (h_bounds, v_bounds), _ = get_automated_roi(camera_analysis_id, average_rounded_image, scintillator_edges[0], scintillator_edges[1], show_images=False, fraction=0.16)
+        (h_bounds, v_bounds), _ = get_automated_roi(camera_analysis_id, average_rounded_image, scintillator_edges[0], scintillator_edges[1], show_images=False, fraction=0.3)
         
         rotated_image, _, inverse_rotation_matrix, rotation_brightness_error = image_processing.rotate_input_image(average_image, beam_angle,
                                                                                                                    h_bounds, v_bounds, show_residuals=False)
         
         rotated_rounded_image = rotated_image.astype(np.uint8)
         (h_bounds, v_bounds), _ = get_automated_roi(camera_analysis_id, rotated_rounded_image, scintillator_edges[0], scintillator_edges[1], 
-                                                    show_images=False, fraction=0.16)
+                                                    show_images=False, fraction=0.3)
         
         rotated_image = rotated_image.astype(np.float64)
         

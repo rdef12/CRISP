@@ -1,5 +1,7 @@
 # DATABASE BACKUP/RESTORE COMMANDS
 
+![Custom Badge](https://img.shields.io/badge/CRISP-26c70a)
+
 ### Dump Database
 pg_dump -U postgres -F c -d crisp_database -h 127.0.0.1 -b -f path/to/backup.sql
 
