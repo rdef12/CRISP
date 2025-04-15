@@ -546,7 +546,7 @@ def upload_averaged_image_api():
     
     # beam_energy = 90
     # beam_energy = 150
-    beam_energy = 130
+    beam_energy = 170
     SIDE_AR_CAM_ID = 1
     TOP_HQ_CAM_ID = 2
 
@@ -573,12 +573,16 @@ def upload_averaged_image_api():
     # num_of_ar_images_in_average = 53
     
     # 130 MEV
-    num_of_hq_images_in_average = 64
-    num_of_ar_images_in_average = 73
+    # num_of_hq_images_in_average = 64
+    # num_of_ar_images_in_average = 73
     
     # 150 MEV
     # num_of_hq_images_in_average = 174
     # num_of_ar_images_in_average = 67
+    
+    # 170 MEV
+    num_of_hq_images_in_average = 173
+    num_of_ar_images_in_average = 55
     
     # 180 MEV
     # num_of_hq_images_in_average = 159
@@ -592,11 +596,11 @@ def upload_averaged_image_api():
         cdi.add_photo(camera_settings_link_id=top_HQ_camera_settings_link_id, photo=mock_bytestring)
     
     # FLOAT-16 PICKLED AVERAGED NUMPY ARRAYS
-    with open("/code/src/beam_averaged_images/130_mev_A1_averaged_image_float16.pkl", "rb") as file:
+    with open("/code/src/beam_averaged_images/170_mev_A1_averaged_image_float16.pkl", "rb") as file:
         pickled_side_AR__average_image = file.read()
     cdi.update_average_image(side_AR_analysis_id, pickled_side_AR__average_image)
     
-    with open("/code/src/beam_averaged_images/130_mev_HQ2_averaged_image_float16.pkl", "rb") as file:
+    with open("/code/src/beam_averaged_images/170_mev_HQ2_averaged_image_float16.pkl", "rb") as file:
         pickled_top_HQ_average_image = file.read()
     cdi.update_average_image(top_HQ_analysis_id, pickled_top_HQ_average_image)
     # # #TODO THIS IS THE END OF HIS COMMENTING
