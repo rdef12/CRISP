@@ -98,6 +98,7 @@ def get_test_settings(beam_run_id: int, camera_id: int, response: Response):
                                                  is_optimal=camera_settings.is_optimal)
             all_settings += [settings]
 
+        all_settings = sorted(all_settings, key=lambda x: x.camera_settings_id)
         response.headers["Content-Range"] = str(len(all_settings))
 
         return all_settings
