@@ -745,17 +745,17 @@ def extract_weighted_average_3d_physical_position(list_of_camera_objects, list_o
             continue
         intersection_point_array.append(line_intersection_point)
         unc_intersection_point_array.append(unc_line_intersection_point)
-        
+
     
-        # Print intersection points and uncertainties in a tabular form
-        print("\n\nIntersection Points and Uncertainties:")
-        print(f"{'Camera Pair':<20} {'Intersection Point':<40} {'Uncertainty':<40}")
-        print("-" * 100)
-        for camera_combination, intersection_point, unc_intersection_point in zip(possible_camera_combinations, intersection_point_array, unc_intersection_point_array):
-            camera_pair = f"({camera_combination[0].camera_id}, {camera_combination[1].camera_id})"
-            intersection_point_str = f"({intersection_point[0]:.2f}, {intersection_point[1]:.2f}, {intersection_point[2]:.2f})"
-            uncertainty_str = f"({unc_intersection_point[0]:.2f}, {unc_intersection_point[1]:.2f}, {unc_intersection_point[2]:.2f})"
-            print(f"{camera_pair:<20} {intersection_point_str:<40} {uncertainty_str:<40}")
+    # Print intersection points and uncertainties in a tabular form
+    print("\n\nIntersection Points and Uncertainties:")
+    print(f"{'Camera Pair':<20} {'Intersection Point':<40} {'Uncertainty':<40}")
+    print("-" * 100)
+    for camera_combination, intersection_point, unc_intersection_point in zip(possible_camera_combinations, intersection_point_array, unc_intersection_point_array):
+        camera_pair = f"({camera_combination[0].camera_id}, {camera_combination[1].camera_id})"
+        intersection_point_str = f"({intersection_point[0]:.2f}, {intersection_point[1]:.2f}, {intersection_point[2]:.2f})"
+        uncertainty_str = f"({unc_intersection_point[0]:.2f}, {unc_intersection_point[1]:.2f}, {unc_intersection_point[2]:.2f})"
+        print(f"{camera_pair:<20} {intersection_point_str:<40} {uncertainty_str:<40}")
     
     if num_of_failed_pinpoints > 0:
         print("\n\nNumber of failed pinpoints omitted from weighted calculations is: {}".format(num_of_failed_pinpoints))

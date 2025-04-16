@@ -484,6 +484,7 @@ def get_bragg_peak(beam_run_id: int):
         bragg_peak_z_unc = None
 
         bragg_peak_3d_position = beam_run.bragg_peak_3d_position
+        print(f"\n\n\n{bragg_peak_3d_position=}\n\n\n")
         if bragg_peak_3d_position is not None:
             bragg_peak_x, bragg_peak_y, bragg_peak_z = bragg_peak_3d_position
 

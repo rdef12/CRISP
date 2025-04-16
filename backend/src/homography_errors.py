@@ -106,7 +106,7 @@ def generate_householder_matrix(eigen_values, eigen_vectors, exclude_eigen_value
     
         # Multiplying eigenvectors by huge scale factor, and this factor actually cancels out!
         # Should be no risk of going above the upper floating point precision limit (HACK)
-        eigen_vector *= (-1 * smallest_abs_order_of_magnitude + 6) # factor of 1,000,000 overboard to be safe
+        eigen_vector *= (-1 * smallest_abs_order_of_magnitude + 9) # factor of 1,000,000,000 overboard to be safe
         house_holder_matrix += np.outer(eigen_vector, eigen_vector)/eigen_values[count]
 
     return house_holder_matrix
