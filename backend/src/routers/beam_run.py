@@ -31,7 +31,7 @@ def get_beam_runs(experiment_id: int, response: Response) -> list[BeamRun]:
     with Session(engine) as session:
         statement = select(BeamRun).where(BeamRun.experiment_id == experiment_id)
         results = session.exec(statement).all()
-        results = results if results else []
+        results = sorted(results, key=lambda beam_run: beam_run.id) if results else []
         response.headers["Content-Range"] = str(len(results))
         return results
 

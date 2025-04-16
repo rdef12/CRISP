@@ -40,7 +40,7 @@ def get_cameras_plots(beam_run_id: int, camera_id: int, response: Response):
         camera_analysis_id = camera_analysis.id
         camera_analysis_plots_statement = select(CameraAnalysisPlot).where(CameraAnalysisPlot.camera_analysis_id == camera_analysis_id)
         plots = session.exec(camera_analysis_plots_statement).all()
-        plots = sorted(plots, key=lambda plot: int(plot.id))
+        plots = sorted(plots, key=lambda plot: plot.id)
         plot_responses = []
         for plot in plots:
             plot_base_64 = base64.b64encode(plot.plot_figure).decode("utf-8")
