@@ -43,13 +43,13 @@ export function NavigationBar() {
               </NavigationMenuLink>
             </Link>
           </NavigationMenuItem>
-          <NavigationMenuItem>
+          {/* <NavigationMenuItem>
             <Link href="/streams" legacyBehavior passHref>
               <NavigationMenuLink className={`${navigationMenuTriggerStyle()} text-2xl`}>
                 Streams
               </NavigationMenuLink>
             </Link>
-          </NavigationMenuItem>
+          </NavigationMenuItem> */}
           <NavigationMenuItem>
             <Link href="/image_testing" legacyBehavior passHref>
               <NavigationMenuLink className={`${navigationMenuTriggerStyle()} text-2xl`}>
