@@ -1,0 +1,175 @@
+// Beam Experiment Schema
+
+Table experiment {
+  id serial [pk]
+  name varchar
+  date_started timestamp
+  setup_id int
+  e_log_entry bytea
+}
+
+Table setup {
+  id serial [pk]
+  name varchar
+  date_created timestamp
+  date_last_edited timestamp
+  block_x_dimension double
+  block_x_dimension_unc double
+  block_y_dimension double
+  block_y_dimension_unc double
+  block_z_dimension double
+  block_z_dimension_unc double
+  block_refractive_index double
+  block_refractive_index_unc double
+}
+
+Table beamrun {
+  id serial [pk]
+  beam_run_number int
+  datetime_of_run timestamp
+  ESS_beam_energy double
+  beam_current double
+  MSIC_beam_energy double
+  // MSIC_beam_energy_unc double
+  MSIC_beam_current double
+  // MSIC_beam_current_unc double
+  is_test boolean
+  bragg_peak_3d_position double[] [note: "May not render visually in dbdiagram.io"]
+  // unc_bragg_peak_3d_position double[] [note: "May not render visually in dbdiagram.io"]
+  beam_incident_3d_position double[] [note: "May not render visually in dbdiagram.io"]
+  // unc_beam_incident_3d_position double[] [note: "May not render visually in dbdiagram.io"]
+  beam_path_vector double[] [note: "May not render visually in dbdiagram.io"]
+  // unc_beam_path_vector double[] [note: "May not render visually in dbdiagram.io"]
+  bragg_peak_depth double
+  // unc_bragg_peak_depth double
+  experiment_id int
+  e_log_entry bytea
+}
+
+Table camera {
+  id serial [pk]
+  username varchar
+  ip_address varchar
+  password varchar
+  model varchar
+}
+
+Table settings {
+  id serial [pk]
+  frame_rate int
+  lens_position double
+  gain double
+}
+
+Table cameraSettingsLink {
+  id serial [pk]
+  camera_id int
+  settings_id int
+  is_optimal boolean
+  number_of_images int
+  take_raw_images boolean
+  beam_run_id int
+}
+
+Table photo {
+  id serial [pk]
+  camera_settings_link_id int
+  photo bytea
+  photo_metadata bytea
+}
+
+Table cameraAnalysis {
+  id serial [pk]
+  camera_settings_id int
+  colour_channel colourchannelenum
+  average_image bytea
+  beam_angle double
+  // unc_beam_angle double
+  bragg_peak_pixel double[] [note: "May not render visually in dbdiagram.io"]
+  // unc_bragg_peak_pixel double[] [note: "May not render visually in dbdiagram.io"]
+  range double
+  // range_uncertainty double
+}
+
+Table cameraAnalysisPlot {
+  id serial [pk]
+  camera_analysis_id int
+  plot_type varchar
+  plot_figure bytea
+  figure_format varchar
+  parameter_labels varchar[] [note: "May not render visually in dbdiagram.io"]
+  parameter_values double[] [note: "May not render visually in dbdiagram.io"]
+  parameter_uncertainties double[] [note: "May not render visually in dbdiagram.io"]
+  chi_squared double
+  number_of_data_points int
+  description varchar
+}
+
+Table cameraSetupLink {
+  id serial [pk]
+  camera_id int
+  setup_id inet6
+  optical_axis opticalaxisenum
+  depth_direction depthdirectionenum
+  image_beam_direction imagebeamdirectionenum
+
+  far_face_calibration_pattern_size int[] [note: "Array field"]
+  far_face_calibration_pattern_type varchar
+  far_face_calibration_spacing double[] [note: "Array field"]
+  // far_face_calibration_spacing_unc double[] [note: "Array field"]
+  far_face_calibration_photo_camera_settings_id int
+  far_face_homography_matrix bytea [note: "Binary matrix"]
+  far_face_homography_covariance_matrix bytea [note: "Binary matrix"]
+  far_face_z_shift double
+  // far_face_z_shift_unc double
+  far_face_non_z_shift double
+  // far_face_non_z_shift_unc double
+  far_face_calibration_board_thickness double
+  // far_face_calibration_board_thickness_unc double
+
+  // near_face_calibration_pattern_size int[] [note: "Array field"]
+  // near_face_calibration_pattern_type varchar
+  // near_face_calibration_spacing double[] [note: "Array field"]
+  // near_face_calibration_spacing_unc double[] [note: "Array field"]
+  // near_face_calibration_photo_camera_settings_id int
+  // near_face_homography_matrix bytea [note: "Binary matrix"]
+  // near_face_homography_covariance_matrix bytea [note: "Binary matrix"]
+  // near_face_z_shift double
+  // near_face_z_shift_unc double
+  // near_face_non_z_shift double
+  // near_face_non_z_shift_unc double
+  // near_face_calibration_board_thickness double
+  // near_face_calibration_board_thickness_unc double
+
+  scintillator_edges_photo_camera_settings_id int
+  horizontal_scintillator_start int
+  horizontal_scintillator_end int
+  vertical_scintillator_start int
+  vertical_scintillator_end int
+
+  // do_distortion_calibration boolean
+  // distortion_calibration_pattern_size_z_dim int
+  // distortion_calibration_pattern_size_non_z_dim int
+  // distortion_calibration_pattern_type varchar
+  // distortion_calibration_pattern_spacing double
+  // camera_matrix bytea [note: "Binary matrix"]
+  // distortion_coefficients bytea [note: "Binary vector"]
+  // distortion_calibration_camera_settings_link int
+  // lens_position double
+}
+
+Ref: experiment.setup_id > setup.id
+Ref: beamrun.experiment_id > experiment.id
+Ref: cameraSettingsLink.camera_id > camera.id
+Ref: cameraSettingsLink.settings_id > settings.id
+Ref: cameraSettingsLink.beam_run_id > beamrun.id
+Ref: photo.camera_settings_link_id > cameraSettingsLink.id
+Ref: cameraAnalysis.camera_settings_id > cameraSettingsLink.id
+Ref: cameraAnalysisPlot.camera_analysis_id > cameraAnalysis.id
+
+Ref: cameraSetupLink.camera_id > camera.id
+Ref: cameraSetupLink.setup_id > setup.id
+Ref: cameraSetupLink.far_face_calibration_photo_camera_settings_id > cameraSettingsLink.id
+// Ref: camerasetuplink.near_face_calibration_photo_camera_settings_id > camerasettingslink.id
+Ref: cameraSetupLink.scintillator_edges_photo_camera_settings_id > cameraSettingsLink.id
+// Ref: camerasetuplink.distortion_calibration_camera_settings_link > camerasettingslink.id
