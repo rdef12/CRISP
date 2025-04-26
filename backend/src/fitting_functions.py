@@ -330,13 +330,8 @@ def extract_incident_beam_angle(camera_analysis_id: int, horizontal_coords, beam
     beam_center_errors = beam_center_errors[angle_fitting_range]
     
     fitted_line_parameters, fitted_parameter_uncertainties = least_squares_fitting_procedure(horizontal_coords, beam_center_vertical_coords, beam_center_errors)
-    horizontal_coords_error = np.full_like(horizontal_coords, 1/np.sqrt(12))
+    horizontal_coords_error = np.full_like(horizontal_coords, 1/np.sqrt(12), dtype=float)
     linear = odr.Model(linear_function_for_odr)
-    
-    min_error = 1e-8
-    horizontal_coords_error = np.clip(horizontal_coords_error, min_error, None)
-    beam_center_errors = np.clip(np.array(beam_center_errors), min_error, None)
-
     data = odr.RealData(horizontal_coords, beam_center_vertical_coords,
                         sx=horizontal_coords_error, sy=beam_center_errors)
 
@@ -445,19 +440,29 @@ def locate_bragg_peak_in_image(camera_analysis_id: int, x_positions, beam_center
     peak_range = slice(max(0, within_peak_threshold[0]), min(len(x_positions), within_peak_threshold[-1] + 1))
     
     x_positions_slice = x_positions[peak_range]
+    unc_x_positions_slice = np.full_like(x_positions_slice, 1/np.sqrt(12), dtype=float)
     total_brightness_slice = total_brightness_along_vertical_roi[peak_range]
     unc_brightness_slice = unc_total_brightness_along_vertical_roi[peak_range]
     
-    bortfeld_fit = fitBP(x_positions_slice, total_brightness_slice, unc_brightness_slice)
-    fit_parameters_covariance = bortfeld_fit['bortfeld_fit_cov']
-    bortfeld_fit_uncertainties = np.sqrt(np.diag(fit_parameters_covariance))
+    fit_parameters, fit_parameters_covariance, _, reduced_chi_squared = fit_bortfeld_odr(
+        x_positions_slice, total_brightness_slice, unc_x_positions_slice, unc_brightness_slice)
     
+    chi_squared = reduced_chi_squared * (len(x_positions_slice) - 5) # 5 fit params
+    bortfeld_fit_uncertainties = np.sqrt(np.diag(fit_parameters_covariance))
     z = np.linspace(x_positions_slice[0], x_positions_slice[-1], 1000) # I have not passed z in cm here.
-    curve = bortfeld(z, *bortfeld_fit['bortfeld_fit_p'])
+    curve = bortfeld(z, *fit_parameters)
+    
+    # NOTE - REMOVED WHILE EXPERIMENTING WITH ODR FITTING
+    # bortfeld_fit = fitBP(x_positions_slice, total_brightness_slice, unc_brightness_slice)
+    # z = np.linspace(x_positions_slice[0], x_positions_slice[-1], 1000) # I have not passed z in cm here.
+    # curve = bortfeld(z, *bortfeld_fit['bortfeld_fit_p'])
+    
+    # fit_parameters_covariance = bortfeld_fit['bortfeld_fit_cov']
+    # bortfeld_fit_uncertainties = np.sqrt(np.diag(fit_parameters_covariance))
 
-    predicted_curve = bortfeld(x_positions_slice, *bortfeld_fit['bortfeld_fit_p'])
-    chi_squared = chi_squared_function(total_brightness_slice, unc_brightness_slice, predicted_curve)
-    reduced_chi_squared = chi_squared / (len(x_positions_slice) - 5) # 5 fitted parameters
+    # predicted_curve = bortfeld(x_positions_slice, *bortfeld_fit['bortfeld_fit_p'])
+    # chi_squared = chi_squared_function(total_brightness_slice, unc_brightness_slice, predicted_curve)
+    # reduced_chi_squared = chi_squared / (len(x_positions_slice) - 5) # 5 fitted parameters
     
     fig, ax = plt.subplots()
     ax.plot(z, curve, color="red", label=("Bortfeld fit \n" + r"$\chi^{2}_R$ = " + f"{reduced_chi_squared:.1f}"))
@@ -478,7 +483,9 @@ def locate_bragg_peak_in_image(camera_analysis_id: int, x_positions, beam_center
     plot_bytes = buf.read()
     
     parameter_labels = ["Normalisation Constant (A)", "80% Distal Range (R80)", "Sigma", "Bragg-Kleeman Exponent (p)", "Scale factor (K)"]
-    parameter_values = [float(x) for x in bortfeld_fit['bortfeld_fit_p']]
+    # parameter_values = [float(x) for x in bortfeld_fit['bortfeld_fit_p']]
+    # parameter_uncertainties = [float(x) for x in bortfeld_fit_uncertainties]
+    parameter_values = [float(x) for x in fit_parameters]
     parameter_uncertainties = [float(x) for x in bortfeld_fit_uncertainties]
     
     cdi.add_camera_analysis_plot(camera_analysis_id, f"pixel_bortfeld_fit", plot_bytes, "svg",
@@ -492,7 +499,8 @@ def locate_bragg_peak_in_image(camera_analysis_id: int, x_positions, beam_center
     # For the time being, use a symmetric interval with the largest unc
     # unc_bortfeld_horizontal_coord = max(lower_bound, upper_bound)
     
-    unc_bortfeld_horizontal_coord = compute_error_on_bortfeld_peak(z, bortfeld_fit['bortfeld_fit_p'], bortfeld_fit['bortfeld_fit_cov'])
+    unc_bortfeld_horizontal_coord = compute_error_on_bortfeld_peak(z, fit_parameters, fit_parameters_covariance)
+    # unc_bortfeld_horizontal_coord = compute_error_on_bortfeld_peak(z, bortfeld_fit['bortfeld_fit_p'], bortfeld_fit['bortfeld_fit_cov'])
     
     change_in_coord = round(bortfeld_horizontal_coord) - initial_bragg_peak_horizontal_coord
     
