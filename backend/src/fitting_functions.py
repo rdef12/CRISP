@@ -28,6 +28,10 @@ LEGEND_CONFIG = {
 def linear_function(x_coord, parameters):
     return parameters[0] * x_coord + parameters[1]
 
+def linear_function_for_odr(params, x):
+    m, c = params
+    return m * x + c
+
 def least_squares_fitting_procedure(x_data, y_data, y_uncertainties):
     """
     NOTE: Insert from LSFR-20
@@ -324,10 +328,30 @@ def extract_incident_beam_angle(camera_analysis_id: int, horizontal_coords, beam
     horizontal_coords = horizontal_coords[angle_fitting_range]
     beam_center_vertical_coords = beam_center_vertical_coords[angle_fitting_range]
     beam_center_errors = beam_center_errors[angle_fitting_range]
-
+    
     fitted_line_parameters, fitted_parameter_uncertainties = least_squares_fitting_procedure(horizontal_coords, beam_center_vertical_coords, beam_center_errors)
-    predicted_beam_centers = linear_function(horizontal_coords, fitted_line_parameters)  
-    chi_squared = chi_squared_function(beam_center_vertical_coords, beam_center_errors, predicted_beam_centers)
+    horizontal_coords_error = np.full_like(horizontal_coords, 1/np.sqrt(12))
+    linear = odr.Model(linear_function_for_odr)
+    
+    min_error = 1e-8
+    horizontal_coords_error = np.clip(horizontal_coords_error, min_error, None)
+    beam_center_errors = np.clip(np.array(beam_center_errors), min_error, None)
+
+    data = odr.RealData(horizontal_coords, beam_center_vertical_coords,
+                        sx=horizontal_coords_error, sy=beam_center_errors)
+
+    odr_obj = odr.ODR(data, linear, beta0=fitted_line_parameters)
+    result = odr_obj.run()
+    
+    fitted_line_parameters = result.beta
+    fitted_parameter_uncertainties = result.sd_beta
+    chi_squared =  result.sum_square
+    predicted_beam_centers = linear_function(horizontal_coords, fitted_line_parameters) 
+
+    # NOTE - COMMENTED OUT WHILE TESTING ODR FITTING
+    # fitted_line_parameters, fitted_parameter_uncertainties = least_squares_fitting_procedure(horizontal_coords, beam_center_vertical_coords, beam_center_errors)
+    # predicted_beam_centers = linear_function(horizontal_coords, fitted_line_parameters)  
+    # chi_squared = chi_squared_function(beam_center_vertical_coords, beam_center_errors, predicted_beam_centers)
     chi_squared_reduced =  chi_squared / (len(horizontal_coords) - 2)
     
     print("\n\ntan alpha = {}".format(fitted_line_parameters[0]))
@@ -344,23 +368,31 @@ def extract_incident_beam_angle(camera_analysis_id: int, horizontal_coords, beam
     #     print("\n\nUpdated tan alpha = {}".format(fitted_line_parameters[0]))
     #     print("\n\nUpdated uncertainty in tan alpha = {}".format(fitted_parameter_uncertainties[0]))
     
+    print(f"\n\n\n\n\n\n{fitted_line_parameters=}")
     fitted_angle = np.arctan(fitted_line_parameters[0])
     fitted_tan_angle_uncertainty = fitted_parameter_uncertainties[0]
     unc_fitted_angle = fitted_tan_angle_uncertainty * np.cos(fitted_angle)**2
+    print(f"\n\n\n{fitted_angle=}")
     
     print("\n\nuncertainty in angle = {}".format(unc_fitted_angle))
 
     fitted_angle, unc_fitted_angle = np.rad2deg(fitted_angle), np.rad2deg(unc_fitted_angle)
+    print(f"\n\n\n{fitted_angle=}")
     
     leading_order_error = 10 ** np.floor(np.log10(np.abs(unc_fitted_angle).max())) # same OOM for both coords - ideal?
     fitted_angle = np.round(fitted_angle / leading_order_error) * leading_order_error
     unc_fitted_angle = np.round(unc_fitted_angle / leading_order_error) * leading_order_error
+    print(f"\n\n\n{fitted_angle=}")
     
     fitted_label = r"$\alpha = $" + f"{fitted_angle}" + " \u00B1 " + f"{unc_fitted_angle}" + \
     "\u00B0" + "\n" + r"Reduced $\chi^2$ = " + str(round(chi_squared_reduced, 2))
     
     fig, axs = plt.subplots(2, 1, gridspec_kw={'height_ratios': [3, 1]}, figsize=(8, 6), sharex=True)
     axs[0].plot(horizontal_coords, predicted_beam_centers, color="red", label=fitted_label)
+    
+    print(f"\n\n\n\n\n\n{np.mean(beam_center_errors)=}")
+    print(f"\n\n\n{np.max(beam_center_errors)=}")
+    print(f"\n\n\n{np.min(beam_center_errors)=}\n\n\n\n\n\n")
     
     axs[0].errorbar(horizontal_coords, beam_center_vertical_coords, beam_center_errors, color="black", marker="x", label="Experimental Data",
                     ecolor="blue", ls="none")

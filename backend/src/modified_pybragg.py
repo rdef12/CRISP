@@ -274,7 +274,7 @@ def fitBP_odr(z, D, z_unc, D_unc, method='bortfeld', rel_resolution=0.01):
 
         chi_square = myoutput.sum_square
         print(f"Chi square: {chi_square}")
-        degrees_of_freedom = len(z)
+        degrees_of_freedom = len(z) - 5 # SUBTRACT 5 for the number of parameters
         chi_squared_reduced = chi_square / degrees_of_freedom
         print(f"Reduced chi square: {chi_squared_reduced}")
 
