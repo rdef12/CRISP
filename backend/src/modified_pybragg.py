@@ -249,13 +249,13 @@ def fitBP_odr(z, D, z_unc, D_unc, method='bortfeld', rel_resolution=0.01):
         # normalization constant for second part of equation, depends on the epsilon from the original publication
         k = 0.01394
 
-        
         beta0, _= fit_bortfeld(z, D, z_unc)
 
         function_model = odr.Model(bortfeld_for_odr)
         # mydata = odr.Data(z, D, wd=z_unc, we=D_unc)
         mydata = odr.RealData(z, D, sx=z_unc, sy=D_unc)
-        myodr = odr.ODR(mydata, function_model, beta0=[A, R0, sigma, p, k])
+        # myodr = odr.ODR(mydata, function_model, beta0=[A, R0, sigma, p, k])
+        myodr = odr.ODR(mydata, function_model, beta0=beta0)
         myoutput = myodr.run()
         
         myoutput.pprint()

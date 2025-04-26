@@ -116,6 +116,15 @@ class AbstractCamera(ABC):
         # print(f"Near plane 2D homography error: {near_plane_two_dimensional_homography_error}")
         far_plane_two_dimensional_position_homography_error = generate_world_point_uncertainty([[pixel_coords]], unc_pixel_coords[0], unc_pixel_coords[1], self.back_homography_matrix, self.back_homography_covariance)
         # print(f"Far plane 2D homography error: {far_plane_two_dimensional_position_homography_error}")
+        
+        # HACK for fixing NaN from homography error calculation
+        near_plane_two_dimensional_homography_error = [
+            0 if np.isnan(x) else x for x in near_plane_two_dimensional_homography_error
+        ]
+        far_plane_two_dimensional_position_homography_error = [
+            0 if np.isnan(x) else x for x in far_plane_two_dimensional_position_homography_error
+        ]
+
         return near_plane_two_dimensional_homography_error, far_plane_two_dimensional_position_homography_error
     
     @staticmethod
@@ -535,12 +544,13 @@ def calculate_intersection_point(first_equation_line_vectors, second_equation_li
       print("\n\nTotal error added in quadrature between two closest points on interpolated lines is {}".format(total_closest_points_error))
       print("\n\nVector of closest approach (magnitude of components taken) is {}".format(np.abs(closest_point_on_second_line_to_first_line - closest_point_on_first_line_to_second_line)))
       
-      if not np.all(np.abs(closest_point_on_second_line_to_first_line - closest_point_on_first_line_to_second_line) <= 5 * total_closest_points_error): # CURRENTLY, LESS THAN 5 COMBINED STD
+      # HACK - deactivated while investigating range analysis issues
+    #   if not np.all(np.abs(closest_point_on_second_line_to_first_line - closest_point_on_first_line_to_second_line) <= 5 * total_closest_points_error): # CURRENTLY, LESS THAN 5 COMBINED STD
          
-        # 5 standard deviations because operating on a huge number of beam center coords across all image sets, it becomes quite possible that one component has an error exceeding 5 STD.
-        # raise Exception("\n\nThe seperation of two closest points is not consistent within 5 standard deviation of each of these points.")
-        print("\n\nThe seperation of two closest points is not consistent within 5 standard deviation of each of these points.")
-        return float("nan"), float("nan") # check for this and note that fit failed
+    #     # 5 standard deviations because operating on a huge number of beam center coords across all image sets, it becomes quite possible that one component has an error exceeding 5 STD.
+    #     # raise Exception("\n\nThe seperation of two closest points is not consistent within 5 standard deviation of each of these points.")
+    #     print("\n\nThe seperation of two closest points is not consistent within 5 standard deviation of each of these points.")
+    #     return float("nan"), float("nan") # check for this and note that fit failed
         
       # NEW VERSION - uses weighted intersection point of closest points to determine the event's pinpointed location
       numerator = (closest_point_on_second_line_to_first_line/ unc_closest_point_on_second_line_to_first_line**2) + (closest_point_on_first_line_to_second_line / unc_closest_point_on_first_line_to_second_line**2) 

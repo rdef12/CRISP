@@ -45,6 +45,9 @@ def calculate_beam_incidence_and_directional_vector(
 
     x_b, y_b, z_b = physical_bragg_peak_position
     unc_x_b, unc_y_b, unc_z_b = bragg_peak_error
+    
+    # # HACK - to account for scintillator edge angle (i.e. "angle due to camera rotation")
+    # side_cam_beam_angle = side_cam_beam_angle - (-0.71) # degrees - hardcoded from scintillator edge angle in raspi4b3 images (varies between cameras)
 
     theta_xz, theta_yz = np.deg2rad(top_cam_beam_angle), np.deg2rad(side_cam_beam_angle)
     unc_theta_xz, unc_theta_yz = np.deg2rad(unc_top_cam_beam_angle), np.deg2rad(unc_side_cam_beam_angle)
@@ -82,6 +85,21 @@ def calculate_beam_incidence_and_directional_vector(
         unc_beam_center_incident_position_y,
         0
     ])
+    
+    # ############# HACK - ADDED TO CHECK IMPACT OF NORMAL INCIDENCE ASSUMPTION ON DEPTH COMPUTED (AND PINPOINTING FAILURE IN RANGE ANALYSIS) #########
+    # beam_center_incident_position = np.array([
+    #     beam_center_incident_position[0],
+    #     beam_center_incident_position[1],
+    #     0
+    # ])
+    # unc_beam_center_incident_position = np.array([
+    #     unc_beam_center_incident_position_x,
+    #     unc_beam_center_incident_position_y,
+    #     0
+    # ])
+    # beam_direction_vector = np.array([0,0,1])  
+    # unc_beam_directional_vector = np.array([0,0,0])
+    # ################################################################################################################################
 
     return beam_center_incident_position, unc_beam_center_incident_position, beam_direction_vector, unc_beam_directional_vector
 

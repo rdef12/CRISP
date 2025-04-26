@@ -441,6 +441,7 @@ def locate_bragg_peak_in_image(camera_analysis_id: int, x_positions, beam_center
     
     x_positions_slice = x_positions[peak_range]
     unc_x_positions_slice = np.full_like(x_positions_slice, 1/np.sqrt(12), dtype=float)
+    print(f"\n\n\n{unc_x_positions_slice=}")
     total_brightness_slice = total_brightness_along_vertical_roi[peak_range]
     unc_brightness_slice = unc_total_brightness_along_vertical_roi[peak_range]
     
