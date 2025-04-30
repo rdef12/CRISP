@@ -261,7 +261,8 @@ def fitBP_odr(z, D, z_unc, D_unc, method='bortfeld', rel_resolution=0.01):
         myoutput.pprint()
         
         p = myoutput.beta
-        c = myoutput.cov_beta
+        c = myoutput.cov_beta * myoutput.res_var # account for residual variance!!
+        # c = myoutput.cov_beta 
 
         # return for easy access
         quantities['bortfeld_fit_results'] = {var: {'nominal': nom, 'std': std} for var, nom, std in zip(['D100', 'R0', 'sigma', 'p', 'k'], p, np.diag(c))}
