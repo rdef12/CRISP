@@ -442,7 +442,7 @@ def locate_bragg_peak_in_image(camera_analysis_id: int, x_positions, beam_center
     initial_bragg_peak_horizontal_coord_index = np.argmax(total_brightness_along_vertical_roi)
     initial_bragg_peak_horizontal_coord = x_positions[initial_bragg_peak_horizontal_coord_index]
     
-    threshold_fraction = 1 / 2
+    threshold_fraction = 0.5
     initial_brightness = total_brightness_along_vertical_roi[0]
     peak_brightness = np.max(total_brightness_along_vertical_roi)
     peak_threshold_condition = initial_brightness  + (peak_brightness - initial_brightness) * threshold_fraction
@@ -574,7 +574,7 @@ def fit_physical_units_ODR_bortfeld(camera_analysis_id, distances, distance_unce
         brightnesses = np.array(brightnesses)[unique_indices]    
         brightness_uncertainties = np.array(brightness_uncertainties)[unique_indices]
     
-    threshold_fraction = 1 / 3
+    threshold_fraction = 1 / 2
     initial_brightness = brightnesses[0]
     peak_brightness = np.max(brightnesses)
     peak_threshold_condition = initial_brightness  + (peak_brightness - initial_brightness) * threshold_fraction
@@ -594,11 +594,14 @@ def fit_physical_units_ODR_bortfeld(camera_analysis_id, distances, distance_unce
     fit_parameters, fit_parameters_covariance, _, reduced_chi_squared = fit_bortfeld_odr(
         distances, brightnesses, distance_uncertainties, brightness_uncertainties)
     
+    print(f"\n\n\n Fitted parameters = {fit_parameters}")
+    print(f"\n\n\n Fitted parameters covariance = {fit_parameters_covariance}")
+    
     print(f"\n\n\n R80 = {fit_parameters[2]} +/- {np.sqrt(np.diag(fit_parameters_covariance))[2]}")
 
     # Find the Bragg peak position and uncertainties
-    bragg_peak_position = find_peak_of_bortfeld(distances, fit_parameters)
-    bragg_peak_position_error = compute_error_on_bortfeld_peak(distances, fit_parameters, fit_parameters_covariance)
+    bragg_peak_position = find_peak_of_bortfeld(distances.copy(), fit_parameters.copy())
+    bragg_peak_position_error = compute_error_on_bortfeld_peak(distances.copy(), fit_parameters.copy(), fit_parameters_covariance)
     print("\n\nBragg peak position is {}".format(bragg_peak_position))
     print("\n\nBragg peak position uncertainty is {}".format(bragg_peak_position_error))
     
@@ -608,7 +611,7 @@ def fit_physical_units_ODR_bortfeld(camera_analysis_id, distances, distance_unce
     return distances, distance_uncertainties, brightnesses, brightness_uncertainties, fit_parameters, fit_parameters_covariance, reduced_chi_squared
 
 def compute_range_and_uncertainty(camera_analysis_id, distances, fit_parameters, fit_parameter_covariance):
-    range = find_range(distances, fit_parameters, points_per_bin=1000)
+    range = find_range(distances, fit_parameters)
     range_uncertainty = compute_error_on_mean_range(distances, fit_parameters, fit_parameter_covariance)
     print("\n\nRange is {}".format(range))
     print("\n\nRange uncertainty is {}".format(range_uncertainty))
@@ -621,9 +624,11 @@ def plot_physical_units_ODR_bortfeld(camera_analysis_id, distances, distance_unc
                                      num_of_failed_pinpoints):
     try:
         distances, distance_uncertainties, brightnesses, brightness_uncertainties, \
-            fit_parameters, fit_parameters_covariance, reduced_chi_squared = fit_physical_units_ODR_bortfeld(camera_analysis_id, distances, distance_uncertainties, brightnesses, brightness_uncertainties)
+            fit_parameters, fit_parameters_covariance, reduced_chi_squared = fit_physical_units_ODR_bortfeld(camera_analysis_id, distances, distance_uncertainties,
+                                                                                                             brightnesses, brightness_uncertainties)
         
-        range, unc_range = compute_range_and_uncertainty(camera_analysis_id, distances, fit_parameters, fit_parameters_covariance)
+        range, unc_range = compute_range_and_uncertainty(camera_analysis_id, distances.copy(), fit_parameters.copy(),
+                                                         fit_parameters_covariance)
         
         # Generate fitted curve
         fitted_brightnesses = bortfeld(distances, *fit_parameters)
