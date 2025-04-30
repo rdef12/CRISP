@@ -141,9 +141,9 @@ class AbstractCamera(ABC):
     
     def _calculate_uncertainty_in_tangent_of_angles(self, in_plane_displacement: float, near_plane_position_unc: float, far_plane_position_unc: float,
                                                   tan_phi: float, tan_theta: float):
-        """
-        """
 
+        # NOTE - might be an over-estimate if the same calibration board is used for both planes
+        # Origin shift error propagated twice!
         uncertainty_in_horizontal_position_difference = normal_addition_in_quadrature([near_plane_position_unc[0],
                                                                                        far_plane_position_unc[0]])
         uncertainty_in_vertical_position_difference = normal_addition_in_quadrature([near_plane_position_unc[1],
@@ -154,7 +154,7 @@ class AbstractCamera(ABC):
             unc_denominator = self.seen_scintillator_depth_uncertainty
         else:
             denominator = self.seen_scintillator_depth + self.near_calibration_board_thickness - self.far_calibration_board_thickness
-            if self.far_calibration_board_thickness != self.near_calibration_board_thickness:
+            if self.far_calibration_board_thickness != self.near_calibration_board_thickness: # NOTE - this check is assuming the board is exactly the same one used in both cases.
                 unc_denominator = normal_addition_in_quadrature([self.seen_scintillator_depth_uncertainty,
                                                                 self.near_calibration_board_thickness_unc,
                                                                 self.far_calibration_board_thickness_unc])
@@ -735,14 +735,20 @@ def extract_weighted_average_3d_physical_position(list_of_camera_objects, list_o
     unc_intersection_point_array = []
     num_of_failed_pinpoints = 0
     
+    cameras_already_used = set() # contains camera ids of cameras already used - single camera never used twice for weighted pinpointing to prevent correlations!
+    
     for camera_combination, pixel_combination, unc_pixel_combination in zip(possible_camera_combinations, possible_pixel_combinations, possible_pixel_unc_combinations):
         
         camera_1, camera_2 = camera_combination
-        pixel_coords_1, pixel_coords_2 = pixel_combination
-        unc_pixel_coords_1, unc_pixel_coords_2 = unc_pixel_combination
-        
+        if camera_1.camera_id in cameras_already_used or camera_2.camera_id in cameras_already_used:
+            continue # skip past the pairings in which a camera has already been used
         if camera_1.axes_mapping.optical_axis == camera_2.axes_mapping.optical_axis:
             continue # skip past the pairings in which the cameras have the same optical_axis
+        
+        cameras_already_used.update([camera_1.camera_id, camera_2.camera_id])
+        
+        pixel_coords_1, pixel_coords_2 = pixel_combination
+        unc_pixel_coords_1, unc_pixel_coords_2 = unc_pixel_combination
         
         line_intersection_point, unc_line_intersection_point = extract_3d_physical_position(camera_1, pixel_coords_1, camera_2, pixel_coords_2,
                                                                                             unc_pixel_coords_1, unc_pixel_coords_2, scintillator_present=scintillator_present)
@@ -761,11 +767,10 @@ def extract_weighted_average_3d_physical_position(list_of_camera_objects, list_o
     print("\n\nIntersection Points and Uncertainties:")
     print(f"{'Camera Pair':<20} {'Intersection Point':<40} {'Uncertainty':<40}")
     print("-" * 100)
-    for camera_combination, intersection_point, unc_intersection_point in zip(possible_camera_combinations, intersection_point_array, unc_intersection_point_array):
-        camera_pair = f"({camera_combination[0].camera_id}, {camera_combination[1].camera_id})"
+    for intersection_point, unc_intersection_point in zip(intersection_point_array, unc_intersection_point_array):
         intersection_point_str = f"({intersection_point[0]:.2f}, {intersection_point[1]:.2f}, {intersection_point[2]:.2f})"
         uncertainty_str = f"({unc_intersection_point[0]:.2f}, {unc_intersection_point[1]:.2f}, {unc_intersection_point[2]:.2f})"
-        print(f"{camera_pair:<20} {intersection_point_str:<40} {uncertainty_str:<40}")
+        print(f"{intersection_point_str:<40} {uncertainty_str:<40}")
     
     if num_of_failed_pinpoints > 0:
         print("\n\nNumber of failed pinpoints omitted from weighted calculations is: {}".format(num_of_failed_pinpoints))
