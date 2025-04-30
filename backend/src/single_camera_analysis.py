@@ -182,7 +182,7 @@ def get_beam_angle_and_bragg_peak_pixel(camera_analysis_id: int):
         # Fit initial beam profile
         (horizontal_coords, fit_parameters_array, beam_center_errors, _, 
          _, _) = fit_beam_profile_along_full_roi(camera_analysis_id, "round_1", average_image, brightness_error,
-                                                                    h_bounds, v_bounds, show_fit_qualities=False, save_plots_to_database=True)
+                                                                    h_bounds, v_bounds, scintillator_edges, show_fit_qualities=False, save_plots_to_database=True)
         beam_center_vertical_coords = fit_parameters_array[:, 0]
         
         # Calculate incident beam angle
@@ -204,7 +204,7 @@ def get_beam_angle_and_bragg_peak_pixel(camera_analysis_id: int):
         # Fit beam profile on rotated image
         (horizontal_coords, fit_parameters_array, beam_center_errors, _,  total_brightness_along_vertical_roi,
          unc_total_brightness_along_vertical_roi) = fit_beam_profile_along_full_roi(camera_analysis_id, "round_2", rotated_image, brightness_error,
-                                                                                    h_bounds, v_bounds, show_fit_qualities=False, save_plots_to_database=True)
+                                                                                    h_bounds, v_bounds, scintillator_edges, show_fit_qualities=False, save_plots_to_database=True)
         
         beam_center_vertical_coords, *fit_params = fit_parameters_array[:, :5].T
 
@@ -273,7 +273,7 @@ def get_beam_center_coords(beam_run_id: int, camera_analysis_id: int):
         # Fit beam profile on rotated image
         (horizontal_coords, fit_parameters_array, beam_center_errors, _,
          total_brightness_along_vertical_roi, unc_total_brightness_along_vertical_roi) = fit_beam_profile_along_full_roi(camera_analysis_id, "beam_reconstruction", rotated_image, brightness_error,
-                                                                                                                            h_bounds, v_bounds)
+                                                                                                                         h_bounds, v_bounds, scintillator_edges)
         beam_center_vertical_coords, *fit_params = fit_parameters_array[:, :5].T
         # beam_scale_values, beam_sigma_values, sub_gauss_exponent_values, background_noise_values = fit_params
         

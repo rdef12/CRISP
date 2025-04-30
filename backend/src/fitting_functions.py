@@ -81,26 +81,35 @@ def super_gaussian_with_background_noise(w, w0, a, sgm, n, background):
     return (a/sgm) * np.exp(-(0.5 * ((w - w0)/sgm)**2)**n) + background
 
 
-def extract_beam_profile(image, brightness_errors, horizontal_coord, v_bounds):
-    pixel_vertical_coords = np.arange(v_bounds[0], v_bounds[1]+ 1)
-    column_of_brightness_vals = image[v_bounds[0]: v_bounds[1] + 1, horizontal_coord]
-    column_of_brightness_errors = brightness_errors[v_bounds[0]: v_bounds[1] + 1, horizontal_coord]
-    return pixel_vertical_coords, column_of_brightness_vals, column_of_brightness_errors 
+def extract_beam_profile(image, brightness_errors, horizontal_coord, v_bounds, scintillator_edges):
+    
+    vertical_scintillator_edges = scintillator_edges[1]
+    
+    gaussian_vertical_coords = np.arange(v_bounds[0], v_bounds[1]+ 1)
+    
+    column_of_brightness_vals = image[vertical_scintillator_edges[0]: vertical_scintillator_edges[1] + 1, horizontal_coord]
+    column_of_brightness_errors = brightness_errors[vertical_scintillator_edges[0]: vertical_scintillator_edges[1] + 1, horizontal_coord]
+    
+    gaussian_brightness_vals = image[v_bounds[0]: v_bounds[1] + 1, horizontal_coord]
+    gaussian_brightness_errors = brightness_errors[v_bounds[0]: v_bounds[1] + 1, horizontal_coord]
+    
+    return gaussian_vertical_coords, gaussian_brightness_vals, gaussian_brightness_errors, column_of_brightness_vals, column_of_brightness_errors 
 
 
-def fit_gaussian_to_beam_profile(pixel_vertical_coords, column_of_brightness_vals, column_of_brightness_errors, background_brightness):
+def fit_gaussian_to_beam_profile(gaussian_vertical_coords, gaussian_brightness_vals,
+                                 gaussian_brightness_errors, background_brightness):
 
      # The following is looking to see if the gaussian tails are likely present
      # since the choice of gaussian background estimate depends on this - room for improvement
-    if (np.std(column_of_brightness_vals[10:]) <= 2) or (np.std(column_of_brightness_vals[-10:]) <= 2):
-        background_estimate = np.min(column_of_brightness_vals)
+    if (np.std(gaussian_brightness_vals[10:]) <= 2) or (np.std(gaussian_brightness_vals[-10:]) <= 2):
+        background_estimate = np.min(gaussian_brightness_vals)
     else:
         background_estimate = background_brightness # Doesn't always give a good fit for the top cam
     
-    column_of_brightness_vals -= background_estimate
-    gaussian_center_estimate = pixel_vertical_coords[np.argmax(column_of_brightness_vals)]
-    gaussian_sigma_estimate = np.std(column_of_brightness_vals)
-    gaussian_scale_estimate = np.max(column_of_brightness_vals) * gaussian_sigma_estimate * np.sqrt(2*np.pi)
+    gaussian_brightness_vals -= background_estimate
+    gaussian_center_estimate = gaussian_vertical_coords[np.argmax(gaussian_brightness_vals)]
+    gaussian_sigma_estimate = np.std(gaussian_brightness_vals)
+    gaussian_scale_estimate = np.max(gaussian_brightness_vals) * gaussian_sigma_estimate * np.sqrt(2*np.pi)
         
     first_lower_bounds = [-np.inf,  # No lower bound for the 1st parameter (center)
                     -np.inf,  # No lower bound for the 2nd parameter (scale)
@@ -125,31 +134,31 @@ def fit_gaussian_to_beam_profile(pixel_vertical_coords, column_of_brightness_val
                     np.inf]  # No upper bound for the 5th parameter (background)
 
     try:
-        super_gauss_paramters, parameter_cov = curve_fit(super_gaussian, pixel_vertical_coords, column_of_brightness_vals,
+        super_gauss_paramters, parameter_cov = curve_fit(super_gaussian, gaussian_vertical_coords, gaussian_brightness_vals,
                                             p0 = (gaussian_center_estimate,
                                                     gaussian_scale_estimate,
                                                     gaussian_sigma_estimate,
                                                     1),
-                                            sigma=column_of_brightness_errors,
+                                            sigma=gaussian_brightness_errors,
                                             absolute_sigma=True,
                                             bounds=(first_lower_bounds, first_upper_bounds))
         
-        column_of_brightness_vals += background_estimate
-        super_gauss_paramters, parameter_cov = curve_fit(super_gaussian_with_background_noise, pixel_vertical_coords, column_of_brightness_vals,
+        gaussian_brightness_vals += background_estimate
+        super_gauss_paramters, parameter_cov = curve_fit(super_gaussian_with_background_noise, gaussian_vertical_coords, gaussian_brightness_vals,
                                             p0 = (super_gauss_paramters[0],
                                                     super_gauss_paramters[1],
                                                     super_gauss_paramters[2],
                                                     super_gauss_paramters[3],
                                                     background_estimate),
-                                            sigma=column_of_brightness_errors,
+                                            sigma=gaussian_brightness_errors,
                                             absolute_sigma=True,
                                             bounds=(second_lower_bounds, second_upper_bounds))
         
         super_gauss_paramters_uncertainties = np.sqrt(np.diag(parameter_cov))
         
-        num_of_dof = len(pixel_vertical_coords) - 5 # 5 fit params
-        fitted_pixel_values = super_gaussian_with_background_noise(pixel_vertical_coords, *super_gauss_paramters)
-        reduced_chi_squared = chi_squared_function(column_of_brightness_vals, column_of_brightness_errors, fitted_pixel_values) / num_of_dof
+        num_of_dof = len(gaussian_vertical_coords) - 5 # 5 fit params
+        fitted_pixel_values = super_gaussian_with_background_noise(gaussian_vertical_coords, *super_gauss_paramters)
+        reduced_chi_squared = chi_squared_function(gaussian_brightness_vals, gaussian_brightness_errors, fitted_pixel_values) / num_of_dof
         
         successful_fit = True
         return super_gauss_paramters, super_gauss_paramters_uncertainties, reduced_chi_squared, successful_fit
@@ -159,7 +168,7 @@ def fit_gaussian_to_beam_profile(pixel_vertical_coords, column_of_brightness_val
         return float("nan"), float("nan"), float("nan"),  successful_fit
     
 
-def fit_beam_profile_along_full_roi(camera_analysis_id: int, fit_context: str, channel, channel_std, h_bounds, v_bounds, show_fit_qualities: bool=False,
+def fit_beam_profile_along_full_roi(camera_analysis_id: int, fit_context: str, channel, channel_std, h_bounds, v_bounds, scintillator_edges, show_fit_qualities: bool=False,
                                     save_plots_to_database: bool=False):
     try:
         (background_brightness, _, _, _) = cv.minMaxLoc(channel[v_bounds[0]: v_bounds[1] + 1, h_bounds[0]: h_bounds[1] + 1])
@@ -173,10 +182,11 @@ def fit_beam_profile_along_full_roi(camera_analysis_id: int, fit_context: str, c
         
         failed_fits = []
         for index, horizontal_coord in enumerate(roi_horizontal_coords):
-            pixel_vertical_coords, column_of_brightness_vals, column_of_brightness_errors = extract_beam_profile(channel, channel_std, horizontal_coord, v_bounds)
+            gaussian_vertical_coords, gaussian_brightness_vals, gaussian_brightness_errors, \
+            column_of_brightness_vals, column_of_brightness_errors = extract_beam_profile(channel, channel_std, horizontal_coord, v_bounds, scintillator_edges)
             
-            fitted_parameters, unc_fitted_parameters, reduced_chi_squared, success = fit_gaussian_to_beam_profile(pixel_vertical_coords, column_of_brightness_vals,
-                                                                                                                    column_of_brightness_errors, background_brightness)
+            fitted_parameters, unc_fitted_parameters, reduced_chi_squared, success = fit_gaussian_to_beam_profile(gaussian_vertical_coords, gaussian_brightness_vals,
+                                                                                                                gaussian_brightness_errors, background_brightness)
             if not success:
                 failed_fits.append(index)
                 continue # Should start from next index of for loop, not appending these beam center positions
@@ -198,9 +208,9 @@ def fit_beam_profile_along_full_roi(camera_analysis_id: int, fit_context: str, c
             index_of_worst_accepted_fit = np.argmax(reduced_chi_squared_array)
             index_of_best_accepted_fit = np.argmin(reduced_chi_squared_array)
             
-            plot_beam_profile(camera_analysis_id, fit_context, channel, channel_std, roi_horizontal_coords[index_of_best_accepted_fit], v_bounds, background_brightness, np.min(reduced_chi_squared_array),
+            plot_beam_profile(camera_analysis_id, fit_context, channel, channel_std, roi_horizontal_coords[index_of_best_accepted_fit], v_bounds, scintillator_edges, background_brightness, np.min(reduced_chi_squared_array),
                                                             profile_type="best_fit", show_plot=show_fit_qualities)
-            plot_beam_profile(camera_analysis_id, fit_context, channel, channel_std, roi_horizontal_coords[index_of_worst_accepted_fit], v_bounds, background_brightness, np.max(reduced_chi_squared_array),
+            plot_beam_profile(camera_analysis_id, fit_context, channel, channel_std, roi_horizontal_coords[index_of_worst_accepted_fit], v_bounds, scintillator_edges, background_brightness, np.max(reduced_chi_squared_array),
                                                             profile_type="worst_fit", show_plot=show_fit_qualities)
             
             # best_fit_horizontal_coord = roi_horizontal_coords[index_of_best_accepted_fit]
@@ -226,11 +236,11 @@ def render_best_worst_fit_locations(image, best_fit_horizontal_coord, worst_fit_
     return base64.b64encode(buf.read()).decode('utf-8')
 
 
-def plot_beam_profile(camera_analysis_id: int, fit_context: str, channel, channel_std, horizontal_coord, v_bounds,
+def plot_beam_profile(camera_analysis_id: int, fit_context: str, channel, channel_std, horizontal_coord, v_bounds, scintillator_edges,
                       global_background_estimate, reduced_chi_squared, profile_type: str=None, show_plot: bool=False):
     
-    pixel_vertical_coords, column_of_brightness_vals, column_of_brightness_errors = extract_beam_profile(channel, channel_std, horizontal_coord, v_bounds)
-    fitted_parameters, unc_fitted_parameters, reduced_chi_squared, _ = fit_gaussian_to_beam_profile(pixel_vertical_coords, column_of_brightness_vals, column_of_brightness_errors,
+    pixel_vertical_coords, gaussian_brightness_vals, gaussian_brightness_errors, _, _ = extract_beam_profile(channel, channel_std, horizontal_coord, v_bounds, scintillator_edges)
+    fitted_parameters, unc_fitted_parameters, reduced_chi_squared, _ = fit_gaussian_to_beam_profile(pixel_vertical_coords, gaussian_brightness_vals, gaussian_brightness_errors,
                                                                                                     global_background_estimate)
     chi_squared = reduced_chi_squared * (len(pixel_vertical_coords) - 5) # 5 fit params
 
@@ -240,14 +250,14 @@ def plot_beam_profile(camera_analysis_id: int, fit_context: str, channel, channe
     fitted_pixel_values = super_gaussian_with_background_noise(pixel_height_linspace, gaussian_center, scale_factor, sigma, n, background_noise) # FOR SUPER GAUSSIAN FITTING
     
     # Compute residuals
-    residuals = column_of_brightness_vals - super_gaussian_with_background_noise(pixel_vertical_coords, gaussian_center, scale_factor, sigma, n, background_noise)
+    residuals = gaussian_brightness_vals - super_gaussian_with_background_noise(pixel_vertical_coords, gaussian_center, scale_factor, sigma, n, background_noise)
     
     # Create figure and subplots
     fig, axs = plt.subplots(2, 1, gridspec_kw={'height_ratios': [3, 1]}, figsize=(8, 6), sharex=True)
     
     # Plot the beam profile with Gaussian fit
-    axs[0].step(pixel_vertical_coords, column_of_brightness_vals, color='black', zorder=9)
-    axs[0].errorbar(pixel_vertical_coords, column_of_brightness_vals, yerr=column_of_brightness_errors, 
+    axs[0].step(pixel_vertical_coords, gaussian_brightness_vals, color='black', zorder=9)
+    axs[0].errorbar(pixel_vertical_coords, gaussian_brightness_vals, yerr=gaussian_brightness_errors, 
                     color="black", label="Experimental Data", ms=5, ecolor="blue", zorder=10)
     
     axs[0].errorbar(gaussian_center, super_gaussian_with_background_noise(gaussian_center, gaussian_center, scale_factor, sigma, n, background_noise),
