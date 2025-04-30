@@ -442,7 +442,7 @@ def locate_bragg_peak_in_image(camera_analysis_id: int, x_positions, beam_center
     initial_bragg_peak_horizontal_coord_index = np.argmax(total_brightness_along_vertical_roi)
     initial_bragg_peak_horizontal_coord = x_positions[initial_bragg_peak_horizontal_coord_index]
     
-    threshold_fraction = 1 / 3
+    threshold_fraction = 1 / 2
     initial_brightness = total_brightness_along_vertical_roi[0]
     peak_brightness = np.max(total_brightness_along_vertical_roi)
     peak_threshold_condition = initial_brightness  + (peak_brightness - initial_brightness) * threshold_fraction
