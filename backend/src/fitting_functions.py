@@ -242,6 +242,11 @@ def plot_beam_profile(camera_analysis_id: int, fit_context: str, channel, channe
     pixel_vertical_coords, gaussian_brightness_vals, gaussian_brightness_errors, _, _ = extract_beam_profile(channel, channel_std, horizontal_coord, v_bounds, scintillator_edges)
     fitted_parameters, unc_fitted_parameters, reduced_chi_squared, _ = fit_gaussian_to_beam_profile(pixel_vertical_coords, gaussian_brightness_vals, gaussian_brightness_errors,
                                                                                                     global_background_estimate)
+    
+    print(f"\n\n\n\nprofile_type = {profile_type}")
+    print(f"\Minimum gaussian_brightness_error = {np.min(gaussian_brightness_errors)}")
+    print(f"\Maximum gaussian_brightness_error = {np.max(gaussian_brightness_errors)}\n\n\n\n")
+    
     chi_squared = reduced_chi_squared * (len(pixel_vertical_coords) - 5) # 5 fit params
 
     gaussian_center, scale_factor, sigma, n, background_noise = fitted_parameters # FOR SUPER GAUSSIAN FITTING

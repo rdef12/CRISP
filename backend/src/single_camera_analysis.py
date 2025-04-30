@@ -279,7 +279,7 @@ def get_beam_center_coords(beam_run_id: int, camera_analysis_id: int):
         
         beam_center_coords = np.vstack((horizontal_coords, beam_center_vertical_coords)).T
         unrotated_beam_center_coords = image_processing.inverse_rotation_of_coords(beam_center_coords, inverse_rotation_matrix)
-        beam_center_error_vectors = np.vstack((np.full(len(beam_center_errors), 0), beam_center_errors)).T # vertical error in angle-corrected image
+        beam_center_error_vectors = np.vstack((np.full(len(beam_center_errors), np.sqrt(1/12)), beam_center_errors)).T # vertical error in angle-corrected image - 1/root(12) from uniform distribution result for pixel quantisation error
         unrotated_beam_center_error_vectors = image_processing.inverse_rotation_of_error_bars(beam_center_error_vectors, inverse_rotation_matrix) # now horizontal component to error vector also
         
         print("\n\n\n")
