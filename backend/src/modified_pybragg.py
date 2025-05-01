@@ -554,8 +554,12 @@ def multivariate_delta_method_for_bortfeld_derived_quantity(derived_quantity: Ca
     
 def compute_error_on_bortfeld_peak(distances, fit_parameters, fit_parameter_covariance):
     func_with_distances_populated = partial(find_peak_of_bortfeld, distances)
-    return multivariate_delta_method_for_bortfeld_derived_quantity(func_with_distances_populated, fit_parameters, fit_parameter_covariance)
+    delta_method_error = multivariate_delta_method_for_bortfeld_derived_quantity(func_with_distances_populated, fit_parameters, fit_parameter_covariance)
+    points_per_bin = 10_000 # need to make a variable arg! TODO
+    return max(delta_method_error, 1/points_per_bin)
 
 def compute_error_on_mean_range(distances, fit_parameters, fit_parameter_covariance):
     func_with_distances_populated = partial(find_range, distances)
-    return multivariate_delta_method_for_bortfeld_derived_quantity(func_with_distances_populated, fit_parameters, fit_parameter_covariance)
+    delta_method_error =  multivariate_delta_method_for_bortfeld_derived_quantity(func_with_distances_populated, fit_parameters, fit_parameter_covariance)
+    points_per_bin = 10_000 # need to make a variable arg! TODO
+    return max(delta_method_error, 1/points_per_bin)
