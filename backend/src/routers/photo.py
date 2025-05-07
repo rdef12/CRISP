@@ -343,6 +343,7 @@ def get_real_run_photo(beam_run_id: int, camera_id: int, response: Response):
                             .where(CameraSettingsLink.beam_run_id == beam_run_id)
                             .where(CameraSettingsLink.camera_id == camera_id))
         photos = session.exec(photos_statement).all()
+        photos = sorted(photos, key=lambda photo: photo.id)
         photo_list = []
         for photo in photos:
             photo_base64 = base64.b64encode(photo.photo).decode("utf-8")

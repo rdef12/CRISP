@@ -36,6 +36,12 @@ def average_pixel_over_multiple_images(camera_analysis_id: int):
     """
     camera_settings_link_id = cdi.get_camera_settings_link_id_by_camera_analysis_id(camera_analysis_id)
     photo_id_array = cdi.get_successfully_captured_photo_ids_by_camera_settings_link_id(camera_settings_link_id)
+    
+    
+    # HACK - uncommented out for run 24 70 MeV to handle the 7 black images taken when the beam was off
+    # photo_id_array = photo_id_array[:-7]
+
+
     colour_channel = cdi.get_colour_channel(camera_analysis_id)
     
     camera_id = (cdi.get_camera_and_settings_ids(camera_settings_link_id)["camera_id"])

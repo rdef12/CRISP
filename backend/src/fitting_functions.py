@@ -270,12 +270,12 @@ def plot_beam_profile(camera_analysis_id: int, fit_context: str, channel, channe
                     
     axs[0].plot(pixel_height_linspace, fitted_pixel_values, color="red", label="Fitted Gaussian Profile \n" + r"$\chi^{2}_R = $" + "{:.3g}".format(reduced_chi_squared))
     axs[0].set_ylabel("Pixel Brightness Value")
-    axs[0].set_title("Horizontal Coord = {}".format(horizontal_coord))
+    axs[0].set_title("Horizontal Image Coordinate = {}".format(horizontal_coord))
     axs[0].legend(**LEGEND_CONFIG)
     axs[0].grid()
     
     # Plot the residuals
-    axs[1].scatter(pixel_vertical_coords, residuals, color="black", s=8, label="Residuals")
+    axs[1].errorbar(pixel_vertical_coords, residuals, yerr=gaussian_brightness_errors, color="black", ecolor="blue", ms=8, label="Residual")
     axs[1].axhline(0, color='red', linestyle='dashed')
     axs[1].set_xlabel("Pixel's Vertical Image Coordinate")
     axs[1].set_ylabel("Residuals")
@@ -407,12 +407,12 @@ def extract_incident_beam_angle(camera_analysis_id: int, horizontal_coords, beam
     axs[0].errorbar(horizontal_coords, beam_center_vertical_coords, beam_center_errors, color="black", marker="x", label="Experimental Data",
                     ecolor="blue", ls="none")
     axs[0].set_xlabel("Pixel's Horizonal Image Coordinate")
-    axs[0].set_ylabel("Vertical Coordinate of Beam Center Pixels")
+    axs[0].set_ylabel("Vertical Coordinate of Beam Center Pixel")
     axs[0].legend(**LEGEND_CONFIG)
-    plt.grid()
+    axs[0].grid()
     
     residuals = beam_center_vertical_coords - predicted_beam_centers
-    axs[1].scatter(horizontal_coords, residuals, color="black", s=8, label="Residuals")
+    axs[1].errorbar(horizontal_coords, residuals, yerr=beam_center_errors, color="black", ecolor="blue", ms=8, label="Residuals")
     axs[1].axhline(0, color='red', linestyle='dashed')
     axs[1].set_xlabel("Pixel's Horizonal Image Coordinate")
     axs[1].set_ylabel("Residuals")
@@ -480,20 +480,28 @@ def locate_bragg_peak_in_image(camera_analysis_id: int, x_positions, beam_center
     # chi_squared = chi_squared_function(total_brightness_slice, unc_brightness_slice, predicted_curve)
     # reduced_chi_squared = chi_squared / (len(x_positions_slice) - 5) # 5 fitted parameters
     
-    fig, ax = plt.subplots()
-    ax.plot(z, curve, color="red", label=("Bortfeld fit \n" + r"$\chi^{2}_R$ = " + f"{reduced_chi_squared:.1f}"))
-    ax.errorbar(x_positions_slice, total_brightness_slice, yerr=unc_brightness_slice, color="black", label="Experimental Data", ecolor="blue")
+    fig, axs = plt.subplots(2, 1, gridspec_kw={'height_ratios': [3, 1]}, figsize=(8, 6), sharex=True)
+    axs[0].plot(z, curve, color="red", label=("Fitted Bortfeld Function \n" + r"$\chi^{2}_R$ = " + f"{reduced_chi_squared:.1f}"))
+    axs[0].errorbar(x_positions_slice, total_brightness_slice, yerr=unc_brightness_slice, color="black", label="Experimental Data", ecolor="blue")
 
     # ax.set_title("{} Camera Bortfeld fit to Bragg curve".format(camera.type.capitalize()))
-    ax.set_xlabel("Horizonal Image Coordinate")
-    ax.set_ylabel("Total profile Brightness")
-    ax.grid()
-    ax.legend(**LEGEND_CONFIG)
+    axs[0].set_xlabel("Horizonal Image Coordinate")
+    axs[0].set_ylabel("Total Pixel Intensity")
+    axs[0].grid()
+    axs[0].legend(**LEGEND_CONFIG)
+    
+    residuals = total_brightness_slice - bortfeld(x_positions_slice, *fit_parameters)
+    axs[1].errorbar(x_positions_slice, residuals, yerr=unc_brightness_slice, color="black", ecolor="blue", ms=8, label="Residuals")
+    axs[1].axhline(0, color='red', linestyle='dashed')
+    axs[1].set_xlabel("Horizonal Image Coordinate")
+    axs[1].set_ylabel("Residuals")
+    axs[1].grid()
+    
     if show_scintillation_plot:
         plt.show()
     
     buf = io.BytesIO()  # Create an in-memory binary stream (buffer)
-    plt.savefig(buf, format="svg", dpi=600)  # Save the current plot to the buffer
+    plt.savefig(buf, format="svg", dpi=600, bbox_inches='tight')  # Save the current plot to the buffer
     plt.close()
     buf.seek(0)  # Reset the buffer's position to the beginning - else will read from the end
     plot_bytes = buf.read()
@@ -637,26 +645,35 @@ def plot_physical_units_ODR_bortfeld(camera_analysis_id, distances, distance_unc
         
         # Generate fitted curve
         fitted_brightnesses = bortfeld(distances, *fit_parameters)
-        plt.plot(distances, fitted_brightnesses, color='red', 
+        
+        fig, axs = plt.subplots(2, 1, gridspec_kw={'height_ratios': [3, 1]}, figsize=(8, 6), sharex=True)
+        axs[0].plot(distances, fitted_brightnesses, color='red', 
              label=('Fitted Bortfeld Function \n' + fr"Reduced $\chi^2$ = {reduced_chi_squared:.3g}"))
         
         # plt.step(distances, brightnesses, where='mid')
         # Suppress markers for error bars only
         failed_points_label = f"\nNumber of failed pinpoints: {num_of_failed_pinpoints}" if num_of_failed_pinpoints > 0 else ""
         range_label = f"\n Range = {range:.3g} \u00B1 {unc_range:.3g}"
-        plt.errorbar(
+        axs[0].errorbar(
             distances, brightnesses, 
             xerr=distance_uncertainties, yerr=brightness_uncertainties,
             fmt='', color='black', ecolor='blue', label=f'Experimental Data {range_label} {failed_points_label}', ms=3)
         
         # Add labels, legend, and grid
-        plt.xlabel("Distance travelled through Scintillator (mm)")
-        plt.ylabel("Total Profile Intensity")
-        plt.legend(**LEGEND_CONFIG)
-        plt.grid()
+        axs[0].set_xlabel("Penetration Depth (mm)")
+        axs[0].set_ylabel("Total Intensity")
+        axs[0].legend(**LEGEND_CONFIG)
+        axs[0].grid()
+        
+        residuals = brightnesses - fitted_brightnesses
+        axs[1].errorbar(distances, residuals, yerr=brightness_uncertainties, color="black", ecolor="blue", ms=8, label="Residuals")
+        axs[1].axhline(0, color='red', linestyle='dashed')
+        axs[1].set_xlabel("Penetration Depth (mm)")
+        axs[1].set_ylabel("Residuals")
+        axs[1].grid()
 
         buf = io.BytesIO()  # Create an in-memory binary stream (buffer)
-        plt.savefig(buf, format="svg", dpi=600)  # Save the current plot to the buffer
+        plt.savefig(buf, format="svg", dpi=600, bbox_inches='tight')  # Save the current plot to the buffer
         plt.close()
         buf.seek(0)  # Reset the buffer's position to the beginning - else will read from the end
         plot_bytes = buf.read()

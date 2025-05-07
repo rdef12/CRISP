@@ -341,6 +341,9 @@ class SideCamera(AbstractCamera):
         self.axes_mapping = AxesMapping(non_z_axis="y",
                                         optical_axis="x",
                                         depth_direction=cdi.get_camera_depth_direction(camera_id, setup_id))
+        
+        # HACK - test to see how board angle effects measurements.
+        # self.far_calibration_board_thickness -= 2 # mm
     
     def build_direction_vector(self, tan_phi: float, tan_theta: float, unc_tan_phi: float, unc_tan_theta: float, scintillator_present: bool=False):
         
@@ -546,23 +549,30 @@ def calculate_intersection_point(first_equation_line_vectors, second_equation_li
       
       # HACK - deactivated while investigating range analysis issues
     #   if not np.all(np.abs(closest_point_on_second_line_to_first_line - closest_point_on_first_line_to_second_line) <= 5 * total_closest_points_error): # CURRENTLY, LESS THAN 5 COMBINED STD
-         
     #     # 5 standard deviations because operating on a huge number of beam center coords across all image sets, it becomes quite possible that one component has an error exceeding 5 STD.
     #     # raise Exception("\n\nThe seperation of two closest points is not consistent within 5 standard deviation of each of these points.")
     #     print("\n\nThe seperation of two closest points is not consistent within 5 standard deviation of each of these points.")
     #     return float("nan"), float("nan") # check for this and note that fit failed
         
       # NEW VERSION - uses weighted intersection point of closest points to determine the event's pinpointed location
+      
       numerator = (closest_point_on_second_line_to_first_line/ unc_closest_point_on_second_line_to_first_line**2) + (closest_point_on_first_line_to_second_line / unc_closest_point_on_first_line_to_second_line**2) 
       denominator = 1 / unc_closest_point_on_second_line_to_first_line**2 + 1 / unc_closest_point_on_first_line_to_second_line**2
       weighted_mean_intersection_point = numerator/ denominator
       unc_weighted_mean_intersection_point = np.sqrt(1 / denominator)
+      
       return weighted_mean_intersection_point, unc_weighted_mean_intersection_point
-
-    #   midpoint_between_closest_points_of_the_lines = (closest_point_on_second_line_to_first_line + closest_point_on_first_line_to_second_line ) / 2 # this is the "intersection" point
-    #   unc_intersection_point = 0.5 * np.array([normal_addition_in_quadrature([unc_closest_point_on_second_line_to_first_line[i], unc_closest_point_on_first_line_to_second_line[i]]) for i in range(3)])
-    #   return midpoint_between_closest_points_of_the_lines, unc_intersection_point
-    
+  
+    # midpoint_between_closest_points_of_the_lines = (closest_point_on_second_line_to_first_line + closest_point_on_first_line_to_second_line ) / 2 # this is the "intersection" point
+    # unc_intersection_point = 0.5 * np.array([normal_addition_in_quadrature([unc_closest_point_on_second_line_to_first_line[i], unc_closest_point_on_first_line_to_second_line[i]]) for i in range(3)])
+    # return midpoint_between_closest_points_of_the_lines, unc_intersection_point
+      
+    #   # Compute the gap vector (difference between the closest points)
+    #   g = closest_point_on_second_line_to_first_line - closest_point_on_first_line_to_second_line
+    #   mid_point = closest_point_on_first_line_to_second_line + 0.5 * g
+    #   # Uncertainty based on gap vector - uniformly distributed in the gap
+    #   unc_mid_point = np.sqrt(1 / 12 * np.diag(np.outer(g, g)))
+    #   return mid_point, unc_mid_point
     
     # This is a limit that refuses to give an intersection point if the distance of closest approach is too large - even if consistent due to large closest point uncertainties.
     raise Exception("\n\nLines are more skew than the set tolerance ({} mm) allows for.".format(tolerance)) 

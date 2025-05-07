@@ -313,33 +313,6 @@ def fit_bortfeld_odr(z_bins, on_axis_energies, z_uncertainties, on_axis_energies
 
 
 # NOTE - Ternary search with better time complexity
-def find_peak_of_bortfeld(z_bins, bortfeld_parameters, points_per_bin=1000):
-    # Perform binary search over z_bins to find the peak without generating a full range
-    interval_size = (z_bins[-1] - z_bins[0]) / (len(z_bins) - 1) / points_per_bin
-    z_linspace = np.arange(z_bins[0], z_bins[-1], interval_size)
-    
-    left, right = 0, len(z_linspace) - 1
-    peak_position = z_linspace[0]
-    peak_value = 0 # initialised to zero
-    
-    while left <= right:
-        mid = (left + right) // 2
-        # Evaluate bortfeld at the current mid point
-        current_value = bortfeld(z_linspace[mid], *bortfeld_parameters)
-        
-        # Update peak if we find a new maximum
-        if current_value > peak_value:
-            peak_value = current_value
-            peak_position = z_linspace[mid]
-        
-        # Move to the higher side if the function is increasing
-        if mid < len(z_linspace) - 1 and bortfeld(z_linspace[mid + 1], *bortfeld_parameters) > current_value:
-            left = mid + 1
-        else:
-            right = mid - 1
-    return peak_position
-
-# NOTE - Ternary search with better time complexity
 def find_peak_of_bortfeld(z_bins, bortfeld_parameters, points_per_bin=10_000):
     
     # Generate the z values with np.arange
@@ -375,46 +348,6 @@ def find_peak_of_bortfeld(z_bins, bortfeld_parameters, points_per_bin=10_000):
 def round_to_precision(number, precision):
     rounded_number = np.round(number / precision) * precision
     return rounded_number
-
-def find_peak_position_uncertainty(z_bins, bortfeld_parameters, bortfeld_parameter_uncertainties, points_per_bin=1000, number_of_stds=1):
-    best_fit_peak_argument, best_fit_peak = find_peak_of_bortfeld(z_bins, bortfeld_parameters, points_per_bin=points_per_bin)
-    lower_bound_parameters = bortfeld_parameters - number_of_stds*bortfeld_parameter_uncertainties
-    upper_bound_parameters = bortfeld_parameters + number_of_stds*bortfeld_parameter_uncertainties
-    all_parameter_combinations = list(product(*zip(lower_bound_parameters, upper_bound_parameters)))
-    possible_peak_positions = np.empty((len(all_parameter_combinations)))
-    for count, parameter_combination in enumerate(all_parameter_combinations):
-        _, peak_position = find_peak_of_bortfeld(z_bins, parameter_combination, points_per_bin=points_per_bin)
-        possible_peak_positions[count] = peak_position
-    best_fit_z_bin_argument = math.ceil(best_fit_peak_argument / points_per_bin)
-    z_bin_width = z_bins[best_fit_z_bin_argument] - z_bins[best_fit_z_bin_argument - 1]
-    
-    uncertainty_order = z_bin_width / points_per_bin
-
-    lower_peak = np.min(possible_peak_positions)
-    upper_peak = np.max(possible_peak_positions)
-    lower_bound = best_fit_peak - lower_peak
-    lower_bound = round_to_precision(lower_bound, uncertainty_order)
-    upper_bound = upper_peak - best_fit_peak
-    upper_bound = round_to_precision(upper_bound, uncertainty_order)
-    return [lower_bound, upper_bound]
-
-
-# def find_range(z_bins, bortfeld_parameters, factor_of_peak=0.5, points_per_bin=1000):
-#     if factor_of_peak <= 0:
-#         raise Exception("Factor of peak must be positive.")
-#     if factor_of_peak >= 1:
-#         raise Exception("Factor of peak must be less than 1.")
-#     z_length = len(z_bins) * points_per_bin
-#     z_range = np.linspace(z_bins[0], z_bins[-1], z_length)
-#     heights = bortfeld(z_range, *bortfeld_parameters)
-
-#     peak_position = find_peak_of_bortfeld(z_bins, bortfeld_parameters, points_per_bin=points_per_bin)
-#     peak_height = bortfeld(peak_position, *bortfeld_parameters)
-#     half_peak_height = peak_height * factor_of_peak
-
-#     range_argument = np.where(heights > half_peak_height)[0][-1]
-#     range = z_range[range_argument]
-#     return range
 
 
 # Binary search for better time complexity
@@ -452,31 +385,6 @@ def find_range(z_bins, bortfeld_parameters, factor_of_peak=0.5, points_per_bin=1
 
     # Return the corresponding z value
     return z_linspace[left - 1]
-
-
-def find_uncertainty_in_range(z_bins, bortfeld_parameters, bortfeld_parameter_uncertainties, factor_of_peak=0.5, points_per_bin=1000, number_of_stds=1):
-    best_fit_range_argument, best_fit_range = find_range(z_bins, bortfeld_parameters, factor_of_peak=factor_of_peak, points_per_bin=points_per_bin)
-    lower_bound_parameters = bortfeld_parameters - number_of_stds*bortfeld_parameter_uncertainties
-    upper_bound_parameters = bortfeld_parameters + number_of_stds*bortfeld_parameter_uncertainties
-    all_parameter_combinations = list(product(*zip(lower_bound_parameters, upper_bound_parameters)))
-    possible_range_positions = np.empty((len(all_parameter_combinations)))
-    for count, parameter_combination in enumerate(all_parameter_combinations):
-        _, range = find_range(z_bins, parameter_combination, factor_of_peak=factor_of_peak, points_per_bin=points_per_bin)
-        possible_range_positions[count] = range
-
-    best_fit_z_bin_argument = math.ceil(best_fit_range_argument / points_per_bin)
-    z_bin_width = z_bins[best_fit_z_bin_argument] - z_bins[best_fit_z_bin_argument - 1]
-    uncertainty_order = z_bin_width / points_per_bin
-
-    lower_range = np.min(possible_range_positions)
-    upper_range = np.max(possible_range_positions)
-
-    lower_bound = best_fit_range - lower_range
-    lower_bound = round_to_precision(lower_bound, uncertainty_order)
-    upper_bound = upper_range - best_fit_range
-    upper_bound = round_to_precision(upper_bound, uncertainty_order)
-
-    return [lower_bound, upper_bound]
 
 def calculate_chi_squared(data_values, data_uncertainties, fit_values):
     weighted_difference_squared = ((data_values - fit_values) / data_uncertainties)**2
