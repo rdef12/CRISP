@@ -35,7 +35,7 @@ export const ResetHomographyCalibration = ({ plane }: ResetHomographyCalibration
       <AlertDialog>
         <AlertDialogTrigger asChild>
           <Button disabled={isPending}>
-            Reset distortion calibration
+            Reset homography calibration
           </Button>
         </AlertDialogTrigger>
         <AlertDialogContent>

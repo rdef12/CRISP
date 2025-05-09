@@ -4,6 +4,7 @@ import socket
 import json
 from src.classes.Camera import Camera
 from src.database.CRUD import CRISP_database_interaction as cdi
+import time
 
 class Pi:
   
@@ -42,15 +43,17 @@ class Pi:
 
   def connect_via_ssh(self):
       try:
-        self.ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy()) # makes computer trust the ssh connection
+        # self.ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy()) # makes computer trust the ssh connection
 
-        print(self.ip_address, self.username, self.password)
-        # the reason I am setting a timeout is that the GUI will show connecting... for 1 min o/w
-        # Having a timeout makes the GUI more responsive - quicker info on when something is going wrong.
-        self.ssh_client.connect(hostname=self.ip_address,
-                                port=22, username=self.username, 
-                                password=self.password, timeout=15
-                              ) 
+        # print(self.ip_address, self.username, self.password)
+        # # the reason I am setting a timeout is that the GUI will show connecting... for 1 min o/w
+        # # Having a timeout makes the GUI more responsive - quicker info on when something is going wrong.
+        # self.ssh_client.connect(hostname=self.ip_address,
+        #                         port=22, username=self.username, 
+        #                         password=self.password, timeout=15
+        #                       ) 
+        
+        time.sleep(1.5) # MOCK WHILE SHOWING CONNECTIONS IN GUI AWAY FROM LAB
         self.ssh_status = True
         
       except Exception as e:
@@ -62,6 +65,8 @@ class Pi:
         
   def check_ssh_connection(self):
         if self.ssh_status:
+          
+            return True # MOCK WHILE SHOWING CONNECTIONS IN GUI AWAY FROM LAB
             try:
                 # Try executing a simple command to check status
                 stdin, stdout, stderr = self.ssh_client.exec_command('echo "Hello"', timeout=10)

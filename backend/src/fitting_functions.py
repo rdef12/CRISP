@@ -653,7 +653,12 @@ def plot_physical_units_ODR_bortfeld(camera_analysis_id, distances, distance_unc
         # plt.step(distances, brightnesses, where='mid')
         # Suppress markers for error bars only
         failed_points_label = f"\nNumber of failed pinpoints: {num_of_failed_pinpoints}" if num_of_failed_pinpoints > 0 else ""
-        range_label = f"\n Range = {range:.3g} \u00B1 {unc_range:.3g}"
+        
+        # Determine the number of decimal places for nominal value
+        dp = len(f"{unc_range:.1g}".split('.')[-1])
+        # Format range and uncertainty
+        range_label = f"\n Range = {range:.{dp}f} \u00B1 {unc_range:.1g}"
+
         axs[0].errorbar(
             distances, brightnesses, 
             xerr=distance_uncertainties, yerr=brightness_uncertainties,
