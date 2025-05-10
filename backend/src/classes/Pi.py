@@ -42,16 +42,16 @@ class Pi:
 
   def connect_via_ssh(self):
       try:
-        self.ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy()) # makes computer trust the ssh connection
+        # self.ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy()) # makes computer trust the ssh connection
 
-        print(self.ip_address, self.username, self.password)
-        # the reason I am setting a timeout is that the GUI will show connecting... for 1 min o/w
-        # Having a timeout makes the GUI more responsive - quicker info on when something is going wrong.
-        self.ssh_client.connect(hostname=self.ip_address,
-                                port=22, username=self.username, 
-                                password=self.password, timeout=15
-                              ) 
-        self.ssh_status = True
+        # print(self.ip_address, self.username, self.password)
+        # # the reason I am setting a timeout is that the GUI will show connecting... for 1 min o/w
+        # # Having a timeout makes the GUI more responsive - quicker info on when something is going wrong.
+        # self.ssh_client.connect(hostname=self.ip_address,
+        #                         port=22, username=self.username, 
+        #                         password=self.password, timeout=15
+        #                       ) 
+        self.ssh_status = True # NOTE ABOVE REMOVED WHILE MAKING GUI DEMO VIDEOS!!
         
       except Exception as e:
           self.ssh_status = False
@@ -64,9 +64,10 @@ class Pi:
         if self.ssh_status:
             try:
                 # Try executing a simple command to check status
-                stdin, stdout, stderr = self.ssh_client.exec_command('echo "Hello"', timeout=10)
-                stdout.channel.recv_exit_status()  # Will raise an exception if the connection is broken
-                return True
+                # stdin, stdout, stderr = self.ssh_client.exec_command('echo "Hello"', timeout=10)
+                # stdout.channel.recv_exit_status()  # Will raise an exception if the connection is broken
+                
+                return True # Above line commented out for demo purposes
             except (paramiko.SSHException, paramiko.AuthenticationException, socket.error):
                 print(f"\n\n\n Connection to {self.username} is lost. \n\n\n")
                 Pi.delete_pi(self.username)
