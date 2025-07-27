@@ -182,7 +182,7 @@ def get_beam_angle_and_bragg_peak_pixel(camera_analysis_id: int):
         # Fit initial beam profile
         (horizontal_coords, fit_parameters_array, beam_center_errors, _, 
          _, _) = fit_beam_profile_along_full_roi(camera_analysis_id, "round_1", average_image, brightness_error,
-                                                                    h_bounds, v_bounds, show_fit_qualities=False, save_plots_to_database=True)
+                                                                    h_bounds, v_bounds, scintillator_edges, show_fit_qualities=False, save_plots_to_database=True)
         beam_center_vertical_coords = fit_parameters_array[:, 0]
         
         # Calculate incident beam angle
@@ -204,7 +204,7 @@ def get_beam_angle_and_bragg_peak_pixel(camera_analysis_id: int):
         # Fit beam profile on rotated image
         (horizontal_coords, fit_parameters_array, beam_center_errors, _,  total_brightness_along_vertical_roi,
          unc_total_brightness_along_vertical_roi) = fit_beam_profile_along_full_roi(camera_analysis_id, "round_2", rotated_image, brightness_error,
-                                                                                    h_bounds, v_bounds, show_fit_qualities=False, save_plots_to_database=True)
+                                                                                    h_bounds, v_bounds, scintillator_edges, show_fit_qualities=False, save_plots_to_database=True)
         
         beam_center_vertical_coords, *fit_params = fit_parameters_array[:, :5].T
 
@@ -273,13 +273,13 @@ def get_beam_center_coords(beam_run_id: int, camera_analysis_id: int):
         # Fit beam profile on rotated image
         (horizontal_coords, fit_parameters_array, beam_center_errors, _,
          total_brightness_along_vertical_roi, unc_total_brightness_along_vertical_roi) = fit_beam_profile_along_full_roi(camera_analysis_id, "beam_reconstruction", rotated_image, brightness_error,
-                                                                                                                            h_bounds, v_bounds)
+                                                                                                                         h_bounds, v_bounds, scintillator_edges)
         beam_center_vertical_coords, *fit_params = fit_parameters_array[:, :5].T
         # beam_scale_values, beam_sigma_values, sub_gauss_exponent_values, background_noise_values = fit_params
         
         beam_center_coords = np.vstack((horizontal_coords, beam_center_vertical_coords)).T
         unrotated_beam_center_coords = image_processing.inverse_rotation_of_coords(beam_center_coords, inverse_rotation_matrix)
-        beam_center_error_vectors = np.vstack((np.full(len(beam_center_errors), 0), beam_center_errors)).T # vertical error in angle-corrected image
+        beam_center_error_vectors = np.vstack((np.full(len(beam_center_errors), np.sqrt(1/12)), beam_center_errors)).T # vertical error in angle-corrected image - 1/root(12) from uniform distribution result for pixel quantisation error
         unrotated_beam_center_error_vectors = image_processing.inverse_rotation_of_error_bars(beam_center_error_vectors, inverse_rotation_matrix) # now horizontal component to error vector also
         
         print("\n\n\n")

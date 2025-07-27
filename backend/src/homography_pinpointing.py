@@ -4,6 +4,7 @@ from src.uncertainty_functions import *
 from src.viewing_functions import *
 from src.homography_errors import generate_world_point_uncertainty
 from src.database.CRUD import CRISP_database_interaction as cdi
+import io
 
 from typing import List, Literal
 from abc import ABC, abstractmethod
@@ -116,6 +117,15 @@ class AbstractCamera(ABC):
         # print(f"Near plane 2D homography error: {near_plane_two_dimensional_homography_error}")
         far_plane_two_dimensional_position_homography_error = generate_world_point_uncertainty([[pixel_coords]], unc_pixel_coords[0], unc_pixel_coords[1], self.back_homography_matrix, self.back_homography_covariance)
         # print(f"Far plane 2D homography error: {far_plane_two_dimensional_position_homography_error}")
+        
+        # HACK for fixing NaN from homography error calculation
+        near_plane_two_dimensional_homography_error = [
+            0 if np.isnan(x) else x for x in near_plane_two_dimensional_homography_error
+        ]
+        far_plane_two_dimensional_position_homography_error = [
+            0 if np.isnan(x) else x for x in far_plane_two_dimensional_position_homography_error
+        ]
+
         return near_plane_two_dimensional_homography_error, far_plane_two_dimensional_position_homography_error
     
     @staticmethod
@@ -132,9 +142,9 @@ class AbstractCamera(ABC):
     
     def _calculate_uncertainty_in_tangent_of_angles(self, in_plane_displacement: float, near_plane_position_unc: float, far_plane_position_unc: float,
                                                   tan_phi: float, tan_theta: float):
-        """
-        """
 
+        # NOTE - might be an over-estimate if the same calibration board is used for both planes
+        # Origin shift error propagated twice!
         uncertainty_in_horizontal_position_difference = normal_addition_in_quadrature([near_plane_position_unc[0],
                                                                                        far_plane_position_unc[0]])
         uncertainty_in_vertical_position_difference = normal_addition_in_quadrature([near_plane_position_unc[1],
@@ -145,7 +155,7 @@ class AbstractCamera(ABC):
             unc_denominator = self.seen_scintillator_depth_uncertainty
         else:
             denominator = self.seen_scintillator_depth + self.near_calibration_board_thickness - self.far_calibration_board_thickness
-            if self.far_calibration_board_thickness != self.near_calibration_board_thickness:
+            if self.far_calibration_board_thickness != self.near_calibration_board_thickness: # NOTE - this check is assuming the board is exactly the same one used in both cases.
                 unc_denominator = normal_addition_in_quadrature([self.seen_scintillator_depth_uncertainty,
                                                                 self.near_calibration_board_thickness_unc,
                                                                 self.far_calibration_board_thickness_unc])
@@ -332,6 +342,9 @@ class SideCamera(AbstractCamera):
         self.axes_mapping = AxesMapping(non_z_axis="y",
                                         optical_axis="x",
                                         depth_direction=cdi.get_camera_depth_direction(camera_id, setup_id))
+        
+        # HACK - test to see how board angle effects measurements.
+        # self.far_calibration_board_thickness -= 2 # mm
     
     def build_direction_vector(self, tan_phi: float, tan_theta: float, unc_tan_phi: float, unc_tan_theta: float, scintillator_present: bool=False):
         
@@ -535,24 +548,32 @@ def calculate_intersection_point(first_equation_line_vectors, second_equation_li
       print("\n\nTotal error added in quadrature between two closest points on interpolated lines is {}".format(total_closest_points_error))
       print("\n\nVector of closest approach (magnitude of components taken) is {}".format(np.abs(closest_point_on_second_line_to_first_line - closest_point_on_first_line_to_second_line)))
       
-      if not np.all(np.abs(closest_point_on_second_line_to_first_line - closest_point_on_first_line_to_second_line) <= 5 * total_closest_points_error): # CURRENTLY, LESS THAN 5 COMBINED STD
-         
-        # 5 standard deviations because operating on a huge number of beam center coords across all image sets, it becomes quite possible that one component has an error exceeding 5 STD.
-        # raise Exception("\n\nThe seperation of two closest points is not consistent within 5 standard deviation of each of these points.")
-        print("\n\nThe seperation of two closest points is not consistent within 5 standard deviation of each of these points.")
-        return float("nan"), float("nan") # check for this and note that fit failed
+      # HACK - deactivated while investigating range analysis issues
+    #   if not np.all(np.abs(closest_point_on_second_line_to_first_line - closest_point_on_first_line_to_second_line) <= 5 * total_closest_points_error): # CURRENTLY, LESS THAN 5 COMBINED STD
+    #     # 5 standard deviations because operating on a huge number of beam center coords across all image sets, it becomes quite possible that one component has an error exceeding 5 STD.
+    #     # raise Exception("\n\nThe seperation of two closest points is not consistent within 5 standard deviation of each of these points.")
+    #     print("\n\nThe seperation of two closest points is not consistent within 5 standard deviation of each of these points.")
+    #     return float("nan"), float("nan") # check for this and note that fit failed
         
       # NEW VERSION - uses weighted intersection point of closest points to determine the event's pinpointed location
+      
       numerator = (closest_point_on_second_line_to_first_line/ unc_closest_point_on_second_line_to_first_line**2) + (closest_point_on_first_line_to_second_line / unc_closest_point_on_first_line_to_second_line**2) 
       denominator = 1 / unc_closest_point_on_second_line_to_first_line**2 + 1 / unc_closest_point_on_first_line_to_second_line**2
       weighted_mean_intersection_point = numerator/ denominator
       unc_weighted_mean_intersection_point = np.sqrt(1 / denominator)
+      
       return weighted_mean_intersection_point, unc_weighted_mean_intersection_point
-
-    #   midpoint_between_closest_points_of_the_lines = (closest_point_on_second_line_to_first_line + closest_point_on_first_line_to_second_line ) / 2 # this is the "intersection" point
-    #   unc_intersection_point = 0.5 * np.array([normal_addition_in_quadrature([unc_closest_point_on_second_line_to_first_line[i], unc_closest_point_on_first_line_to_second_line[i]]) for i in range(3)])
-    #   return midpoint_between_closest_points_of_the_lines, unc_intersection_point
-    
+  
+    # midpoint_between_closest_points_of_the_lines = (closest_point_on_second_line_to_first_line + closest_point_on_first_line_to_second_line ) / 2 # this is the "intersection" point
+    # unc_intersection_point = 0.5 * np.array([normal_addition_in_quadrature([unc_closest_point_on_second_line_to_first_line[i], unc_closest_point_on_first_line_to_second_line[i]]) for i in range(3)])
+    # return midpoint_between_closest_points_of_the_lines, unc_intersection_point
+      
+    #   # Compute the gap vector (difference between the closest points)
+    #   g = closest_point_on_second_line_to_first_line - closest_point_on_first_line_to_second_line
+    #   mid_point = closest_point_on_first_line_to_second_line + 0.5 * g
+    #   # Uncertainty based on gap vector - uniformly distributed in the gap
+    #   unc_mid_point = np.sqrt(1 / 12 * np.diag(np.outer(g, g)))
+    #   return mid_point, unc_mid_point
     
     # This is a limit that refuses to give an intersection point if the distance of closest approach is too large - even if consistent due to large closest point uncertainties.
     raise Exception("\n\nLines are more skew than the set tolerance ({} mm) allows for.".format(tolerance)) 
@@ -634,8 +655,16 @@ def plot_3d_lines(line1, line2, setup_id):
     fig.legend(handles=legend_handles, loc='upper center', ncol=4, bbox_to_anchor=(0.5, 0.95), frameon=True)
     plt.tight_layout()
     plt.subplots_adjust(top=0.8)
-    plt.savefig("/code/src/plots/3d_lines_plot.png", dpi=600)
-    plt.close(fig)
+    buf = io.BytesIO()  # Create an in-memory binary stream (buffer)
+    plt.savefig(buf, format="svg", dpi=600)  # Save the current plot to the buffer
+    plt.close()
+    buf.seek(0)  # Reset the buffer's position to the beginning - else will read from the end
+    image_bytes = buf.read()
+    
+    # # Hardcoded for run12 to create GUI plot.
+    # camera_analysis_id = 132
+    # cdi.add_camera_analysis_plot(camera_analysis_id, f"pinpointed_lines", image_bytes, "svg",
+    #                              description=f"Pinpointed lines for GUI presentation")
 
 
 def extract_3d_physical_position(first_camera: AbstractCamera, occupied_pixel_on_first_camera: tuple[int, int], 
@@ -725,17 +754,24 @@ def extract_weighted_average_3d_physical_position(list_of_camera_objects, list_o
     unc_intersection_point_array = []
     num_of_failed_pinpoints = 0
     
+    cameras_already_used = set() # contains camera ids of cameras already used - single camera never used twice for weighted pinpointing to prevent correlations!
+    
     for camera_combination, pixel_combination, unc_pixel_combination in zip(possible_camera_combinations, possible_pixel_combinations, possible_pixel_unc_combinations):
         
         camera_1, camera_2 = camera_combination
-        pixel_coords_1, pixel_coords_2 = pixel_combination
-        unc_pixel_coords_1, unc_pixel_coords_2 = unc_pixel_combination
-        
+        if camera_1.camera_id in cameras_already_used or camera_2.camera_id in cameras_already_used:
+            continue # skip past the pairings in which a camera has already been used
         if camera_1.axes_mapping.optical_axis == camera_2.axes_mapping.optical_axis:
             continue # skip past the pairings in which the cameras have the same optical_axis
         
+        cameras_already_used.update([camera_1.camera_id, camera_2.camera_id])
+        
+        pixel_coords_1, pixel_coords_2 = pixel_combination
+        unc_pixel_coords_1, unc_pixel_coords_2 = unc_pixel_combination
+        
         line_intersection_point, unc_line_intersection_point = extract_3d_physical_position(camera_1, pixel_coords_1, camera_2, pixel_coords_2,
-                                                                                            unc_pixel_coords_1, unc_pixel_coords_2, scintillator_present=scintillator_present)
+                                                                                            unc_pixel_coords_1, unc_pixel_coords_2, scintillator_present=scintillator_present,
+                                                                                            plot_line_equations=False)
         
         print(f"\n\n Intersection point of camera pair ({camera_1.camera_id}, {camera_2.camera_id}) is {line_intersection_point} +/- {unc_line_intersection_point}\n\n")
         
@@ -751,11 +787,10 @@ def extract_weighted_average_3d_physical_position(list_of_camera_objects, list_o
     print("\n\nIntersection Points and Uncertainties:")
     print(f"{'Camera Pair':<20} {'Intersection Point':<40} {'Uncertainty':<40}")
     print("-" * 100)
-    for camera_combination, intersection_point, unc_intersection_point in zip(possible_camera_combinations, intersection_point_array, unc_intersection_point_array):
-        camera_pair = f"({camera_combination[0].camera_id}, {camera_combination[1].camera_id})"
+    for intersection_point, unc_intersection_point in zip(intersection_point_array, unc_intersection_point_array):
         intersection_point_str = f"({intersection_point[0]:.2f}, {intersection_point[1]:.2f}, {intersection_point[2]:.2f})"
         uncertainty_str = f"({unc_intersection_point[0]:.2f}, {unc_intersection_point[1]:.2f}, {unc_intersection_point[2]:.2f})"
-        print(f"{camera_pair:<20} {intersection_point_str:<40} {uncertainty_str:<40}")
+        print(f"{intersection_point_str:<40} {uncertainty_str:<40}")
     
     if num_of_failed_pinpoints > 0:
         print("\n\nNumber of failed pinpoints omitted from weighted calculations is: {}".format(num_of_failed_pinpoints))

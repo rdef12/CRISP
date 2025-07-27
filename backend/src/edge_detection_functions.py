@@ -70,20 +70,23 @@ def find_beam_contour_extremes(camera_analysis_id, image, horizontal_pixel_width
       plt.show()
       plt.close()
     
-    edges = detect_edges(image) # Could look at changing aperture size to smoothen edges further still
-
-    if show_image:
-      plt.figure()
-      plt.title("Edge Detection Output")
-      plt.imshow(edges, cmap='gray')
-      plt.show()
-    
+    # edges = detect_edges(image) # Could look at changing aperture size to smoothen edges further still
     # Morphological Operations - dilation and erosion?
     
     # kernel = np.ones((3, 3), np.uint8)
+    # kernel = np.ones((5, 5), np.uint8)
+    # # kernel = np.ones((21, 21), np.uint8)
+    # closed = cv2.morphologyEx(edges, cv2.MORPH_CLOSE, kernel)
+
+    # if show_image:
+    #   plt.figure()
+    #   plt.title("Edge Detection Output")
+    #   plt.imshow(edges, cmap='gray')
+    #   plt.show()
+    
+    # TEST OF BYPASSING CANNY EDGE DETECTION - trivial contour in binary image
     kernel = np.ones((5, 5), np.uint8)
-    # kernel = np.ones((21, 21), np.uint8)
-    closed = cv2.morphologyEx(edges, cv2.MORPH_CLOSE, kernel)
+    closed = cv2.morphologyEx(image, cv2.MORPH_CLOSE, kernel)
     
     contours, _ = cv2.findContours(closed, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     

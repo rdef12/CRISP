@@ -28,6 +28,10 @@ LEGEND_CONFIG = {
 def linear_function(x_coord, parameters):
     return parameters[0] * x_coord + parameters[1]
 
+def linear_function_for_odr(params, x):
+    m, c = params
+    return m * x + c
+
 def least_squares_fitting_procedure(x_data, y_data, y_uncertainties):
     """
     NOTE: Insert from LSFR-20
@@ -77,26 +81,35 @@ def super_gaussian_with_background_noise(w, w0, a, sgm, n, background):
     return (a/sgm) * np.exp(-(0.5 * ((w - w0)/sgm)**2)**n) + background
 
 
-def extract_beam_profile(image, brightness_errors, horizontal_coord, v_bounds):
-    pixel_vertical_coords = np.arange(v_bounds[0], v_bounds[1]+ 1)
-    column_of_brightness_vals = image[v_bounds[0]: v_bounds[1] + 1, horizontal_coord]
-    column_of_brightness_errors = brightness_errors[v_bounds[0]: v_bounds[1] + 1, horizontal_coord]
-    return pixel_vertical_coords, column_of_brightness_vals, column_of_brightness_errors 
+def extract_beam_profile(image, brightness_errors, horizontal_coord, v_bounds, scintillator_edges):
+    
+    vertical_scintillator_edges = scintillator_edges[1]
+    
+    gaussian_vertical_coords = np.arange(v_bounds[0], v_bounds[1]+ 1)
+    
+    column_of_brightness_vals = image[vertical_scintillator_edges[0]: vertical_scintillator_edges[1] + 1, horizontal_coord]
+    column_of_brightness_errors = brightness_errors[vertical_scintillator_edges[0]: vertical_scintillator_edges[1] + 1, horizontal_coord]
+    
+    gaussian_brightness_vals = image[v_bounds[0]: v_bounds[1] + 1, horizontal_coord]
+    gaussian_brightness_errors = brightness_errors[v_bounds[0]: v_bounds[1] + 1, horizontal_coord]
+    
+    return gaussian_vertical_coords, gaussian_brightness_vals, gaussian_brightness_errors, column_of_brightness_vals, column_of_brightness_errors 
 
 
-def fit_gaussian_to_beam_profile(pixel_vertical_coords, column_of_brightness_vals, column_of_brightness_errors, background_brightness):
+def fit_gaussian_to_beam_profile(gaussian_vertical_coords, gaussian_brightness_vals,
+                                 gaussian_brightness_errors, background_brightness):
 
      # The following is looking to see if the gaussian tails are likely present
      # since the choice of gaussian background estimate depends on this - room for improvement
-    if (np.std(column_of_brightness_vals[10:]) <= 2) or (np.std(column_of_brightness_vals[-10:]) <= 2):
-        background_estimate = np.min(column_of_brightness_vals)
+    if (np.std(gaussian_brightness_vals[10:]) <= 2) or (np.std(gaussian_brightness_vals[-10:]) <= 2):
+        background_estimate = np.min(gaussian_brightness_vals)
     else:
         background_estimate = background_brightness # Doesn't always give a good fit for the top cam
     
-    column_of_brightness_vals -= background_estimate
-    gaussian_center_estimate = pixel_vertical_coords[np.argmax(column_of_brightness_vals)]
-    gaussian_sigma_estimate = np.std(column_of_brightness_vals)
-    gaussian_scale_estimate = np.max(column_of_brightness_vals) * gaussian_sigma_estimate * np.sqrt(2*np.pi)
+    gaussian_brightness_vals -= background_estimate
+    gaussian_center_estimate = gaussian_vertical_coords[np.argmax(gaussian_brightness_vals)]
+    gaussian_sigma_estimate = np.std(gaussian_brightness_vals)
+    gaussian_scale_estimate = np.max(gaussian_brightness_vals) * gaussian_sigma_estimate * np.sqrt(2*np.pi)
         
     first_lower_bounds = [-np.inf,  # No lower bound for the 1st parameter (center)
                     -np.inf,  # No lower bound for the 2nd parameter (scale)
@@ -121,31 +134,31 @@ def fit_gaussian_to_beam_profile(pixel_vertical_coords, column_of_brightness_val
                     np.inf]  # No upper bound for the 5th parameter (background)
 
     try:
-        super_gauss_paramters, parameter_cov = curve_fit(super_gaussian, pixel_vertical_coords, column_of_brightness_vals,
+        super_gauss_paramters, parameter_cov = curve_fit(super_gaussian, gaussian_vertical_coords, gaussian_brightness_vals,
                                             p0 = (gaussian_center_estimate,
                                                     gaussian_scale_estimate,
                                                     gaussian_sigma_estimate,
                                                     1),
-                                            sigma=column_of_brightness_errors,
+                                            sigma=gaussian_brightness_errors,
                                             absolute_sigma=True,
                                             bounds=(first_lower_bounds, first_upper_bounds))
         
-        column_of_brightness_vals += background_estimate
-        super_gauss_paramters, parameter_cov = curve_fit(super_gaussian_with_background_noise, pixel_vertical_coords, column_of_brightness_vals,
+        gaussian_brightness_vals += background_estimate
+        super_gauss_paramters, parameter_cov = curve_fit(super_gaussian_with_background_noise, gaussian_vertical_coords, gaussian_brightness_vals,
                                             p0 = (super_gauss_paramters[0],
                                                     super_gauss_paramters[1],
                                                     super_gauss_paramters[2],
                                                     super_gauss_paramters[3],
                                                     background_estimate),
-                                            sigma=column_of_brightness_errors,
+                                            sigma=gaussian_brightness_errors,
                                             absolute_sigma=True,
                                             bounds=(second_lower_bounds, second_upper_bounds))
         
         super_gauss_paramters_uncertainties = np.sqrt(np.diag(parameter_cov))
         
-        num_of_dof = len(pixel_vertical_coords) - 5 # 5 fit params
-        fitted_pixel_values = super_gaussian_with_background_noise(pixel_vertical_coords, *super_gauss_paramters)
-        reduced_chi_squared = chi_squared_function(column_of_brightness_vals, column_of_brightness_errors, fitted_pixel_values) / num_of_dof
+        num_of_dof = len(gaussian_vertical_coords) - 5 # 5 fit params
+        fitted_pixel_values = super_gaussian_with_background_noise(gaussian_vertical_coords, *super_gauss_paramters)
+        reduced_chi_squared = chi_squared_function(gaussian_brightness_vals, gaussian_brightness_errors, fitted_pixel_values) / num_of_dof
         
         successful_fit = True
         return super_gauss_paramters, super_gauss_paramters_uncertainties, reduced_chi_squared, successful_fit
@@ -155,7 +168,7 @@ def fit_gaussian_to_beam_profile(pixel_vertical_coords, column_of_brightness_val
         return float("nan"), float("nan"), float("nan"),  successful_fit
     
 
-def fit_beam_profile_along_full_roi(camera_analysis_id: int, fit_context: str, channel, channel_std, h_bounds, v_bounds, show_fit_qualities: bool=False,
+def fit_beam_profile_along_full_roi(camera_analysis_id: int, fit_context: str, channel, channel_std, h_bounds, v_bounds, scintillator_edges, show_fit_qualities: bool=False,
                                     save_plots_to_database: bool=False):
     try:
         (background_brightness, _, _, _) = cv.minMaxLoc(channel[v_bounds[0]: v_bounds[1] + 1, h_bounds[0]: h_bounds[1] + 1])
@@ -169,10 +182,11 @@ def fit_beam_profile_along_full_roi(camera_analysis_id: int, fit_context: str, c
         
         failed_fits = []
         for index, horizontal_coord in enumerate(roi_horizontal_coords):
-            pixel_vertical_coords, column_of_brightness_vals, column_of_brightness_errors = extract_beam_profile(channel, channel_std, horizontal_coord, v_bounds)
+            gaussian_vertical_coords, gaussian_brightness_vals, gaussian_brightness_errors, \
+            column_of_brightness_vals, column_of_brightness_errors = extract_beam_profile(channel, channel_std, horizontal_coord, v_bounds, scintillator_edges)
             
-            fitted_parameters, unc_fitted_parameters, reduced_chi_squared, success = fit_gaussian_to_beam_profile(pixel_vertical_coords, column_of_brightness_vals,
-                                                                                                                    column_of_brightness_errors, background_brightness)
+            fitted_parameters, unc_fitted_parameters, reduced_chi_squared, success = fit_gaussian_to_beam_profile(gaussian_vertical_coords, gaussian_brightness_vals,
+                                                                                                                gaussian_brightness_errors, background_brightness)
             if not success:
                 failed_fits.append(index)
                 continue # Should start from next index of for loop, not appending these beam center positions
@@ -194,9 +208,9 @@ def fit_beam_profile_along_full_roi(camera_analysis_id: int, fit_context: str, c
             index_of_worst_accepted_fit = np.argmax(reduced_chi_squared_array)
             index_of_best_accepted_fit = np.argmin(reduced_chi_squared_array)
             
-            plot_beam_profile(camera_analysis_id, fit_context, channel, channel_std, roi_horizontal_coords[index_of_best_accepted_fit], v_bounds, background_brightness, np.min(reduced_chi_squared_array),
+            plot_beam_profile(camera_analysis_id, fit_context, channel, channel_std, roi_horizontal_coords[index_of_best_accepted_fit], v_bounds, scintillator_edges, background_brightness, np.min(reduced_chi_squared_array),
                                                             profile_type="best_fit", show_plot=show_fit_qualities)
-            plot_beam_profile(camera_analysis_id, fit_context, channel, channel_std, roi_horizontal_coords[index_of_worst_accepted_fit], v_bounds, background_brightness, np.max(reduced_chi_squared_array),
+            plot_beam_profile(camera_analysis_id, fit_context, channel, channel_std, roi_horizontal_coords[index_of_worst_accepted_fit], v_bounds, scintillator_edges, background_brightness, np.max(reduced_chi_squared_array),
                                                             profile_type="worst_fit", show_plot=show_fit_qualities)
             
             # best_fit_horizontal_coord = roi_horizontal_coords[index_of_best_accepted_fit]
@@ -222,12 +236,17 @@ def render_best_worst_fit_locations(image, best_fit_horizontal_coord, worst_fit_
     return base64.b64encode(buf.read()).decode('utf-8')
 
 
-def plot_beam_profile(camera_analysis_id: int, fit_context: str, channel, channel_std, horizontal_coord, v_bounds,
+def plot_beam_profile(camera_analysis_id: int, fit_context: str, channel, channel_std, horizontal_coord, v_bounds, scintillator_edges,
                       global_background_estimate, reduced_chi_squared, profile_type: str=None, show_plot: bool=False):
     
-    pixel_vertical_coords, column_of_brightness_vals, column_of_brightness_errors = extract_beam_profile(channel, channel_std, horizontal_coord, v_bounds)
-    fitted_parameters, unc_fitted_parameters, reduced_chi_squared, _ = fit_gaussian_to_beam_profile(pixel_vertical_coords, column_of_brightness_vals, column_of_brightness_errors,
+    pixel_vertical_coords, gaussian_brightness_vals, gaussian_brightness_errors, _, _ = extract_beam_profile(channel, channel_std, horizontal_coord, v_bounds, scintillator_edges)
+    fitted_parameters, unc_fitted_parameters, reduced_chi_squared, _ = fit_gaussian_to_beam_profile(pixel_vertical_coords, gaussian_brightness_vals, gaussian_brightness_errors,
                                                                                                     global_background_estimate)
+    
+    print(f"\n\n\n\nprofile_type = {profile_type}")
+    print(f"\Minimum gaussian_brightness_error = {np.min(gaussian_brightness_errors)}")
+    print(f"\Maximum gaussian_brightness_error = {np.max(gaussian_brightness_errors)}\n\n\n\n")
+    
     chi_squared = reduced_chi_squared * (len(pixel_vertical_coords) - 5) # 5 fit params
 
     gaussian_center, scale_factor, sigma, n, background_noise = fitted_parameters # FOR SUPER GAUSSIAN FITTING
@@ -236,14 +255,14 @@ def plot_beam_profile(camera_analysis_id: int, fit_context: str, channel, channe
     fitted_pixel_values = super_gaussian_with_background_noise(pixel_height_linspace, gaussian_center, scale_factor, sigma, n, background_noise) # FOR SUPER GAUSSIAN FITTING
     
     # Compute residuals
-    residuals = column_of_brightness_vals - super_gaussian_with_background_noise(pixel_vertical_coords, gaussian_center, scale_factor, sigma, n, background_noise)
+    residuals = gaussian_brightness_vals - super_gaussian_with_background_noise(pixel_vertical_coords, gaussian_center, scale_factor, sigma, n, background_noise)
     
     # Create figure and subplots
     fig, axs = plt.subplots(2, 1, gridspec_kw={'height_ratios': [3, 1]}, figsize=(8, 6), sharex=True)
     
     # Plot the beam profile with Gaussian fit
-    axs[0].step(pixel_vertical_coords, column_of_brightness_vals, color='black', zorder=9)
-    axs[0].errorbar(pixel_vertical_coords, column_of_brightness_vals, yerr=column_of_brightness_errors, 
+    axs[0].step(pixel_vertical_coords, gaussian_brightness_vals, color='black', zorder=9)
+    axs[0].errorbar(pixel_vertical_coords, gaussian_brightness_vals, yerr=gaussian_brightness_errors, 
                     color="black", label="Experimental Data", ms=5, ecolor="blue", zorder=10)
     
     axs[0].errorbar(gaussian_center, super_gaussian_with_background_noise(gaussian_center, gaussian_center, scale_factor, sigma, n, background_noise),
@@ -251,12 +270,12 @@ def plot_beam_profile(camera_analysis_id: int, fit_context: str, channel, channe
                     
     axs[0].plot(pixel_height_linspace, fitted_pixel_values, color="red", label="Fitted Gaussian Profile \n" + r"$\chi^{2}_R = $" + "{:.3g}".format(reduced_chi_squared))
     axs[0].set_ylabel("Pixel Brightness Value")
-    axs[0].set_title("Horizontal Coord = {}".format(horizontal_coord))
+    axs[0].set_title("Horizontal Image Coordinate = {}".format(horizontal_coord))
     axs[0].legend(**LEGEND_CONFIG)
     axs[0].grid()
     
     # Plot the residuals
-    axs[1].scatter(pixel_vertical_coords, residuals, color="black", s=8, label="Residuals")
+    axs[1].errorbar(pixel_vertical_coords, residuals, yerr=gaussian_brightness_errors, color="black", ecolor="blue", ms=8, label="Residual")
     axs[1].axhline(0, color='red', linestyle='dashed')
     axs[1].set_xlabel("Pixel's Vertical Image Coordinate")
     axs[1].set_ylabel("Residuals")
@@ -324,10 +343,25 @@ def extract_incident_beam_angle(camera_analysis_id: int, horizontal_coords, beam
     horizontal_coords = horizontal_coords[angle_fitting_range]
     beam_center_vertical_coords = beam_center_vertical_coords[angle_fitting_range]
     beam_center_errors = beam_center_errors[angle_fitting_range]
-
+    
     fitted_line_parameters, fitted_parameter_uncertainties = least_squares_fitting_procedure(horizontal_coords, beam_center_vertical_coords, beam_center_errors)
-    predicted_beam_centers = linear_function(horizontal_coords, fitted_line_parameters)  
-    chi_squared = chi_squared_function(beam_center_vertical_coords, beam_center_errors, predicted_beam_centers)
+    horizontal_coords_error = np.full_like(horizontal_coords, 1/np.sqrt(12), dtype=float)
+    linear = odr.Model(linear_function_for_odr)
+    data = odr.RealData(horizontal_coords, beam_center_vertical_coords,
+                        sx=horizontal_coords_error, sy=beam_center_errors)
+
+    odr_obj = odr.ODR(data, linear, beta0=fitted_line_parameters)
+    result = odr_obj.run()
+    
+    fitted_line_parameters = result.beta
+    fitted_parameter_uncertainties = result.sd_beta
+    chi_squared =  result.sum_square
+    predicted_beam_centers = linear_function(horizontal_coords, fitted_line_parameters) 
+
+    # NOTE - COMMENTED OUT WHILE TESTING ODR FITTING
+    # fitted_line_parameters, fitted_parameter_uncertainties = least_squares_fitting_procedure(horizontal_coords, beam_center_vertical_coords, beam_center_errors)
+    # predicted_beam_centers = linear_function(horizontal_coords, fitted_line_parameters)  
+    # chi_squared = chi_squared_function(beam_center_vertical_coords, beam_center_errors, predicted_beam_centers)
     chi_squared_reduced =  chi_squared / (len(horizontal_coords) - 2)
     
     print("\n\ntan alpha = {}".format(fitted_line_parameters[0]))
@@ -344,17 +378,21 @@ def extract_incident_beam_angle(camera_analysis_id: int, horizontal_coords, beam
     #     print("\n\nUpdated tan alpha = {}".format(fitted_line_parameters[0]))
     #     print("\n\nUpdated uncertainty in tan alpha = {}".format(fitted_parameter_uncertainties[0]))
     
+    print(f"\n\n\n\n\n\n{fitted_line_parameters=}")
     fitted_angle = np.arctan(fitted_line_parameters[0])
     fitted_tan_angle_uncertainty = fitted_parameter_uncertainties[0]
     unc_fitted_angle = fitted_tan_angle_uncertainty * np.cos(fitted_angle)**2
+    print(f"\n\n\n{fitted_angle=}")
     
     print("\n\nuncertainty in angle = {}".format(unc_fitted_angle))
 
     fitted_angle, unc_fitted_angle = np.rad2deg(fitted_angle), np.rad2deg(unc_fitted_angle)
+    print(f"\n\n\n{fitted_angle=}")
     
     leading_order_error = 10 ** np.floor(np.log10(np.abs(unc_fitted_angle).max())) # same OOM for both coords - ideal?
     fitted_angle = np.round(fitted_angle / leading_order_error) * leading_order_error
     unc_fitted_angle = np.round(unc_fitted_angle / leading_order_error) * leading_order_error
+    print(f"\n\n\n{fitted_angle=}")
     
     fitted_label = r"$\alpha = $" + f"{fitted_angle}" + " \u00B1 " + f"{unc_fitted_angle}" + \
     "\u00B0" + "\n" + r"Reduced $\chi^2$ = " + str(round(chi_squared_reduced, 2))
@@ -362,15 +400,19 @@ def extract_incident_beam_angle(camera_analysis_id: int, horizontal_coords, beam
     fig, axs = plt.subplots(2, 1, gridspec_kw={'height_ratios': [3, 1]}, figsize=(8, 6), sharex=True)
     axs[0].plot(horizontal_coords, predicted_beam_centers, color="red", label=fitted_label)
     
+    print(f"\n\n\n\n\n\n{np.mean(beam_center_errors)=}")
+    print(f"\n\n\n{np.max(beam_center_errors)=}")
+    print(f"\n\n\n{np.min(beam_center_errors)=}\n\n\n\n\n\n")
+    
     axs[0].errorbar(horizontal_coords, beam_center_vertical_coords, beam_center_errors, color="black", marker="x", label="Experimental Data",
                     ecolor="blue", ls="none")
     axs[0].set_xlabel("Pixel's Horizonal Image Coordinate")
-    axs[0].set_ylabel("Vertical Coordinate of Beam Center Pixels")
+    axs[0].set_ylabel("Vertical Coordinate of Beam Center Pixel")
     axs[0].legend(**LEGEND_CONFIG)
-    plt.grid()
+    axs[0].grid()
     
     residuals = beam_center_vertical_coords - predicted_beam_centers
-    axs[1].scatter(horizontal_coords, residuals, color="black", s=8, label="Residuals")
+    axs[1].errorbar(horizontal_coords, residuals, yerr=beam_center_errors, color="black", ecolor="blue", ms=8, label="Residuals")
     axs[1].axhline(0, color='red', linestyle='dashed')
     axs[1].set_xlabel("Pixel's Horizonal Image Coordinate")
     axs[1].set_ylabel("Residuals")
@@ -405,7 +447,7 @@ def locate_bragg_peak_in_image(camera_analysis_id: int, x_positions, beam_center
     initial_bragg_peak_horizontal_coord_index = np.argmax(total_brightness_along_vertical_roi)
     initial_bragg_peak_horizontal_coord = x_positions[initial_bragg_peak_horizontal_coord_index]
     
-    threshold_fraction = 1 / 3
+    threshold_fraction = 0.5
     initial_brightness = total_brightness_along_vertical_roi[0]
     peak_brightness = np.max(total_brightness_along_vertical_roi)
     peak_threshold_condition = initial_brightness  + (peak_brightness - initial_brightness) * threshold_fraction
@@ -413,40 +455,61 @@ def locate_bragg_peak_in_image(camera_analysis_id: int, x_positions, beam_center
     peak_range = slice(max(0, within_peak_threshold[0]), min(len(x_positions), within_peak_threshold[-1] + 1))
     
     x_positions_slice = x_positions[peak_range]
+    unc_x_positions_slice = np.full_like(x_positions_slice, 1/np.sqrt(12), dtype=float)
+    print(f"\n\n\n{unc_x_positions_slice=}")
     total_brightness_slice = total_brightness_along_vertical_roi[peak_range]
     unc_brightness_slice = unc_total_brightness_along_vertical_roi[peak_range]
     
-    bortfeld_fit = fitBP(x_positions_slice, total_brightness_slice, unc_brightness_slice)
-    fit_parameters_covariance = bortfeld_fit['bortfeld_fit_cov']
+    fit_parameters, fit_parameters_covariance, _, reduced_chi_squared = fit_bortfeld_odr(
+        x_positions_slice, total_brightness_slice, unc_x_positions_slice, unc_brightness_slice)
+    
+    chi_squared = reduced_chi_squared * (len(x_positions_slice) - 5) # 5 fit params
     bortfeld_fit_uncertainties = np.sqrt(np.diag(fit_parameters_covariance))
-    
     z = np.linspace(x_positions_slice[0], x_positions_slice[-1], 1000) # I have not passed z in cm here.
-    curve = bortfeld(z, *bortfeld_fit['bortfeld_fit_p'])
-
-    predicted_curve = bortfeld(x_positions_slice, *bortfeld_fit['bortfeld_fit_p'])
-    chi_squared = chi_squared_function(total_brightness_slice, unc_brightness_slice, predicted_curve)
-    reduced_chi_squared = chi_squared / (len(x_positions_slice) - 5) # 5 fitted parameters
+    curve = bortfeld(z, *fit_parameters)
     
-    fig, ax = plt.subplots()
-    ax.plot(z, curve, color="red", label=("Bortfeld fit \n" + r"$\chi^{2}_R$ = " + f"{reduced_chi_squared:.1f}"))
-    ax.errorbar(x_positions_slice, total_brightness_slice, yerr=unc_brightness_slice, color="black", label="Experimental Data", ecolor="blue")
+    # NOTE - REMOVED WHILE EXPERIMENTING WITH ODR FITTING
+    # bortfeld_fit = fitBP(x_positions_slice, total_brightness_slice, unc_brightness_slice)
+    # z = np.linspace(x_positions_slice[0], x_positions_slice[-1], 1000) # I have not passed z in cm here.
+    # curve = bortfeld(z, *bortfeld_fit['bortfeld_fit_p'])
+    
+    # fit_parameters_covariance = bortfeld_fit['bortfeld_fit_cov']
+    # bortfeld_fit_uncertainties = np.sqrt(np.diag(fit_parameters_covariance))
+
+    # predicted_curve = bortfeld(x_positions_slice, *bortfeld_fit['bortfeld_fit_p'])
+    # chi_squared = chi_squared_function(total_brightness_slice, unc_brightness_slice, predicted_curve)
+    # reduced_chi_squared = chi_squared / (len(x_positions_slice) - 5) # 5 fitted parameters
+    
+    fig, axs = plt.subplots(2, 1, gridspec_kw={'height_ratios': [3, 1]}, figsize=(8, 6), sharex=True)
+    axs[0].plot(z, curve, color="red", label=("Fitted Bortfeld Function \n" + r"$\chi^{2}_R$ = " + f"{reduced_chi_squared:.1f}"))
+    axs[0].errorbar(x_positions_slice, total_brightness_slice, yerr=unc_brightness_slice, color="black", label="Experimental Data", ecolor="blue")
 
     # ax.set_title("{} Camera Bortfeld fit to Bragg curve".format(camera.type.capitalize()))
-    ax.set_xlabel("Horizonal Image Coordinate")
-    ax.set_ylabel("Total profile Brightness")
-    ax.grid()
-    ax.legend(**LEGEND_CONFIG)
+    axs[0].set_xlabel("Horizonal Image Coordinate")
+    axs[0].set_ylabel("Total Pixel Intensity")
+    axs[0].grid()
+    axs[0].legend(**LEGEND_CONFIG)
+    
+    residuals = total_brightness_slice - bortfeld(x_positions_slice, *fit_parameters)
+    axs[1].errorbar(x_positions_slice, residuals, yerr=unc_brightness_slice, color="black", ecolor="blue", ms=8, label="Residuals")
+    axs[1].axhline(0, color='red', linestyle='dashed')
+    axs[1].set_xlabel("Horizonal Image Coordinate")
+    axs[1].set_ylabel("Residuals")
+    axs[1].grid()
+    
     if show_scintillation_plot:
         plt.show()
     
     buf = io.BytesIO()  # Create an in-memory binary stream (buffer)
-    plt.savefig(buf, format="svg", dpi=600)  # Save the current plot to the buffer
+    plt.savefig(buf, format="svg", dpi=600, bbox_inches='tight')  # Save the current plot to the buffer
     plt.close()
     buf.seek(0)  # Reset the buffer's position to the beginning - else will read from the end
     plot_bytes = buf.read()
     
     parameter_labels = ["Normalisation Constant (A)", "80% Distal Range (R80)", "Sigma", "Bragg-Kleeman Exponent (p)", "Scale factor (K)"]
-    parameter_values = [float(x) for x in bortfeld_fit['bortfeld_fit_p']]
+    # parameter_values = [float(x) for x in bortfeld_fit['bortfeld_fit_p']]
+    # parameter_uncertainties = [float(x) for x in bortfeld_fit_uncertainties]
+    parameter_values = [float(x) for x in fit_parameters]
     parameter_uncertainties = [float(x) for x in bortfeld_fit_uncertainties]
     
     cdi.add_camera_analysis_plot(camera_analysis_id, f"pixel_bortfeld_fit", plot_bytes, "svg",
@@ -460,7 +523,8 @@ def locate_bragg_peak_in_image(camera_analysis_id: int, x_positions, beam_center
     # For the time being, use a symmetric interval with the largest unc
     # unc_bortfeld_horizontal_coord = max(lower_bound, upper_bound)
     
-    unc_bortfeld_horizontal_coord = compute_error_on_bortfeld_peak(z, bortfeld_fit['bortfeld_fit_p'], bortfeld_fit['bortfeld_fit_cov'])
+    unc_bortfeld_horizontal_coord = compute_error_on_bortfeld_peak(z, fit_parameters, fit_parameters_covariance)
+    # unc_bortfeld_horizontal_coord = compute_error_on_bortfeld_peak(z, bortfeld_fit['bortfeld_fit_p'], bortfeld_fit['bortfeld_fit_cov'])
     
     change_in_coord = round(bortfeld_horizontal_coord) - initial_bragg_peak_horizontal_coord
     
@@ -523,7 +587,7 @@ def fit_physical_units_ODR_bortfeld(camera_analysis_id, distances, distance_unce
         brightnesses = np.array(brightnesses)[unique_indices]    
         brightness_uncertainties = np.array(brightness_uncertainties)[unique_indices]
     
-    threshold_fraction = 1 / 3
+    threshold_fraction = 1 / 2
     initial_brightness = brightnesses[0]
     peak_brightness = np.max(brightnesses)
     peak_threshold_condition = initial_brightness  + (peak_brightness - initial_brightness) * threshold_fraction
@@ -543,11 +607,14 @@ def fit_physical_units_ODR_bortfeld(camera_analysis_id, distances, distance_unce
     fit_parameters, fit_parameters_covariance, _, reduced_chi_squared = fit_bortfeld_odr(
         distances, brightnesses, distance_uncertainties, brightness_uncertainties)
     
+    print(f"\n\n\n Fitted parameters = {fit_parameters}")
+    print(f"\n\n\n Fitted parameters covariance = {fit_parameters_covariance}")
+    
     print(f"\n\n\n R80 = {fit_parameters[2]} +/- {np.sqrt(np.diag(fit_parameters_covariance))[2]}")
 
     # Find the Bragg peak position and uncertainties
-    bragg_peak_position = find_peak_of_bortfeld(distances, fit_parameters)
-    bragg_peak_position_error = compute_error_on_bortfeld_peak(distances, fit_parameters, fit_parameters_covariance)
+    bragg_peak_position = find_peak_of_bortfeld(distances.copy(), fit_parameters.copy())
+    bragg_peak_position_error = compute_error_on_bortfeld_peak(distances.copy(), fit_parameters.copy(), fit_parameters_covariance)
     print("\n\nBragg peak position is {}".format(bragg_peak_position))
     print("\n\nBragg peak position uncertainty is {}".format(bragg_peak_position_error))
     
@@ -557,7 +624,7 @@ def fit_physical_units_ODR_bortfeld(camera_analysis_id, distances, distance_unce
     return distances, distance_uncertainties, brightnesses, brightness_uncertainties, fit_parameters, fit_parameters_covariance, reduced_chi_squared
 
 def compute_range_and_uncertainty(camera_analysis_id, distances, fit_parameters, fit_parameter_covariance):
-    range = find_range(distances, fit_parameters, points_per_bin=1000)
+    range = find_range(distances, fit_parameters)
     range_uncertainty = compute_error_on_mean_range(distances, fit_parameters, fit_parameter_covariance)
     print("\n\nRange is {}".format(range))
     print("\n\nRange uncertainty is {}".format(range_uncertainty))
@@ -570,32 +637,48 @@ def plot_physical_units_ODR_bortfeld(camera_analysis_id, distances, distance_unc
                                      num_of_failed_pinpoints):
     try:
         distances, distance_uncertainties, brightnesses, brightness_uncertainties, \
-            fit_parameters, fit_parameters_covariance, reduced_chi_squared = fit_physical_units_ODR_bortfeld(camera_analysis_id, distances, distance_uncertainties, brightnesses, brightness_uncertainties)
+            fit_parameters, fit_parameters_covariance, reduced_chi_squared = fit_physical_units_ODR_bortfeld(camera_analysis_id, distances, distance_uncertainties,
+                                                                                                             brightnesses, brightness_uncertainties)
         
-        range, unc_range = compute_range_and_uncertainty(camera_analysis_id, distances, fit_parameters, fit_parameters_covariance)
+        range, unc_range = compute_range_and_uncertainty(camera_analysis_id, distances.copy(), fit_parameters.copy(),
+                                                         fit_parameters_covariance)
         
         # Generate fitted curve
         fitted_brightnesses = bortfeld(distances, *fit_parameters)
-        plt.plot(distances, fitted_brightnesses, color='red', 
+        
+        fig, axs = plt.subplots(2, 1, gridspec_kw={'height_ratios': [3, 1]}, figsize=(8, 6), sharex=True)
+        axs[0].plot(distances, fitted_brightnesses, color='red', 
              label=('Fitted Bortfeld Function \n' + fr"Reduced $\chi^2$ = {reduced_chi_squared:.3g}"))
         
         # plt.step(distances, brightnesses, where='mid')
         # Suppress markers for error bars only
         failed_points_label = f"\nNumber of failed pinpoints: {num_of_failed_pinpoints}" if num_of_failed_pinpoints > 0 else ""
-        range_label = f"\n Range = {range:.3g} \u00B1 {unc_range:.3g}"
-        plt.errorbar(
+        
+        # Determine the number of decimal places for nominal value
+        dp = len(f"{unc_range:.1g}".split('.')[-1])
+        # Format range and uncertainty
+        range_label = f"\n Range = {range:.{dp}f} \u00B1 {unc_range:.1g}"
+
+        axs[0].errorbar(
             distances, brightnesses, 
             xerr=distance_uncertainties, yerr=brightness_uncertainties,
             fmt='', color='black', ecolor='blue', label=f'Experimental Data {range_label} {failed_points_label}', ms=3)
         
         # Add labels, legend, and grid
-        plt.xlabel("Distance travelled through Scintillator (mm)")
-        plt.ylabel("Total Profile Intensity")
-        plt.legend(**LEGEND_CONFIG)
-        plt.grid()
+        axs[0].set_xlabel("Penetration Depth (mm)")
+        axs[0].set_ylabel("Total Intensity")
+        axs[0].legend(**LEGEND_CONFIG)
+        axs[0].grid()
+        
+        residuals = brightnesses - fitted_brightnesses
+        axs[1].errorbar(distances, residuals, yerr=brightness_uncertainties, color="black", ecolor="blue", ms=8, label="Residuals")
+        axs[1].axhline(0, color='red', linestyle='dashed')
+        axs[1].set_xlabel("Penetration Depth (mm)")
+        axs[1].set_ylabel("Residuals")
+        axs[1].grid()
 
         buf = io.BytesIO()  # Create an in-memory binary stream (buffer)
-        plt.savefig(buf, format="svg", dpi=600)  # Save the current plot to the buffer
+        plt.savefig(buf, format="svg", dpi=600, bbox_inches='tight')  # Save the current plot to the buffer
         plt.close()
         buf.seek(0)  # Reset the buffer's position to the beginning - else will read from the end
         plot_bytes = buf.read()

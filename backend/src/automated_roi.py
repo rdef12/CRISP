@@ -1,6 +1,7 @@
 import cv2 as cv
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.patches as patches
 from src.edge_detection_functions import find_beam_contour_extremes
 import io
 from src.database.CRUD import CRISP_database_interaction as cdi
@@ -10,7 +11,7 @@ from src.database.CRUD import CRISP_database_interaction as cdi
 
 # TOP_SCINTILLATOR_HORIZONTAL_ROI = [700, 3100]
 # TOP_SCINTILLATOR_VERTICAL_ROI = [990, 1400]
-
+5
 def get_scintillator_pixel_dimensions(scintillator_horizontal_roi, scintillator_vertical_roi):
     
     horizontal_pixel_width = abs(scintillator_horizontal_roi[1] - scintillator_horizontal_roi[0])
@@ -74,12 +75,26 @@ def roi_determination_inside_scintillator(camera_analysis_id, image, scintillato
     return x_bounds, y_bounds
 
 def get_image_with_roi(image, horizontal_roi, vertical_roi, show_plot: bool=False):
-    rgb_image = cv.cvtColor(image, cv.COLOR_BGR2RGB)
-    plt.imshow(rgb_image)
-    plt.axvline(horizontal_roi[0], color='red')
-    plt.axvline(horizontal_roi[1], color='red')
-    plt.axhline(vertical_roi[0], color='red')
-    plt.axhline(vertical_roi[1], color='red')
+    blue_image = cv.merge([np.zeros_like(image), np.zeros_like(image), image])
+    
+    # plt.imshow(rgb_image)
+    # plt.axvline(horizontal_roi[0], color='red')
+    # plt.axvline(horizontal_roi[1], color='red')
+    # plt.axhline(vertical_roi[0], color='red')
+    # plt.axhline(vertical_roi[1], color='red')
+    
+    fig, ax = plt.subplots()
+    ax.imshow(blue_image)
+
+    # Define rectangle parameters
+    x = horizontal_roi[0]
+    y = vertical_roi[0]
+    width = horizontal_roi[1] - horizontal_roi[0]
+    height = vertical_roi[1] - vertical_roi[0]
+
+    # Create and add the rectangle patch
+    rect = patches.Rectangle((x, y), width, height, linewidth=2, edgecolor='red', facecolor='none')
+    ax.add_patch(rect)
     
     if show_plot:
         plt.show()

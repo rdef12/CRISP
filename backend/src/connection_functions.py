@@ -57,6 +57,7 @@ def get_raspberry_pi_statuses():
     
 def connect_over_ssh(username: str):
     # First, ensure any existing connection is properly cleaned up
+    
     if existing_pi := Pi.get_pi_with_username(username):
         Pi.delete_pi(username)
 
