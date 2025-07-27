@@ -31,7 +31,7 @@ class ImageSettings(BaseModel):
     """
     filename: str = Field(..., min_length=1, description="Filename without extension.")
     gain: int = Field(1, gt=0, example=1)
-    timeDelay: int = Field(1000, ge=0, example=1000, description="Time delay in milliseconds") 
+    timeDelay: int = Field(0, ge=0, example=1000, description="Time delay in milliseconds") 
     format: Literal["png", "jpg", "jpeg"] = Field("jpeg", example="png")
     
 class ImageTestSettings(ImageSettings):
@@ -170,14 +170,16 @@ class Camera():
   def capture_image(self, imageSettings: ImageSettings|ImageTestSettings, context: PhotoContext):
         try:
             print("\n\n\n\n\n I've started adding all the settings")
-            added_settings = cdi.add_settings(frame_rate=5, lens_position=0.5, gain=imageSettings.gain) #TODO obviously these will take variable values once model is fleshed out
+            
+            lens_position = getattr(imageSettings, "lens_position", None)
+            added_settings = cdi.add_settings(frame_rate=5, lens_position=lens_position, gain=imageSettings.gain) #TODO obviously these will take variable values once model is fleshed out
             settings_id = added_settings["id"]
             camera_id = cdi.get_camera_id_from_username(self.username)
             added_camera_settings_link = cdi.add_camera_settings_link(camera_id=camera_id, settings_id=settings_id)
             camera_settings_link_id = added_camera_settings_link["id"]
             print("\n\n\n\n\n I managed to add all the settings")
         except Exception as e:
-            print(f"Error: {e} ") # TODO finish proper error handling here
+            print(f"Error: {e} ")
             raise e
         
         try:
@@ -186,7 +188,7 @@ class Camera():
             print("\n\n\n\n\n Directory checked")
         except Exception as e:
             raise e    
-        # Should there be timestamping code in here?
+
         print("\n\n\n\n\n I will try to generate the file name")
 
         filename = self.generate_filename(camera_settings_link_id, context, imageSettings.format, filename=imageSettings.filename) # TODO maybe dont need filename as key word arg if set in imageSettings class
@@ -196,11 +198,7 @@ class Camera():
         
         try:
             print("\n\n\n\n\n I will try to create the file")
-            
-
-            lens_position = getattr(imageSettings, "lens_position", None)
-            print(type(imageSettings))
-            print(lens_position)
+        
             lens_position = f"--lens-position {lens_position}" if lens_position is not None else ""
             
             command = f"libcamera-still -o {full_file_path}.{imageSettings.format} -t {imageSettings.timeDelay} --gain {imageSettings.gain} -n {lens_position}"

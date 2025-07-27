@@ -95,7 +95,7 @@ export default function ImageTesting() {
     return (
       <div className="flex">
         {/* Card Container */}
-        <div className="flex-shrink-0 w-72 p-6 bg-white shadow-lg rounded-lg border border-gray-300 mt-8 ml-8">
+        <div className="flex-shrink-0 w-[320px] p-6 bg-white shadow-lg rounded-lg border border-gray-300 mt-8 ml-8">
           <h2 className="text-xl font-semibold mb-4">Image Setup</h2>
   
           {/* Dropdown Button */}
@@ -132,7 +132,7 @@ export default function ImageTesting() {
           <Input
             type="text"
             name="filename"
-            placeholder="Filename"
+            placeholder="Filename (omit the filetype)"
             value={formData.filename}
             onChange={handleChange}
             required
@@ -147,14 +147,14 @@ export default function ImageTesting() {
           <Input
             type="number"
             name="timeDelay"
-            placeholder = {"Time Delay [ms] (default=1000)"}
+            placeholder = {"Time Delay [ms] (default=0)"}
             value={formData.timeDelay}
             onChange={handleChange}
           />
           <Input
             type="number"
             name="lens_position"
-            placeholder = {"Lens position"}
+            placeholder = {"Lens position (omit if fixed focus)"}
             value={formData.lens_position}
             onChange={handleChange}
           />

@@ -1,47 +1,39 @@
 "use client"
 
-import { useState, useEffect } from 'react';
-
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND
+// import { useState, useEffect } from 'react';
+// const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND
 
 function DocsPage() {
-  const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    // Check if the docs are accessible before rendering the iframe
-    fetch(`${BACKEND_URL}/docs/index.html`)
-      .then((response) => {
-        if (response.ok) {
-          setIsLoading(false);
-        } else {
-          console.error("Sphinx documentation not accessible");
-        }
-      })
-      .catch((error) => {
-        console.error("Error loading documentation:", error);
-      });
-  }, []);
+  // const [isLoading, setIsLoading] = useState(true);
+
+  // useEffect(() => {
+  //   // Check if the docs are accessible before rendering the iframe
+  //   fetch(`${BACKEND_URL}/docs/index.html`)
+  //     .then((response) => {
+  //       if (response.ok) {
+  //         setIsLoading(false);
+  //       } else {
+  //         console.error("Sphinx documentation not accessible");
+  //       }
+  //     })
+  //     .catch((error) => {
+  //       console.error("Error loading documentation:", error);
+  //     });
+  // }, []);
 
   return (
     <div>
       {/* Download Links Section */}
       <div>
-      <h1 className="p-1 text-xl text-gray-700">
-          Download CRISP user manual
-      </h1>
+      <h1 className="p-1 text-2xl text-gray-700">
         <a
-          href="/CRISP_Docs.pdf"
+          href="/CRISP_Guide.pdf"
           download="CRISP_guide.pdf"
           style={{ color: 'blue', textDecoration: 'underline' }}
         >
-          Click here to download the CRISP guide
+          Click here to download the CRISP user guide
         </a>
-        <h1 className="p-1 text-xl text-gray-700">
-            Download Semester 1 Reports
-        </h1>
-
-        <h1 className="p-1 text-xl text-gray-700">
-          Download Semester 2 Reports
       </h1>
       </div>
 
@@ -49,9 +41,15 @@ function DocsPage() {
 
       {/* Dynamically Loaded Documentation */}
       <div>
-
+        <iframe
+          src="/CRISP_Guide.pdf"
+          width="100%"
+          height="800px"
+          style={{ border: '1px solid #ccc' }}
+          title="CRISP User Guide PDF"
+        />
         {/* Display loading state while docs are loading */}
-        {isLoading ? (
+        {/* {isLoading ? (
           <div>Loading documentation...</div>
         ) : (
           <iframe
@@ -61,8 +59,9 @@ function DocsPage() {
             style={{ border: 'none' }}
             title="Sphinx Documentation"
           />
-        )}
+        )} */}
       </div>
+    
     </div>
   );
 }
