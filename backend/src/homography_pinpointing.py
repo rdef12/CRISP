@@ -4,6 +4,7 @@ from src.uncertainty_functions import *
 from src.viewing_functions import *
 from src.homography_errors import generate_world_point_uncertainty
 from src.database.CRUD import CRISP_database_interaction as cdi
+import io
 
 from typing import List, Literal
 from abc import ABC, abstractmethod
@@ -654,8 +655,16 @@ def plot_3d_lines(line1, line2, setup_id):
     fig.legend(handles=legend_handles, loc='upper center', ncol=4, bbox_to_anchor=(0.5, 0.95), frameon=True)
     plt.tight_layout()
     plt.subplots_adjust(top=0.8)
-    plt.savefig("/code/src/plots/3d_lines_plot.png", dpi=600)
-    plt.close(fig)
+    buf = io.BytesIO()  # Create an in-memory binary stream (buffer)
+    plt.savefig(buf, format="svg", dpi=600)  # Save the current plot to the buffer
+    plt.close()
+    buf.seek(0)  # Reset the buffer's position to the beginning - else will read from the end
+    image_bytes = buf.read()
+    
+    # # Hardcoded for run12 to create GUI plot.
+    # camera_analysis_id = 132
+    # cdi.add_camera_analysis_plot(camera_analysis_id, f"pinpointed_lines", image_bytes, "svg",
+    #                              description=f"Pinpointed lines for GUI presentation")
 
 
 def extract_3d_physical_position(first_camera: AbstractCamera, occupied_pixel_on_first_camera: tuple[int, int], 
@@ -761,7 +770,8 @@ def extract_weighted_average_3d_physical_position(list_of_camera_objects, list_o
         unc_pixel_coords_1, unc_pixel_coords_2 = unc_pixel_combination
         
         line_intersection_point, unc_line_intersection_point = extract_3d_physical_position(camera_1, pixel_coords_1, camera_2, pixel_coords_2,
-                                                                                            unc_pixel_coords_1, unc_pixel_coords_2, scintillator_present=scintillator_present)
+                                                                                            unc_pixel_coords_1, unc_pixel_coords_2, scintillator_present=scintillator_present,
+                                                                                            plot_line_equations=False)
         
         print(f"\n\n Intersection point of camera pair ({camera_1.camera_id}, {camera_2.camera_id}) is {line_intersection_point} +/- {unc_line_intersection_point}\n\n")
         

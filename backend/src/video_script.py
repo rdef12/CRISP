@@ -156,7 +156,7 @@ def check_directory_exists(directory_path: str):
         if entry.is_file():
             os.remove(entry.path)
         elif entry.is_dir():
-            shutil.rmtree(entry.path)  # Removes subdirectories
+            shutil.rmtree(entry.path)  # Removes subdirectories too
     return directory_path
     
 
@@ -203,7 +203,7 @@ def update_controls(picam2, args, frame_duration):
         metadata = Metadata(picam2.capture_metadata())
         logging.info(f"Trial Metadata: {metadata}")
         
-        # checks if gain within 0.1 of the requested value - weird artefact but it seems to occur
+        # HACK - checks if gain within 0.1 of the requested value - weird artefact but it seems to occur
         # TODO - discover the root of this effect
         if (abs(args.gain - metadata.AnalogueGain) > 0.2):
             frame = picam2.capture_array()  # Capture frame as NumPy array

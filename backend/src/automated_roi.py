@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 from src.edge_detection_functions import find_beam_contour_extremes
 import io
+from src.database.CRUD import CRISP_database_interaction as cdi
 
 # SIDE_SCINTILLATOR_HORIZONTAL_ROI = [875, 3500]
 # SIDE_SCINTILLATOR_VERTICAL_ROI = [530, 1650]
@@ -45,6 +46,10 @@ def roi_determination_inside_scintillator(camera_analysis_id, image, scintillato
     peak_brightness_value = np.max(image)
     mask = image > peak_brightness_value * fraction
     binary_image = (mask.astype(np.uint8)) * 255
+    
+    _, image_bytes = cv.imencode('.png', binary_image)  # Encode the image as a PNG
+    cdi.add_camera_analysis_plot(camera_analysis_id, f"binary_beam", image_bytes, "png",
+                                 description=f"Binary thresholded averaged image")
     
     if use_edge_detection:
         x_bounds, y_bounds = find_beam_contour_extremes(camera_analysis_id, binary_image, horizontal_pixel_width, vertical_pixel_width, show_image=show_plots,
