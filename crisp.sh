@@ -1,15 +1,31 @@
 #!/bin/bash
 
 # --- Colours ---
-GREEN_BG="\e[42m"
-BLUE_BG="\e[44m]"
-ORANGE_BG="\e[43m"
-RED_BG="\e[41m"
-WHITE_TEXT="\e[97m"
-RESET="\e[0m"
+GREEN_BG="\033[42m"
+BLUE_BG="\033[44m"
+ORANGE_BG="\033[43m"
+RED_BG="\033[41m"
+WHITE_TEXT="\033[97m"
+GREEN_TEXT="\033[32m"
+RESET="\033[0m"
+
+echo -e "\n${BLUE_BG}${WHITE_TEXT}Available CRISP Functions:${RESET}\n
+  ${GREEN_TEXT}crisp${RESET} - Starts the 3 CRISP containers
+  ${GREEN_TEXT}close_crisp${RESET} - Stops running the CRISP containers
+  ${GREEN_TEXT}rebuild_crisp${RESET} - Rebuild and start CRISP containers
+
+${BLUE_BG}${WHITE_TEXT}Usage:${RESET}
+
+  Source this script in your shell to load the functions, e.g.:
+    $ source ./crisp.sh
+
+  Then call the functions directly, e.g.:
+    $ crisp
+    $ close_crisp
+    $ rebuild_crisp
+"
 
 if [[ -n "$FUNCTIONS_LOADED" ]]; then
-    echo "CRISP functions already exist."
     return
 fi
 
@@ -30,5 +46,3 @@ rebuild_crisp() {
 }
 
 export FUNCTIONS_LOADED=1
-
-echo "CRISP functions created!"
