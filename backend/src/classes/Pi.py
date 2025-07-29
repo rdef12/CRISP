@@ -4,7 +4,6 @@ import socket
 import json
 from src.classes.Camera import Camera
 from src.database.CRUD import CRISP_database_interaction as cdi
-import time
 
 class Pi:
   
@@ -44,6 +43,7 @@ class Pi:
   def connect_via_ssh(self):
       try:
         self.ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy()) # makes computer trust the ssh connection
+
         print(self.ip_address, self.username, self.password)
         # the reason I am setting a timeout is that the GUI will show connecting... for 1 min o/w
         # Having a timeout makes the GUI more responsive - quicker info on when something is going wrong.
@@ -51,6 +51,8 @@ class Pi:
                                 port=22, username=self.username, 
                                 password=self.password, timeout=15
                               ) 
+        self.ssh_status = True
+        
       except Exception as e:
           self.ssh_status = False
           print(f"Error connecting over SSH to {self.username}: {e}")
@@ -62,10 +64,9 @@ class Pi:
         if self.ssh_status:
             try:
                 # Try executing a simple command to check status
-                # stdin, stdout, stderr = self.ssh_client.exec_command('echo "Hello"', timeout=10)
-                # stdout.channel.recv_exit_status()  # Will raise an exception if the connection is broken
-                
-                return True # Above line commented out for demo purposes
+                stdin, stdout, stderr = self.ssh_client.exec_command('echo "Hello"', timeout=10)
+                stdout.channel.recv_exit_status()  # Will raise an exception if the connection is broken
+                return True
             except (paramiko.SSHException, paramiko.AuthenticationException, socket.error):
                 print(f"\n\n\n Connection to {self.username} is lost. \n\n\n")
                 Pi.delete_pi(self.username)

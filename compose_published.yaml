@@ -1,0 +1,65 @@
+services: # services listed are connected using the compose file
+  database:
+    # username=postgres password=password
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      DB_NAME: crisp_database #this is used in the database url in database.py # Apparently it doesn't like capitals which is why it isn't CRISP_database
+    image: postgres:17.2
+    container_name: CRISP_database
+    volumes: # Check and probably streamline these volumes to our needs only
+      - ./backend/database/dev/scripts/docker-init.sql.sh:/docker-entrypoint-initdb.d/init.sql.sh:ro
+      - ./backend/database/sql:/sql:ro 
+      - ./backend/database/dev/sql:/dev-sql:ro 
+      - sql_data:/var/lib/postgresql/data  # Use a named volume for data - specified at the bottom of compose.yaml
+    ports:
+      - "127.0.0.1:5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 1s
+      timeout: 1s
+      retries: 30
+
+  backend: # container called backend
+    container_name: CRISP_backend
+    image: ghcr.io/rdef12/crisp-backend-image:v1.0
+    ports:
+      - "127.0.0.1:8000:8000"
+      - "0.0.0.0:1234:1234/udp"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      - HOST_IP=host.docker.internal
+      - PYTHONUNBUFFERED=1
+      - DEBUG=True
+      - POSTGRES_URL=postgresql://postgres:password@database:5432/crisp_database #added from docker docs ai
+    develop:
+      watch:
+        - action: rebuild #sync+restart
+          path: ./backend
+          target: /code
+    depends_on:
+      database:
+        condition: service_healthy
+    # healthcheck:
+    # test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+    # interval: 30s
+    # retries: 5
+
+  frontend:
+    image: ghcr.io/rdef12/crisp-frontend-image:v1.0
+    container_name: CRISP_frontend
+    ports:
+      - "127.0.0.1:3000:3000"
+    env_file: 
+    - "./frontend/.env"
+    develop:
+      watch:
+        - action: sync+restart
+          path: ./frontend
+          target: /app
+    depends_on:
+      - backend
+
+volumes:
+  sql_data:

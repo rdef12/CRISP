@@ -3,3 +3,4 @@ frontend/.dockerignore
 backend/src/routers/homography_old.py
 backend/test_population_images
 database_backups
+compose_local.yaml
