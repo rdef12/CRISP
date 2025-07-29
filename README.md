@@ -1,12 +1,10 @@
-# DATABASE BACKUP/RESTORE COMMANDS
+# CRISP
 
-![Custom Badge](https://img.shields.io/badge/CRISP-26c70a)
+![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)
 
-### Dump Database
-pg_dump -U postgres -F c -d crisp_database -h 127.0.0.1 -b -f path/to/backup.sql
+**CRISP** = Calibration and Research Imaging System for Plastic scintillators
 
-Add the following Bash variable to get the time in the backup filename:
-$(date -u +%Y.%m.%d.%H-%M)
+CRISP, the master's project of Robin de Freitas and Lewis Dean, is a Graphical User Interface (GUI) for proton beam monitoring. It facilitates scintillation light imaging, which is generated during proton beam interactions within a plastic scintillator, using a series of Raspberry Pi cameras. CRISP allows for the calibration of these cameras, the optimal imaging of scintillation light, and the analysis of light distributions to calculate Bragg peak depths within the scintillator.
 
-### Restore Database
-pg_restore -U postgres --clean -h 127.0.0.1 -d crisp_database path/to/backup.sql
+## User Guide
+The CRISP user guide is available for download from this repository.
