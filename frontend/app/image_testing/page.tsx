@@ -147,7 +147,7 @@ export default function ImageTesting() {
           <Input
             type="number"
             name="timeDelay"
-            placeholder = {"Time Delay [ms] (default=0)"}
+            placeholder = {"Time Delay [ms] (default=1)"}
             value={formData.timeDelay}
             onChange={handleChange}
           />
