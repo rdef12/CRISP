@@ -9,5 +9,10 @@ CRISP, the master's project of Robin de Freitas and Lewis Dean, is a Graphical U
 ## User Guide
 The CRISP user guide is available for download from this repository.
 
+---
 
+## Contact Information
+
+- lewisdean22@outlook.com
+- robindefreitas123@gmail.com
 
